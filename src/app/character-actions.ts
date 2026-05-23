@@ -28,12 +28,22 @@ function readVariant(formData: FormData) {
   return variant;
 }
 
+function readDisplayName(formData: FormData, fallback?: string) {
+  const displayName = String(formData.get("displayName") ?? "").trim().slice(0, 32);
+
+  if (!displayName && !fallback) {
+    redirect("/characters/new?message=캐릭터 이름을 입력해 주세요." as Route);
+  }
+
+  return displayName || fallback || "이름 없는 캐릭터";
+}
+
 export async function createCharacter(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const species = readSpecies(formData);
   const variant = readVariant(formData);
-  const displayName = String(formData.get("displayName") ?? "").trim().slice(0, 32) || "첫 번째 친구";
+  const displayName = readDisplayName(formData);
 
   const { count } = await supabase
     .from("characters")
@@ -73,4 +83,54 @@ export async function createCharacter(formData: FormData) {
 
   revalidatePath("/");
   redirect("/");
+}
+
+export async function updateWardrobe(formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const variant = readVariant(formData);
+  const displayName = readDisplayName(formData, "이름 없는 캐릭터");
+
+  const { data: activeCharacter, error: characterError } = await supabase
+    .from("characters")
+    .select("id, species")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .single<{ id: string; species: CharacterSpecies }>();
+
+  if (characterError || !activeCharacter) {
+    redirect("/characters/new?message=먼저 캐릭터를 생성해 주세요." as Route);
+  }
+
+  const customization =
+    activeCharacter.species === "human"
+      ? {
+          species: activeCharacter.species,
+          variantId: variant.id,
+          outfitColor: variant.color,
+          hairColor: "#5f3d2e"
+        }
+      : {
+          species: activeCharacter.species,
+          variantId: variant.id,
+          furColor: "#f4d0a1",
+          patternColor: variant.color
+        };
+
+  const { error } = await supabase
+    .from("characters")
+    .update({
+      display_name: displayName,
+      customization
+    })
+    .eq("id", activeCharacter.id)
+    .eq("user_id", user.id);
+
+  if (error) {
+    redirect(`/characters/wardrobe?message=${encodeURIComponent(error.message)}` as Route);
+  }
+
+  revalidatePath("/");
+  revalidatePath("/characters/wardrobe");
+  redirect("/?message=옷장이 저장됐어요." as Route);
 }

@@ -53,6 +53,28 @@ export async function toggleTodo(todoId: string, nextStatus: "open" | "completed
   revalidatePath("/");
 }
 
+export async function updateTodoTitle(todoId: string, formData: FormData) {
+  await requireUser();
+  const supabase = await createClient();
+  const title = cleanTitle(formData);
+
+  if (!title) {
+    redirect("/?message=할 일을 비워둘 수 없어요." as Route);
+  }
+
+  const { error } = await supabase
+    .from("todos")
+    .update({ title })
+    .eq("id", todoId)
+    .eq("status", "open");
+
+  if (error) {
+    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+  }
+
+  revalidatePath("/");
+}
+
 export async function deleteTodo(todoId: string) {
   await requireUser();
   const supabase = await createClient();

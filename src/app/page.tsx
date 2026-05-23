@@ -144,6 +144,12 @@ export default async function Home({
               <div className="account-menu-panel">
                 <p className="subtle">로그인 계정</p>
                 <strong>{user.email}</strong>
+                <a className="ghost-button" href="/characters/wardrobe">
+                  캐릭터 옷장
+                </a>
+                <button className="ghost-button" type="button" disabled>
+                  캐릭터 선택
+                </button>
                 <form action={signOut}>
                   <button className="ghost-button" type="submit">
                     로그아웃

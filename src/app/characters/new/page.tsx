@@ -39,7 +39,13 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
         <form className="character-create-form" action={createCharacter}>
           <label>
             이름
-            <input name="displayName" defaultValue="첫 번째 친구" maxLength={32} />
+            <input
+              name="displayName"
+              placeholder="캐릭터 이름"
+              maxLength={32}
+              required
+              autoFocus
+            />
           </label>
 
           <section>

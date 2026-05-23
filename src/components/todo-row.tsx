@@ -1,5 +1,5 @@
 import { X } from "lucide-react";
-import { deleteTodo, toggleTodo } from "@/app/todo-actions";
+import { deleteTodo, toggleTodo, updateTodoTitle } from "@/app/todo-actions";
 
 type TodoRowProps = {
   todo: {
@@ -27,7 +27,18 @@ export function TodoRow({ todo }: TodoRowProps) {
       </form>
 
       <div className="todo-main">
-        <strong>{todo.title}</strong>
+        {isCompleted ? (
+          <strong>{todo.title}</strong>
+        ) : (
+          <form className="inline-title-form" action={updateTodoTitle.bind(null, todo.id)}>
+            <input
+              name="title"
+              defaultValue={todo.title}
+              aria-label={`${todo.title} 수정`}
+              title="수정한 뒤 Enter를 누르면 저장돼요."
+            />
+          </form>
+        )}
         <p className="subtle">
           {isCompleted ? "완료됨" : "완료 보상"} {todo.xp_reward} XP
         </p>

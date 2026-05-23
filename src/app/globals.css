@@ -187,6 +187,24 @@ button {
   flex: 1;
 }
 
+.inline-title-form input {
+  width: min(100%, 640px);
+  min-height: 34px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--foreground);
+  padding: 0 8px;
+  font-weight: 800;
+}
+
+.inline-title-form input:hover,
+.inline-title-form input:focus {
+  border-color: var(--line);
+  background: #ffffff;
+  outline: 0;
+}
+
 .todo-row.completed .todo-main strong {
   text-decoration: line-through;
   color: var(--muted);
@@ -244,6 +262,11 @@ button {
   background: #ffffff;
   color: var(--foreground);
   padding: 0 12px;
+}
+
+.ghost-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .auth-shell {
@@ -388,6 +411,28 @@ button {
   width: min(170px, 100%);
   height: auto;
   justify-self: center;
+}
+
+.wardrobe-preview {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8eb;
+  padding: 14px;
+}
+
+.wardrobe-preview img {
+  width: 140px;
+  height: auto;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .color-choice-list {
