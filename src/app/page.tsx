@@ -3,6 +3,7 @@ import { signOut } from "@/app/auth-actions";
 import { createTodo } from "@/app/todo-actions";
 import { CharacterShowcase } from "@/components/character-showcase";
 import { TodoRow } from "@/components/todo-row";
+import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import { STARTER_CHARACTER } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -52,6 +53,7 @@ export default async function Home({
   searchParams: Promise<{ message?: string }>;
 }) {
   const user = await requireUser();
+  await ensureUserBootstrap({ id: user.id, email: user.email });
   const supabase = await createClient();
   const { message } = await searchParams;
 
