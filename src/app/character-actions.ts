@@ -108,13 +108,19 @@ export async function updateWardrobe(formData: FormData) {
           species: activeCharacter.species,
           variantId: variant.id,
           outfitColor: variant.color,
-          hairColor: "#5f3d2e"
+          hairColor: "#5f3d2e",
+          hairId: String(formData.get("hairId") ?? "basic"),
+          eyeId: String(formData.get("eyeId") ?? "basic"),
+          accessoryId: String(formData.get("accessoryId") ?? "none")
         }
       : {
           species: activeCharacter.species,
           variantId: variant.id,
           furColor: "#f4d0a1",
-          patternColor: variant.color
+          patternColor: variant.color,
+          hairId: String(formData.get("hairId") ?? "basic"),
+          eyeId: String(formData.get("eyeId") ?? "basic"),
+          accessoryId: String(formData.get("accessoryId") ?? "none")
         };
 
   const { error } = await supabase

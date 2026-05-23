@@ -1,8 +1,8 @@
-import { Coins, Lock, Plus, ShoppingBag, Sparkles } from "lucide-react";
+import { Coins, Ellipsis, Lock, ShoppingBag, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { signOut } from "@/app/auth-actions";
-import { createTodo } from "@/app/todo-actions";
 import { CharacterShowcase } from "@/components/character-showcase";
-import { TodoRow } from "@/components/todo-row";
+import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import type { CharacterSpecies } from "@/lib/character-assets";
 import { STARTER_CHARACTER } from "@/lib/game-config";
@@ -109,7 +109,22 @@ export default async function Home({
   return (
     <main className="app-shell">
       <aside className="character-panel">
-        <p className="subtle">MVP Preview</p>
+        <div className="character-panel-top">
+          <p className="subtle">MVP Preview</p>
+          <details className="character-menu">
+            <summary aria-label="캐릭터 메뉴">
+              <Ellipsis size={20} />
+            </summary>
+            <div className="character-menu-panel">
+              <Link className="ghost-button" href={"/characters/wardrobe" as Route}>
+                캐릭터 옷장
+              </Link>
+              <button className="ghost-button" type="button" disabled>
+                캐릭터 선택
+              </button>
+            </div>
+          </details>
+        </div>
         <h1 className="brand">OshiTodo</h1>
         <p className="subtle">할 일을 완료하면 현재 선택한 캐릭터가 경험치를 얻어요.</p>
 
@@ -144,12 +159,6 @@ export default async function Home({
               <div className="account-menu-panel">
                 <p className="subtle">로그인 계정</p>
                 <strong>{user.email}</strong>
-                <a className="ghost-button" href="/characters/wardrobe">
-                  캐릭터 옷장
-                </a>
-                <button className="ghost-button" type="button" disabled>
-                  캐릭터 선택
-                </button>
                 <form action={signOut}>
                   <button className="ghost-button" type="submit">
                     로그아웃
@@ -170,21 +179,7 @@ export default async function Home({
 
         <div className="grid">
           <section className="panel">
-            <form className="form-row" action={createTodo}>
-              <input name="title" placeholder="할 일을 입력하세요" aria-label="새 할 일" />
-              <button className="icon-button" type="submit" aria-label="할 일 추가">
-                <Plus size={18} />
-              </button>
-            </form>
-
-            <div className="todo-list">
-              {(todos ?? []).map((todo) => (
-                <TodoRow todo={todo} key={todo.id} />
-              ))}
-              {(todos ?? []).length === 0 ? (
-                <div className="empty-state">첫 퀘스트를 추가해볼까요?</div>
-              ) : null}
-            </div>
+            <TodoList initialTodos={todos ?? []} />
           </section>
 
           <aside className="panel">
