@@ -43,8 +43,12 @@ const variants = [
 
 type Species = "human" | "cat";
 
-export function CharacterShowcase() {
-  const [species, setSpecies] = useState<Species>("human");
+type CharacterShowcaseProps = {
+  initialSpecies?: Species;
+};
+
+export function CharacterShowcase({ initialSpecies = "human" }: CharacterShowcaseProps) {
+  const [species, setSpecies] = useState<Species>(initialSpecies);
   const [variantId, setVariantId] = useState<(typeof variants)[number]["id"]>("blue");
 
   const activeVariant = useMemo(
