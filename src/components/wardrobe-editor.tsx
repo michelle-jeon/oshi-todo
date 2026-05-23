@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Eye, Gem, Scissors, Shirt } from "lucide-react";
+import { Eye, Gem, Palette, Scissors, Shirt } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateWardrobe } from "@/app/character-actions";
@@ -11,7 +11,7 @@ import {
   type CharacterSpecies
 } from "@/lib/character-assets";
 
-type WardrobeTab = "outfit" | "accessory" | "hair" | "eyes";
+type WardrobeTab = "hair" | "eyes" | "outfit" | "pattern" | "accessory";
 
 type WardrobeEditorProps = {
   character: {
@@ -21,11 +21,17 @@ type WardrobeEditorProps = {
   };
 };
 
-const tabs = [
-  { id: "outfit", label: "옷", icon: Shirt },
-  { id: "accessory", label: "악세서리", icon: Gem },
+const humanTabs = [
   { id: "hair", label: "헤어", icon: Scissors },
-  { id: "eyes", label: "눈", icon: Eye }
+  { id: "eyes", label: "눈", icon: Eye },
+  { id: "outfit", label: "옷", icon: Shirt },
+  { id: "accessory", label: "악세서리", icon: Gem }
+] as const;
+
+const catTabs = [
+  { id: "eyes", label: "눈", icon: Eye },
+  { id: "pattern", label: "무늬", icon: Palette },
+  { id: "accessory", label: "악세서리", icon: Gem }
 ] as const;
 
 const accessoryItems = [
@@ -59,7 +65,9 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
     }),
     [character.customization, character.displayName]
   );
-  const [activeTab, setActiveTab] = useState<WardrobeTab>("outfit");
+  const [activeTab, setActiveTab] = useState<WardrobeTab>(
+    character.species === "human" ? "hair" : "eyes"
+  );
   const [draft, setDraft] = useState(initialState);
   const [isSaving, setIsSaving] = useState(false);
   const asset = getCharacterAsset(character.species, draft.variantId);
@@ -86,7 +94,7 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
   }
 
   function renderItems() {
-    if (activeTab === "outfit") {
+    if (activeTab === "outfit" || activeTab === "pattern") {
       return CHARACTER_VARIANTS.map((variant) => (
         <button
           className={`wardrobe-item ${draft.variantId === variant.id ? "selected" : ""}`}
@@ -137,7 +145,7 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
       </div>
 
       <div className="wardrobe-tabs" aria-label="옷장 탭">
-        {tabs.map((tab) => {
+        {(character.species === "human" ? humanTabs : catTabs).map((tab) => {
           const Icon = tab.icon;
           return (
             <button

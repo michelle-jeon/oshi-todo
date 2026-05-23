@@ -1,7 +1,8 @@
-import { Coins, Ellipsis, Lock, ShoppingBag, Sparkles } from "lucide-react";
+import { Coins, Ellipsis, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "@/app/auth-actions";
 import { CharacterShowcase } from "@/components/character-showcase";
+import { FocusTracker } from "@/components/focus-tracker";
 import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import type { CharacterSpecies } from "@/lib/character-assets";
@@ -30,26 +31,6 @@ type TodoRowData = {
   completed_at: string | null;
 };
 
-type ShopItemRow = {
-  id: string;
-  name: string;
-  cost: number;
-  slot: string;
-};
-
-function formatSlot(slot: string) {
-  const labels: Record<string, string> = {
-    human_hair: "머리",
-    human_outfit: "옷",
-    cat_pattern: "고양이 무늬",
-    accessory: "악세서리",
-    room_item: "방 아이템",
-    mount: "탈 것"
-  };
-
-  return labels[slot] ?? slot;
-}
-
 export default async function Home({
   searchParams
 }: {
@@ -62,8 +43,7 @@ export default async function Home({
 
   const [
     { data: activeCharacter, error: characterError },
-    { data: todos, error: todosError },
-    { data: shopItems, error: shopError }
+    { data: todos, error: todosError }
   ] = await Promise.all([
     supabase
       .from("characters")
@@ -74,13 +54,7 @@ export default async function Home({
       .from("todos")
       .select("id, title, status, xp_reward, completed_at")
       .order("created_at", { ascending: false })
-      .returns<TodoRowData[]>(),
-    supabase
-      .from("shop_items")
-      .select("id, name, cost, slot")
-      .eq("is_active", true)
-      .order("cost", { ascending: true })
-      .returns<ShopItemRow[]>()
+      .returns<TodoRowData[]>()
   ]);
 
   const character = activeCharacter
@@ -102,7 +76,7 @@ export default async function Home({
 
   const progress = getLevelProgress(character.xpTotal);
   const spendableXp = character.xpCurrent;
-  const dbError = characterError ?? todosError ?? shopError;
+  const dbError = characterError ?? todosError;
   const variantId =
     "variantId" in character.customization ? character.customization.variantId : undefined;
 
@@ -110,7 +84,7 @@ export default async function Home({
     <main className="app-shell">
       <aside className="character-panel">
         <div className="character-panel-top">
-          <p className="subtle">MVP Preview</p>
+          <h1 className="brand">OshiTodo</h1>
           <details className="character-menu">
             <summary aria-label="캐릭터 메뉴">
               <Ellipsis size={20} />
@@ -125,8 +99,6 @@ export default async function Home({
             </div>
           </details>
         </div>
-        <h1 className="brand">OshiTodo</h1>
-        <p className="subtle">할 일을 완료하면 현재 선택한 캐릭터가 경험치를 얻어요.</p>
 
         <CharacterShowcase
           species={character.species}
@@ -141,13 +113,15 @@ export default async function Home({
           <div className="progress-fill" style={{ width: `${progress.percent}%` }} />
         </div>
 
+        <Link className="shop-link-button" href={"/shop" as Route}>
+          <ShoppingBag size={18} /> 상점
+        </Link>
       </aside>
 
       <section className="workspace">
         <header className="topbar">
           <div>
             <h2>오늘의 퀘스트</h2>
-            <p className="subtle">완료한 할 일은 다시 눌러 취소할 수 있어요.</p>
           </div>
           <div className="topbar-actions">
             <div className="currency-pill" aria-label="보유 경험치">
@@ -182,30 +156,7 @@ export default async function Home({
             <TodoList initialTodos={todos ?? []} />
           </section>
 
-          <aside className="panel">
-            <h3>
-              <ShoppingBag size={18} /> 상점
-            </h3>
-            <p className="subtle">경험치로 꾸미기 아이템을 해금하는 구조입니다.</p>
-
-            <div className="todo-list">
-              {(shopItems ?? []).map((item) => (
-                <article className="shop-row" key={item.name}>
-                  <div>
-                    <strong>{item.name}</strong>
-                    <p className="subtle">
-                      {formatSlot(item.slot)} · {item.cost} XP
-                    </p>
-                  </div>
-                  <Lock size={18} />
-                </article>
-              ))}
-            </div>
-
-            <button className="ghost-button" style={{ marginTop: 14 }} type="button">
-              <Sparkles size={16} /> 캐릭터 생성 플로우
-            </button>
-          </aside>
+          <FocusTracker />
         </div>
       </section>
     </main>

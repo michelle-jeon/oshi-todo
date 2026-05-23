@@ -83,11 +83,10 @@ button {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  border: 1px solid #c89428;
-  border-radius: 999px;
-  background: #fff3ca;
+  border: 0;
+  background: transparent;
   color: #5f420c;
-  padding: 0 14px;
+  padding: 0 4px;
   font-weight: 800;
 }
 
@@ -153,6 +152,22 @@ button {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);
   gap: 18px;
+}
+
+.shop-link-button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 18px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+  text-decoration: none;
+  font-weight: 800;
 }
 
 .todo-list {
@@ -544,6 +559,90 @@ button {
   flex-wrap: wrap;
 }
 
+.focus-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.focus-panel h2,
+.focus-panel p {
+  margin: 0;
+}
+
+.focus-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.shop-shell {
+  min-height: 100vh;
+  display: grid;
+  gap: 22px;
+  align-content: start;
+  padding: 28px;
+}
+
+.shop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.shop-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.shop-species-section {
+  display: grid;
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.shop-section {
+  display: grid;
+  gap: 10px;
+}
+
+.shop-section h3 {
+  margin: 0;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.shop-card {
+  min-height: 104px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.shop-card.disabled {
+  background: #f5f1e9;
+}
+
+.owned-label {
+  color: var(--primary);
+  font-weight: 800;
+}
+
 .color-choice-list {
   display: flex;
   flex-wrap: wrap;
@@ -633,6 +732,12 @@ button {
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .focus-panel,
+  .shop-header {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .topbar {
