@@ -547,8 +547,9 @@ button {
 
 .wardrobe-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
 }
 
 .wardrobe-item {
@@ -684,7 +685,7 @@ button {
 
 .shop-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -816,6 +817,11 @@ button {
   }
 
   .species-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wardrobe-grid,
+  .shop-grid {
     grid-template-columns: 1fr;
   }
 
