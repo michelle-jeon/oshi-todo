@@ -16,25 +16,4 @@ export async function ensureUserBootstrap(user: BootstrapUserInput) {
     },
     { onConflict: "id" }
   );
-
-  const { data: activeCharacter } = await supabase
-    .from("characters")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (!activeCharacter) {
-    await supabase.from("characters").insert({
-      user_id: user.id,
-      display_name: "첫 번째 친구",
-      species: "human",
-      is_active: true,
-      customization: {
-        species: "human",
-        hairColor: "#5f3d2e",
-        outfitColor: "#4f7cff"
-      }
-    });
-  }
 }

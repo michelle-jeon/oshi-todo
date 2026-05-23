@@ -4,15 +4,18 @@ import { createTodo } from "@/app/todo-actions";
 import { CharacterShowcase } from "@/components/character-showcase";
 import { TodoRow } from "@/components/todo-row";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
+import type { CharacterSpecies } from "@/lib/character-assets";
 import { STARTER_CHARACTER } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
+import { redirect } from "next/navigation";
+import type { Route } from "next";
 
 type CharacterRow = {
   id: string;
   display_name: string;
-  species: "human" | "cat";
+  species: CharacterSpecies;
   level: number;
   xp_current: number;
   xp_total: number;
@@ -92,9 +95,16 @@ export default async function Home({
         customization: activeCharacter.customization
       }
     : STARTER_CHARACTER;
+
+  if (!activeCharacter && !characterError) {
+    redirect("/characters/new" as Route);
+  }
+
   const progress = getLevelProgress(character.xpTotal);
   const spendableXp = character.xpCurrent;
   const dbError = characterError ?? todosError ?? shopError;
+  const variantId =
+    "variantId" in character.customization ? character.customization.variantId : undefined;
 
   return (
     <main className="app-shell">
@@ -103,7 +113,10 @@ export default async function Home({
         <h1 className="brand">OshiTodo</h1>
         <p className="subtle">할 일을 완료하면 현재 선택한 캐릭터가 경험치를 얻어요.</p>
 
-        <CharacterShowcase initialSpecies={character.species} />
+        <CharacterShowcase
+          species={character.species}
+          variantId={variantId}
+        />
 
         <h2>{character.displayName}</h2>
         <p className="subtle">
@@ -119,18 +132,25 @@ export default async function Home({
         <header className="topbar">
           <div>
             <h2>오늘의 퀘스트</h2>
-            <p className="subtle">{user.email}</p>
+            <p className="subtle">완료한 할 일은 다시 눌러 취소할 수 있어요.</p>
           </div>
           <div className="topbar-actions">
             <div className="currency-pill" aria-label="보유 경험치">
               <Coins size={18} />
               <span>{spendableXp.toLocaleString()} XP</span>
             </div>
-            <form action={signOut}>
-              <button className="ghost-button" type="submit">
-                로그아웃
-              </button>
-            </form>
+            <details className="account-menu">
+              <summary>내정보</summary>
+              <div className="account-menu-panel">
+                <p className="subtle">로그인 계정</p>
+                <strong>{user.email}</strong>
+                <form action={signOut}>
+                  <button className="ghost-button" type="submit">
+                    로그아웃
+                  </button>
+                </form>
+              </div>
+            </details>
           </div>
         </header>
 

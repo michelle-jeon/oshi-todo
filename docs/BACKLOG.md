@@ -1,109 +1,118 @@
-# Post-MVP Backlog
+# MVP 이후 백로그 / Post-MVP Backlog
 
-This is the parking lot for features and polish items that should wait until the MVP is usable end to end.
+MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니다.  
+한국어를 기준으로 적고, 필요한 경우 영어 설명을 괄호로 덧붙입니다.
 
-## Auth
+## 인증 / Auth
 
-- Password reset flow.
-  - Add a "forgot password" link on `/login`.
-  - Use Supabase password recovery email.
-  - Add a reset password page for users returning from the recovery link.
-- Email confirmation UX.
-  - Show clearer states for "check your email" and "confirmed, now login".
-- Social login.
-  - Consider Google login after the email/password MVP is stable.
-- Account settings.
-  - Change email.
-  - Change password.
-  - Delete account.
+- 비밀번호 찾기 기능 추가.
+  - `/login`에 "비밀번호를 잊으셨나요?" 링크 추가.
+  - Supabase password recovery 이메일 사용.
+  - 복구 링크로 돌아온 사용자가 새 비밀번호를 입력하는 페이지 추가.
+- 이메일 인증 UX 개선.
+  - "메일을 확인해 주세요", "인증 완료, 이제 로그인하세요" 같은 상태를 더 명확히 보여주기.
+- 소셜 로그인 검토.
+  - 이메일/비밀번호 MVP가 안정화된 뒤 Google 로그인부터 고려.
+- 계정 설정 페이지.
+  - 이메일 변경.
+  - 비밀번호 변경.
+  - 계정 삭제.
 
-## Character System
+## 캐릭터 시스템 / Character System
 
-- Save character customization to Supabase instead of keeping the selector local-only.
-- Add multi-character support.
-  - Create a new character.
-  - Switch active character.
-  - Show each character's separate XP and inventory.
-- Expand avatar species.
-  - Dog.
-  - Elf.
-  - Fairy.
-  - More fantasy species.
-- Expand human customization.
-  - Hair style.
-  - Hair color.
-  - Eye color.
-  - Skin color.
-  - Outfit and outfit color.
-  - Accessories.
-  - Facial expression.
-  - Body type.
-  - Mount and mount color.
-- Add color-specific or item-specific detail variants.
-  - Example: ribbon changes shape based on color.
+- 캐릭터 이름 변경 기능.
+- 캐릭터 옷장 기능.
+  - 보유 아이템 목록 보기.
+  - 구매한 아이템 장착/해제.
+  - 색상 변경은 홈이 아니라 옷장에서만 가능하게 유지.
+- 다중 캐릭터 지원.
+  - 새 캐릭터 생성.
+  - 캐릭터 슬롯 화면.
+  - 기본 캐릭터 변경.
+  - 캐릭터마다 XP와 인벤토리 분리.
+- 아바타 종류 확장.
+  - 강아지.
+  - 엘프.
+  - 요정.
+  - 기타 판타지 종족.
+- 인간 캐릭터 커스터마이징 확장.
+  - 헤어스타일.
+  - 머리 색.
+  - 눈 색.
+  - 피부 색.
+  - 옷과 옷 색상.
+  - 악세서리.
+  - 얼굴 표정.
+  - 체형.
+  - 탈 것과 탈 것 색상.
+- 색상/아이템별 디테일 변형.
+  - 예: 색상에 따라 리본 모양이 하트로 바뀌는 작은 차이.
 
-## XP And Economy
+## XP와 재화 / XP And Economy
 
-- Separate lifetime XP from spendable currency more clearly.
-- Add shop purchase flow.
-  - Prevent duplicate purchases.
-  - Deduct spendable XP.
-  - Add purchased items to character inventory.
-- Add item equip/unequip flow.
-- Add XP reward tuning.
-  - Different XP values by todo difficulty.
-  - Daily bonus.
-  - Streak bonus.
-- Add XP event history view.
+- 누적 경험치와 사용 가능한 재화를 더 명확히 분리.
+- 상점 구매 플로우 추가.
+  - 중복 구매 방지.
+  - 사용 가능한 XP 차감.
+  - 구매 아이템을 캐릭터 인벤토리에 추가.
+- 아이템 장착/해제 플로우 추가.
+- XP 보상 밸런싱.
+  - 할 일 난이도별 XP.
+  - 데일리 보너스.
+  - 연속 완료 보너스.
+- XP 획득/사용 기록 화면.
 
-## Todo System
+## 투두 시스템 / Todo System
 
-- Add due dates.
-- Add priority.
-- Add tags/categories.
-- Add recurring todos.
-- Add notes/details.
-- Add completed todo archive view.
-- Add undo after completion.
-- Add optimistic UI states for faster feedback.
+- 마감일 추가.
+- 우선순위 추가.
+- 태그/카테고리 추가.
+- 반복 투두 추가.
+- 메모/상세 설명 추가.
+- 완료한 투두 아카이브 화면.
+- 완료 취소 UX 더 다듬기.
+  - 현재는 토글로 취소 가능.
+  - 나중에 undo toast 같은 빠른 피드백 검토.
+- 낙관적 UI(optimistic UI) 적용.
+  - 완료/취소/삭제가 더 즉각적으로 보이게 하기.
 
-## Room System
+## 방 시스템 / Room System
 
-- Add character room view.
-- Add room customization.
-  - Wallpaper.
-  - Floor.
-  - Furniture placement.
-  - Room item inventory.
-- Add room shop items.
+- 캐릭터 방 화면 추가.
+- 방 꾸미기 기능.
+  - 벽지.
+  - 바닥.
+  - 가구 배치.
+  - 방 아이템 인벤토리.
+- 방 아이템 상점 추가.
 
-## Sync And Platform
+## 동기화와 플랫폼 / Sync And Platform
 
-- Add Supabase Realtime for multi-device sync.
-- Add PWA support.
-  - Installable web app.
-  - Offline shell.
-  - App icons.
-- Plan mobile app path.
-  - React Native or Expo using the same Supabase backend.
+- Supabase Realtime으로 여러 기기 동기화 강화.
+- PWA 지원.
+  - 설치 가능한 웹앱.
+  - 오프라인 shell.
+  - 앱 아이콘.
+- 모바일 앱 경로 검토.
+  - 같은 Supabase 백엔드를 쓰는 React Native 또는 Expo 앱.
 
-## Design And Product Polish
+## 디자인과 제품 polish / Design And Product Polish
 
-- Replace placeholder generated PNG assets with final art assets.
-- Define a consistent asset naming convention.
-- Add empty, loading, and error states.
-- Improve mobile layout.
-- Add motion feedback for todo completion and XP gain.
-- Add sound settings later if the game feel needs it.
+- 임시 PNG 캐릭터 에셋을 최종 아트 에셋으로 교체.
+- 에셋 파일명 규칙 정리.
+- 로딩/빈 상태/에러 상태 개선.
+- 모바일 레이아웃 개선.
+- 투두 완료와 XP 획득 모션 추가.
+- 필요하면 사운드 설정 추가.
 
-## Admin And Operations
+## 운영과 개발환경 / Admin And Operations
 
-- Add seed scripts for shop items.
-- Add safer migration workflow with Supabase CLI.
-- Add staging and production Supabase projects.
-- Add deployment environment variable checklist.
-- Add analytics for activation.
-  - Sign-up completion.
-  - First todo created.
-  - First todo completed.
-  - First item purchased.
+- 상점 아이템 seed 스크립트 추가.
+- Supabase CLI 기반 migration workflow 더 정리.
+- staging/production Supabase 프로젝트 분리.
+- 배포 환경변수 체크리스트 추가.
+- 분석 이벤트 추가.
+  - 회원가입 완료.
+  - 첫 투두 생성.
+  - 첫 투두 완료.
+  - 첫 아이템 구매.

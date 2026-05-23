@@ -33,35 +33,18 @@ export async function createTodo(formData: FormData) {
   revalidatePath("/");
 }
 
-export async function updateTodo(todoId: string, formData: FormData) {
-  await requireUser();
-  const supabase = await createClient();
-  const title = cleanTitle(formData);
-
-  if (!title) {
-    redirect("/?message=수정할 내용을 입력해 주세요." as Route);
-  }
-
-  const { error } = await supabase
-    .from("todos")
-    .update({ title })
-    .eq("id", todoId)
-    .eq("status", "open");
-
-  if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
-  }
-
-  revalidatePath("/");
-}
-
-export async function completeTodo(todoId: string) {
+export async function toggleTodo(todoId: string, nextStatus: "open" | "completed") {
   await requireUser();
   const supabase = await createClient();
 
-  const { error } = await supabase.rpc("complete_todo", {
-    todo_id_input: todoId
-  });
+  const { error } =
+    nextStatus === "completed"
+      ? await supabase.rpc("complete_todo", {
+          todo_id_input: todoId
+        })
+      : await supabase.rpc("undo_complete_todo", {
+          todo_id_input: todoId
+        });
 
   if (error) {
     redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
