@@ -70,13 +70,17 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
   );
   const [draft, setDraft] = useState(initialState);
   const [isSaving, setIsSaving] = useState(false);
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
   const asset = getCharacterAsset(character.species, draft.variantId);
   const isDirty = JSON.stringify(draft) !== JSON.stringify(initialState);
 
   function leave() {
-    if (!isDirty || window.confirm("변경한 내용이 저장되지 않았습니다. 나가시겠습니까?")) {
+    if (!isDirty) {
       router.push("/");
+      return;
     }
+
+    setShowLeaveModal(true);
   }
 
   function save() {
@@ -172,6 +176,23 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
           저장
         </button>
       </div>
+
+      {showLeaveModal ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="confirm-modal" role="dialog" aria-modal="true">
+            <h2>변경사항을 버릴까요?</h2>
+            <p className="subtle">변경한 내용이 저장되지 않았습니다. 나가시겠습니까?</p>
+            <div className="form-actions">
+              <button className="ghost-button" type="button" onClick={() => setShowLeaveModal(false)}>
+                취소
+              </button>
+              <button className="primary-button" type="button" onClick={() => router.push("/")}>
+                나가기
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

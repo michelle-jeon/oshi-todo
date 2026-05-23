@@ -20,5 +20,4 @@ export async function purchaseShopItem(shopItemId: string) {
 
   revalidatePath("/");
   revalidatePath("/shop");
-  redirect("/shop?message=구매했어요." as Route);
 }

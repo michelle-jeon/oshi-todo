@@ -1,6 +1,7 @@
-import { Coins, Ellipsis, ShoppingBag } from "lucide-react";
+import { Coins, ShoppingBag } from "lucide-react";
 import Link from "next/link";
-import { signOut } from "@/app/auth-actions";
+import { AccountMenu } from "@/components/account-menu";
+import { CharacterMenu } from "@/components/character-menu";
 import { CharacterShowcase } from "@/components/character-showcase";
 import { FocusTracker } from "@/components/focus-tracker";
 import { TodoList } from "@/components/todo-list";
@@ -85,19 +86,7 @@ export default async function Home({
       <aside className="character-panel">
         <div className="character-panel-top">
           <h1 className="brand">OshiTodo</h1>
-          <details className="character-menu">
-            <summary aria-label="캐릭터 메뉴">
-              <Ellipsis size={20} />
-            </summary>
-            <div className="character-menu-panel">
-              <Link className="ghost-button" href={"/characters/wardrobe" as Route}>
-                캐릭터 옷장
-              </Link>
-              <button className="ghost-button" type="button" disabled>
-                캐릭터 선택
-              </button>
-            </div>
-          </details>
+          <CharacterMenu />
         </div>
 
         <CharacterShowcase
@@ -128,18 +117,7 @@ export default async function Home({
               <Coins size={18} />
               <span>{spendableXp.toLocaleString()} XP</span>
             </div>
-            <details className="account-menu">
-              <summary>내정보</summary>
-              <div className="account-menu-panel">
-                <p className="subtle">로그인 계정</p>
-                <strong>{user.email}</strong>
-                <form action={signOut}>
-                  <button className="ghost-button" type="submit">
-                    로그아웃
-                  </button>
-                </form>
-              </div>
-            </details>
+            <AccountMenu email={user.email} />
           </div>
         </header>
 
