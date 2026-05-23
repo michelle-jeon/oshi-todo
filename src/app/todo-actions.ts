@@ -11,26 +11,53 @@ function cleanTitle(formData: FormData) {
   return String(formData.get("title") ?? "").trim().slice(0, 160);
 }
 
+function cleanTodoDate(formData: FormData) {
+  const value = String(formData.get("todoDate") ?? "").trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return new Date().toISOString().slice(0, 10);
+}
+
 export async function createTodo(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const title = cleanTitle(formData);
+  const todoDate = cleanTodoDate(formData);
 
   if (!title) {
     redirect("/?message=할 일을 입력해 주세요." as Route);
   }
 
-  const { error } = await supabase.from("todos").insert({
-    user_id: user.id,
-    title,
-    xp_reward: DEFAULT_TODO_XP
-  });
+  const { data: latestTodo } = await supabase
+    .from("todos")
+    .select("sort_order")
+    .eq("user_id", user.id)
+    .eq("todo_date", todoDate)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ sort_order: number }>();
+
+  const { data, error } = await supabase
+    .from("todos")
+    .insert({
+      user_id: user.id,
+      title,
+      xp_reward: DEFAULT_TODO_XP,
+      todo_date: todoDate,
+      sort_order: (latestTodo?.sort_order ?? 0) + 1000
+    })
+    .select("id, title, status, xp_reward, completed_at, todo_date, sort_order")
+    .single();
 
   if (error) {
     redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
   }
 
   revalidatePath("/");
+  return data;
 }
 
 export async function toggleTodo(todoId: string, nextStatus: "open" | "completed") {
@@ -84,6 +111,23 @@ export async function deleteTodo(todoId: string) {
   if (error) {
     redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
   }
+
+  revalidatePath("/");
+}
+
+export async function reorderTodos(todoIds: string[]) {
+  await requireUser();
+  const supabase = await createClient();
+
+  await Promise.all(
+    todoIds.map((todoId, index) =>
+      supabase
+        .from("todos")
+        .update({ sort_order: (index + 1) * 1000 })
+        .eq("id", todoId)
+        .eq("status", "open")
+    )
+  );
 
   revalidatePath("/");
 }

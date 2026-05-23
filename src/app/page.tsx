@@ -30,7 +30,18 @@ type TodoRowData = {
   status: "open" | "completed" | "archived";
   xp_reward: number;
   completed_at: string | null;
+  todo_date: string;
+  sort_order: number;
 };
+
+function getTodayString() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
 
 export default async function Home({
   searchParams
@@ -53,8 +64,11 @@ export default async function Home({
       .single<CharacterRow>(),
     supabase
       .from("todos")
-      .select("id, title, status, xp_reward, completed_at")
-      .order("created_at", { ascending: false })
+      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order")
+      .order("todo_date", { ascending: false })
+      .order("status", { ascending: false })
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
       .returns<TodoRowData[]>()
   ]);
 
@@ -109,9 +123,7 @@ export default async function Home({
 
       <section className="workspace">
         <header className="topbar">
-          <div>
-            <h2>오늘의 퀘스트</h2>
-          </div>
+          <div />
           <div className="topbar-actions">
             <div className="currency-pill" aria-label="보유 경험치">
               <Coins size={18} />
@@ -131,7 +143,7 @@ export default async function Home({
 
         <div className="grid">
           <section className="panel">
-            <TodoList initialTodos={todos ?? []} />
+            <TodoList initialSelectedDate={getTodayString()} initialTodos={todos ?? []} />
           </section>
 
           <FocusTracker />
