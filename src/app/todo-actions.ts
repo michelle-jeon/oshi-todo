@@ -21,6 +21,12 @@ function cleanTodoDate(formData: FormData) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    value
+  );
+}
+
 export async function createTodo(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
@@ -62,6 +68,11 @@ export async function createTodo(formData: FormData) {
 
 export async function toggleTodo(todoId: string, nextStatus: "open" | "completed") {
   await requireUser();
+
+  if (!isUuid(todoId)) {
+    return;
+  }
+
   const supabase = await createClient();
 
   const { error } =
@@ -82,6 +93,11 @@ export async function toggleTodo(todoId: string, nextStatus: "open" | "completed
 
 export async function updateTodoTitle(todoId: string, formData: FormData) {
   await requireUser();
+
+  if (!isUuid(todoId)) {
+    return;
+  }
+
   const supabase = await createClient();
   const title = cleanTitle(formData);
 
@@ -104,6 +120,11 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
 
 export async function deleteTodo(todoId: string) {
   await requireUser();
+
+  if (!isUuid(todoId)) {
+    return;
+  }
+
   const supabase = await createClient();
 
   const { error } = await supabase.from("todos").delete().eq("id", todoId);
@@ -118,9 +139,10 @@ export async function deleteTodo(todoId: string) {
 export async function reorderTodos(todoIds: string[]) {
   await requireUser();
   const supabase = await createClient();
+  const persistedTodoIds = todoIds.filter(isUuid);
 
   await Promise.all(
-    todoIds.map((todoId, index) =>
+    persistedTodoIds.map((todoId, index) =>
       supabase
         .from("todos")
         .update({ sort_order: (index + 1) * 1000 })

@@ -1,30 +1,28 @@
-# Versioning
+# 버저닝
 
-OshiTodo uses simple semantic versioning while the app is small.
-
-Format:
+OshiTodo는 작게 시작하되, 나중에 작업 흐름을 되짚을 수 있도록 간단한 시맨틱 버저닝을 사용한다.
 
 ```text
 MAJOR.MINOR.PATCH
 ```
 
-## While Pre-Launch
+## 공개 전 버전 기준
 
-- `0.1.x`: local MVP scaffolding and early playable prototype.
-- `0.2.x`: web MVP complete enough to show other people.
-- `0.3.x`: polish, balance, wardrobe/shop improvements, and deployment hardening.
-- `0.4.x`: desktop focus tracker exploration or PWA/mobile experiments.
-- `1.0.0`: first public release.
+- `0.1.x`: 로컬 MVP 뼈대와 초기 플레이 가능 프로토타입
+- `0.2.x`: 다른 사람에게 보여줄 수 있는 웹 MVP
+- `0.3.x`: 캐릭터, 옷장, 상점, 밸런스 고도화
+- `0.4.x`: 데스크톱 작업 시간 추적, PWA, 모바일 실험
+- `1.0.0`: 첫 공개 릴리스
 
-## When To Bump
+## 언제 올릴지
 
-- Patch: small bug fixes, copy changes, minor UI polish.
-- Minor: a new user-facing feature such as calendar, shop, wardrobe, or Pomodoro/focus XP.
-- Major: breaking product or data model changes after public launch.
+- PATCH: 버그 수정, 문구 수정, 작은 UI 정리
+- MINOR: 캘린더, 루틴, 친구, 광장처럼 사용자가 체감하는 기능 추가
+- MAJOR: 공개 이후 데이터 모델이나 사용 방식이 크게 깨지는 변경
 
-## Current Practice
+## 현재 운영 방식
 
-- Update `package.json` version when a meaningful feature set is done.
-- Add a short note to `CHANGELOG.md`.
-- Commit with a clear message.
-- Tag important milestones later, for example `v0.2.0`.
+- 의미 있는 기능 묶음이 끝나면 `package.json`의 `version`을 올린다.
+- `CHANGELOG.md`에 무엇이 바뀌었는지 짧게 적는다.
+- 커밋 메시지는 기능 단위로 남긴다.
+- 나중에 중요한 지점은 `v0.2.0`처럼 Git 태그를 붙인다.

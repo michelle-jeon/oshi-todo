@@ -1,66 +1,46 @@
-# MVP Plan
+# MVP 계획
 
-Target: functional MVP by Saturday, May 23, with Sunday, May 24 reserved for bug fixes.
+목표: 5월 23일까지 보여줄 수 있는 웹 MVP를 만들고, 5월 24일은 버그 수정과 정리에 쓴다.
 
-## Scope
+## MVP에 포함
 
-Must have:
+- 이메일/비밀번호 로그인
+- 첫 진입 시 캐릭터 생성
+- 인간/고양이 선택
+- 캐릭터 이름 설정
+- 기본 색상 또는 기본 이미지 변형 선택
+- 날짜별 투두 생성/수정/삭제/완료/완료 취소
+- 투두 완료 시 현재 캐릭터 경험치 지급
+- 루틴 생성: 매일 또는 요일 선택
+- 기본 상점과 구매 흐름
+- 옷장: 보유한 아이템 장착
+- Supabase 저장: 로컬 저장소에 의존하지 않음
 
-- Email login.
-- One auto-created starter character.
-- Human/cat selection during onboarding or edit flow.
-- Simple color customization.
-- Todo create/list/complete.
-- XP award on todo completion.
-- Basic shop catalog and purchase flow using character XP.
-- Data stored in Supabase, not local storage.
+## MVP 이후로 미루는 것
 
-Explicitly not in MVP:
+- 깊은 캐릭터 커스터마이징
+- 여러 캐릭터 생성과 캐릭터 슬롯 확장
+- 방 꾸미기 편집기
+- 친구 초대 코드, 차단, 공개 범위 세분화
+- 광장 채팅, 초대 링크, 비밀번호 방
+- 데스크톱 앱 기반의 정확한 작업창 포커스 추적
+- 네이티브 모바일 앱
 
-- Room editing UI.
-- Multiple active characters UI.
-- Deep avatar parts.
-- Social features.
-- Native mobile app.
+## 작업 순서
 
-## Build Order
+1. Supabase 프로젝트 생성과 마이그레이션 적용
+2. 로그인 화면과 보호된 홈 화면
+3. 캐릭터 생성 플로우
+4. 투두 CRUD와 완료 RPC
+5. 경험치 표시와 레벨 진행도
+6. 옷장과 상점
+7. 캘린더와 루틴
+8. 친구, 광장, 방의 MVP 뼈대
+9. 반응형 UI와 버그 수정
 
-1. Supabase project setup and migration.
-2. Auth screens.
-3. Dashboard data loading.
-4. Todo CRUD and `complete_todo` RPC.
-5. Character preview and color edit.
-6. Shop purchase RPC.
-7. Responsive pass and bug fixing.
+## 버전 감각
 
-## Suggested Daily Schedule
-
-May 20:
-
-- Lock stack.
-- Create repo skeleton.
-- Create Supabase project and run migration.
-
-May 21:
-
-- Auth and protected dashboard.
-- Starter character loading.
-- Todo create/list.
-
-May 22:
-
-- Transactional todo completion and XP.
-- Character color customization.
-- Initial shop screen.
-
-May 23:
-
-- Purchase flow.
-- UI polish.
-- Cross-device smoke test.
-
-May 24:
-
-- Bug fixes only.
-- Deploy to Vercel.
-- Write a short known-issues list.
+- `0.1.x`: 로컬에서 핵심 기능이 돌아가는 초기 프로토타입
+- `0.2.x`: 다른 사람에게 보여줄 수 있는 웹 MVP
+- `0.3.x`: 상점/옷장/캐릭터 고도화
+- `0.4.x`: 데스크톱 작업 시간 추적 또는 모바일/PWA 실험

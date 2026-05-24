@@ -34,6 +34,20 @@ type TodoRowData = {
   sort_order: number;
 };
 
+type XpEventRow = {
+  amount: number;
+  created_at: string;
+};
+
+type RoutineRowData = {
+  id: string;
+  title: string;
+  frequency: "daily" | "weekly";
+  weekdays: number[];
+  xp_reward: number;
+  is_active: boolean;
+};
+
 function getTodayString() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -55,7 +69,9 @@ export default async function Home({
 
   const [
     { data: activeCharacter, error: characterError },
-    { data: todos, error: todosError }
+    { data: todos, error: todosError },
+    { data: routines, error: routinesError },
+    { data: focusEvents }
   ] = await Promise.all([
     supabase
       .from("characters")
@@ -69,7 +85,19 @@ export default async function Home({
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true })
-      .returns<TodoRowData[]>()
+      .returns<TodoRowData[]>(),
+    supabase
+      .from("routines")
+      .select("id, title, frequency, weekdays, xp_reward, is_active")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .returns<RoutineRowData[]>(),
+    supabase
+      .from("xp_events")
+      .select("amount, created_at")
+      .eq("reason", "focus_window")
+      .gte("created_at", `${getTodayString()}T00:00:00+09:00`)
+      .returns<XpEventRow[]>()
   ]);
 
   const character = activeCharacter
@@ -91,7 +119,9 @@ export default async function Home({
 
   const progress = getLevelProgress(character.xpTotal);
   const spendableXp = character.xpCurrent;
-  const dbError = characterError ?? todosError;
+  const dbError = characterError ?? todosError ?? routinesError;
+  const displayMessage = message?.includes("temp-") ? undefined : message;
+  const todayFocusXp = (focusEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
   const variantId =
     "variantId" in character.customization ? character.customization.variantId : undefined;
 
@@ -133,7 +163,7 @@ export default async function Home({
           </div>
         </header>
 
-        {message ? <p className="notice">{message}</p> : null}
+        {displayMessage ? <p className="notice">{displayMessage}</p> : null}
         {dbError ? (
           <p className="notice">
             Supabase DB 스키마가 아직 준비되지 않았어요. SQL Editor에서 migration을 실행한 뒤 새로고침해
@@ -143,10 +173,14 @@ export default async function Home({
 
         <div className="grid">
           <section className="panel">
-            <TodoList initialSelectedDate={getTodayString()} initialTodos={todos ?? []} />
+            <TodoList
+              initialRoutines={routines ?? []}
+              initialSelectedDate={getTodayString()}
+              initialTodos={todos ?? []}
+            />
           </section>
 
-          <FocusTracker />
+          <FocusTracker initialTodayXp={todayFocusXp} />
         </div>
       </section>
     </main>

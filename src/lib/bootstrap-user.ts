@@ -12,7 +12,8 @@ export async function ensureUserBootstrap(user: BootstrapUserInput) {
   await supabase.from("profiles").upsert(
     {
       id: user.id,
-      display_name: displayName
+      display_name: displayName,
+      email: user.email
     },
     { onConflict: "id" }
   );
