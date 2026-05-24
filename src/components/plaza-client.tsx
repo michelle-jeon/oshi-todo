@@ -81,16 +81,17 @@ export function PlazaClient({ roomId, userId, displayName, avatarLabel }: PlazaC
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent) {
       const key = event.key.toLowerCase();
+      const code = event.code;
       const delta = 5;
       const next = { x: 0, y: 0 };
 
-      if (key === "arrowup" || key === "w") {
+      if (key === "arrowup" || key === "w" || code === "KeyW") {
         next.y = -delta;
-      } else if (key === "arrowdown" || key === "s") {
+      } else if (key === "arrowdown" || key === "s" || code === "KeyS") {
         next.y = delta;
-      } else if (key === "arrowleft" || key === "a") {
+      } else if (key === "arrowleft" || key === "a" || code === "KeyA") {
         next.x = -delta;
-      } else if (key === "arrowright" || key === "d") {
+      } else if (key === "arrowright" || key === "d" || code === "KeyD") {
         next.x = delta;
       } else {
         return;

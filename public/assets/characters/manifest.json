@@ -2,31 +2,31 @@
   {
     "id": "blue",
     "label": "블루",
-    "human": "/assets/characters/human-outfit-blue.png",
+    "human": "/assets/characters/human/layers/outfit-basic-blue.png",
     "cat": "/assets/characters/cat-pattern-blue.png"
   },
   {
     "id": "mint",
     "label": "민트",
-    "human": "/assets/characters/human-outfit-mint.png",
+    "human": "/assets/characters/human/layers/outfit-basic-mint.png",
     "cat": "/assets/characters/cat-pattern-mint.png"
   },
   {
     "id": "coral",
     "label": "코랄",
-    "human": "/assets/characters/human-outfit-coral.png",
+    "human": "/assets/characters/human/layers/outfit-basic-coral.png",
     "cat": "/assets/characters/cat-pattern-coral.png"
   },
   {
     "id": "gold",
     "label": "골드",
-    "human": "/assets/characters/human-outfit-gold.png",
+    "human": "/assets/characters/human/layers/outfit-basic-gold.png",
     "cat": "/assets/characters/cat-pattern-gold.png"
   },
   {
     "id": "violet",
     "label": "바이올렛",
-    "human": "/assets/characters/human-outfit-violet.png",
+    "human": "/assets/characters/human/layers/outfit-basic-violet.png",
     "cat": "/assets/characters/cat-pattern-violet.png"
   }
 ]

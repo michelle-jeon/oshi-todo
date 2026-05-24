@@ -131,7 +131,22 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
   return (
     <section className="character-create-form">
       <div className="wardrobe-preview">
-        <Image src={asset.src} alt={`${draft.displayName} 미리보기`} width={512} height={512} />
+        {asset.layers ? (
+          <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${draft.displayName} 미리보기`}>
+            {asset.layers.map((layer) => (
+              <Image
+                className="avatar-layer"
+                key={layer.id}
+                src={layer.src}
+                alt={layer.alt}
+                width={1024}
+                height={1024}
+              />
+            ))}
+          </div>
+        ) : (
+          <Image src={asset.src} alt={`${draft.displayName} 미리보기`} width={512} height={512} />
+        )}
         <div>
           <p className="subtle">현재 캐릭터</p>
           <input
