@@ -14,6 +14,9 @@ export function CharacterMenu() {
       <Link className="ghost-button" href={"/characters/wardrobe" as Route}>
         캐릭터 옷장
       </Link>
+      <Link className="ghost-button" href={"/room" as Route}>
+        캐릭터 방
+      </Link>
       <button className="ghost-button" type="button" disabled>
         캐릭터 선택
       </button>

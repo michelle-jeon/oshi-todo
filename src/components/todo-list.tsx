@@ -2,7 +2,7 @@
 
 import { CalendarDays, GripVertical, Plus, Repeat2, Trash2, X } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
-import { createRoutine, deleteRoutine } from "@/app/routine-actions";
+import { completeRoutine, createRoutine, deleteRoutine, updateRoutine } from "@/app/routine-actions";
 import {
   createTodo,
   deleteTodo,
@@ -19,6 +19,7 @@ export type TodoListItem = {
   completed_at: string | null;
   todo_date: string;
   sort_order: number;
+  routine_id: string | null;
 };
 
 export type RoutineListItem = {
@@ -28,6 +29,7 @@ export type RoutineListItem = {
   weekdays: number[];
   xp_reward: number;
   is_active: boolean;
+  starts_on: string;
 };
 
 type TodoListProps = {
@@ -72,7 +74,15 @@ function getCalendarDays(monthDate: Date) {
   });
 }
 
-const weekdayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+const weekdayOptions = [
+  { label: "월", value: 1 },
+  { label: "화", value: 2 },
+  { label: "수", value: 3 },
+  { label: "목", value: 4 },
+  { label: "금", value: 5 },
+  { label: "토", value: 6 },
+  { label: "일", value: 0 }
+];
 
 export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }: TodoListProps) {
   const [todos, setTodos] = useState(initialTodos);
@@ -84,6 +94,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
   const [visibleMonth, setVisibleMonth] = useState(parseDate(initialSelectedDate));
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const selectedTodos = useMemo(
@@ -95,9 +107,14 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     selectedTodos.filter((todo) => todo.status === "completed")
   );
   const selectedWeekday = parseDate(selectedDate).getDay();
+  const selectedRoutineIds = new Set(
+    selectedTodos.map((todo) => todo.routine_id).filter((routineId): routineId is string => Boolean(routineId))
+  );
   const selectedRoutines = routines.filter(
     (routine) =>
       routine.is_active &&
+      routine.starts_on <= selectedDate &&
+      !selectedRoutineIds.has(routine.id) &&
       (routine.frequency === "daily" || routine.weekdays.includes(selectedWeekday))
   );
   const calendarDays = getCalendarDays(visibleMonth);
@@ -105,6 +122,9 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     year: "numeric",
     month: "long"
   }).format(visibleMonth);
+  const visibleYear = visibleMonth.getFullYear();
+  const visibleMonthIndex = visibleMonth.getMonth();
+  const yearOptions = Array.from({ length: 9 }, (_, index) => visibleYear - 4 + index);
 
   function handleCreate(formData: FormData) {
     const title = String(formData.get("title") ?? "").trim();
@@ -122,7 +142,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       xp_reward: 10,
       completed_at: null,
       todo_date: selectedDate,
-      sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000
+      sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
+      routine_id: null
     };
 
     setTodos((current) => [optimisticTodo, ...current]);
@@ -155,7 +176,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       frequency: routineFrequency,
       weekdays,
       xp_reward: 10,
-      is_active: true
+      is_active: true,
+      starts_on: initialSelectedDate
     };
 
     setRoutines((current) => [optimisticRoutine, ...current]);
@@ -183,6 +205,77 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
     startTransition(async () => {
       await deleteRoutine(routineId);
+    });
+  }
+
+  function handleCompleteRoutine(routine: RoutineListItem) {
+    const optimisticId = `temp-${crypto.randomUUID()}`;
+    const optimisticTodo: TodoListItem = {
+      id: optimisticId,
+      title: routine.title,
+      status: "completed",
+      xp_reward: routine.xp_reward,
+      completed_at: new Date().toISOString(),
+      todo_date: selectedDate,
+      sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
+      routine_id: routine.id
+    };
+    const formData = new FormData();
+    formData.set("todoDate", selectedDate);
+
+    setTodos((current) => [optimisticTodo, ...current]);
+
+    startTransition(async () => {
+      const savedTodo = await completeRoutine(routine.id, formData);
+
+      if (savedTodo) {
+        setTodos((current) =>
+          current.map((todo) =>
+            todo.id === optimisticId ? (savedTodo as TodoListItem) : todo
+          )
+        );
+      }
+    });
+  }
+
+  function handleUpdateRoutine(formData: FormData) {
+    if (!editingRoutine) {
+      return;
+    }
+
+    const title = String(formData.get("title") ?? "").trim();
+    const frequency = String(formData.get("frequency") ?? "daily") === "weekly" ? "weekly" : "daily";
+    const weekdays = formData
+      .getAll("weekdays")
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6);
+
+    if (!title) {
+      return;
+    }
+
+    const nextRoutine: RoutineListItem = {
+      ...editingRoutine,
+      title,
+      frequency,
+      weekdays: frequency === "weekly" ? weekdays : []
+    };
+
+    setRoutines((current) =>
+      current.map((routine) => (routine.id === editingRoutine.id ? nextRoutine : routine))
+    );
+    setEditingRoutine(null);
+
+    startTransition(async () => {
+      const savedRoutine = await updateRoutine(nextRoutine.id, formData);
+
+      if (savedRoutine) {
+        setRoutines((current) =>
+          current.map((routine) =>
+            routine.id === nextRoutine.id ? (savedRoutine as RoutineListItem) : routine
+          )
+        );
+      }
     });
   }
 
@@ -249,7 +342,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     });
   }
 
-  function moveTodo(targetId: string) {
+  function moveTodo(targetId: string, shouldPersist = true) {
     if (!draggingId || draggingId === targetId) {
       return;
     }
@@ -279,8 +372,21 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       })
     );
 
+    if (shouldPersist) {
+      startTransition(async () => {
+        await reorderTodos(reorderedIds.filter((todoId) => !todoId.startsWith("temp-")));
+      });
+    }
+  }
+
+  function persistCurrentOrder() {
+    const persistedIds = openTodos
+      .map((todo) => todo.id)
+      .filter((todoId) => !todoId.startsWith("temp-"));
+
+    setDraggingId(null);
     startTransition(async () => {
-      await reorderTodos(reorderedIds.filter((todoId) => !todoId.startsWith("temp-")));
+      await reorderTodos(persistedIds);
     });
   }
 
@@ -292,7 +398,9 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         key={todo.id}
         onDragStart={() => setDraggingId(todo.id)}
         onDragOver={(event) => event.preventDefault()}
-        onDrop={() => moveTodo(todo.id)}
+        onDragEnter={() => moveTodo(todo.id, false)}
+        onDrop={persistCurrentOrder}
+        onDragEnd={() => setDraggingId(null)}
       >
         {!isCompleted ? (
           <span className="drag-handle" aria-label="순서 변경">
@@ -370,7 +478,13 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             >
               이전
             </button>
-            <strong>{monthLabel}</strong>
+            <button
+              className="calendar-month-trigger"
+              type="button"
+              onClick={() => setIsMonthPickerOpen(true)}
+            >
+              {monthLabel}
+            </button>
             <button
               className="ghost-button"
               type="button"
@@ -383,6 +497,52 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               다음
             </button>
           </div>
+          {isMonthPickerOpen ? (
+            <div className="calendar-picker-backdrop" onClick={() => setIsMonthPickerOpen(false)}>
+              <div className="calendar-picker" onClick={(event) => event.stopPropagation()}>
+                <strong>년월 선택</strong>
+                <div className="calendar-picker-controls">
+                  <select
+                    value={visibleYear}
+                    onChange={(event) =>
+                      setVisibleMonth(
+                        new Date(Number(event.target.value), visibleMonth.getMonth(), 1)
+                      )
+                    }
+                    aria-label="연도 선택"
+                  >
+                    {yearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}년
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={visibleMonthIndex}
+                    onChange={(event) =>
+                      setVisibleMonth(
+                        new Date(visibleMonth.getFullYear(), Number(event.target.value), 1)
+                      )
+                    }
+                    aria-label="월 선택"
+                  >
+                    {Array.from({ length: 12 }, (_, index) => (
+                      <option key={index} value={index}>
+                        {index + 1}월
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => setIsMonthPickerOpen(false)}
+                >
+                  이동
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div className="calendar-weekdays">
             {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
               <span key={day}>{day}</span>
@@ -393,7 +553,23 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               const dateString = toDateString(date);
               const isSelected = dateString === selectedDate;
               const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
-              const count = todos.filter((todo) => todo.todo_date === dateString).length;
+              const dayTodos = todos.filter((todo) => todo.todo_date === dateString);
+              const routineIdsForDate = new Set(
+                dayTodos
+                  .map((todo) => todo.routine_id)
+                  .filter((routineId): routineId is string => Boolean(routineId))
+              );
+              const weekday = date.getDay();
+              const routineCount = routines.filter(
+                (routine) =>
+                  routine.is_active &&
+                  routine.starts_on <= dateString &&
+                  !routineIdsForDate.has(routine.id) &&
+                  (routine.frequency === "daily" || routine.weekdays.includes(weekday))
+              ).length;
+              const openCount =
+                dayTodos.filter((todo) => todo.status === "open").length + routineCount;
+              const completedCount = dayTodos.filter((todo) => todo.status === "completed").length;
 
               return (
                 <button
@@ -405,7 +581,12 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
                   onClick={() => setSelectedDate(dateString)}
                 >
                   <span>{date.getDate()}</span>
-                  {count > 0 ? <em>{count}</em> : null}
+                  <span className="calendar-badges">
+                    {openCount > 0 ? <em className="open-count">{openCount}</em> : null}
+                    {completedCount > 0 ? (
+                      <em className="completed-count">{completedCount}</em>
+                    ) : null}
+                  </span>
                 </button>
               );
             })}
@@ -460,16 +641,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <input type="hidden" name="frequency" value={routineFrequency} />
           {routineFrequency === "weekly" ? (
             <div className="weekday-picker">
-              {weekdayLabels.map((label, index) => (
-                <label className={routineWeekdays.includes(index) ? "selected" : ""} key={label}>
+              {weekdayOptions.map((day) => (
+                <label
+                  className={routineWeekdays.includes(day.value) ? "selected" : ""}
+                  key={day.value}
+                >
                   <input
                     type="checkbox"
                     name="weekdays"
-                    value={index}
-                    checked={routineWeekdays.includes(index)}
-                    onChange={() => toggleRoutineWeekday(index)}
+                    value={day.value}
+                    checked={routineWeekdays.includes(day.value)}
+                    onChange={() => toggleRoutineWeekday(day.value)}
                   />
-                  {label}
+                  {day.label}
                 </label>
               ))}
             </div>
@@ -483,14 +667,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <div className="routine-list">
             {selectedRoutines.map((routine) => (
               <article className="routine-row" key={routine.id}>
-                <div>
+                <button
+                  className="todo-check"
+                  type="button"
+                  onClick={() => handleCompleteRoutine(routine)}
+                  aria-label={`${routine.title} 루틴 완료`}
+                />
+                <button
+                  className="routine-edit-trigger"
+                  type="button"
+                  onClick={() => setEditingRoutine(routine)}
+                >
                   <strong>{routine.title}</strong>
-                  <p className="subtle">
-                    {routine.frequency === "daily"
-                      ? "매일"
-                      : routine.weekdays.map((day) => weekdayLabels[day]).join(", ")}
-                  </p>
-                </div>
+                </button>
                 <button
                   className="icon-button secondary"
                   type="button"
@@ -515,6 +704,74 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <h3>완료한 퀘스트</h3>
           <div className="todo-list">{completedTodos.map((todo) => renderTodo(todo, true))}</div>
         </section>
+      ) : null}
+
+      {editingRoutine ? (
+        <div className="modal-backdrop" onClick={() => setEditingRoutine(null)}>
+          <form
+            className="confirm-modal routine-edit-modal"
+            action={handleUpdateRoutine}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>루틴 수정</h2>
+            <label>
+              루틴 이름
+              <input name="title" defaultValue={editingRoutine.title} />
+            </label>
+            <input type="hidden" name="frequency" value={editingRoutine.frequency} readOnly />
+            <div className="segmented-control compact smooth-toggle">
+              <button
+                className={editingRoutine.frequency === "daily" ? "selected" : ""}
+                type="button"
+                onClick={() => setEditingRoutine({ ...editingRoutine, frequency: "daily", weekdays: [] })}
+              >
+                매일
+              </button>
+              <button
+                className={editingRoutine.frequency === "weekly" ? "selected" : ""}
+                type="button"
+                onClick={() => setEditingRoutine({ ...editingRoutine, frequency: "weekly" })}
+              >
+                요일 선택
+              </button>
+            </div>
+            {editingRoutine.frequency === "weekly" ? (
+              <div className="weekday-picker">
+                {weekdayOptions.map((day) => {
+                  const isSelected = editingRoutine.weekdays.includes(day.value);
+
+                  return (
+                    <label className={isSelected ? "selected" : ""} key={day.value}>
+                      <input
+                        type="checkbox"
+                        name="weekdays"
+                        value={day.value}
+                        checked={isSelected}
+                        onChange={() =>
+                          setEditingRoutine({
+                            ...editingRoutine,
+                            weekdays: isSelected
+                              ? editingRoutine.weekdays.filter((value) => value !== day.value)
+                              : [...editingRoutine.weekdays, day.value].sort((a, b) => a - b)
+                          })
+                        }
+                      />
+                      {day.label}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : null}
+            <div className="form-actions">
+              <button className="ghost-button" type="button" onClick={() => setEditingRoutine(null)}>
+                취소
+              </button>
+              <button className="primary-button" type="submit">
+                저장
+              </button>
+            </div>
+          </form>
+        </div>
       ) : null}
     </>
   );

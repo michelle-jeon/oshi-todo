@@ -33,7 +33,7 @@ export default async function RoomPage() {
         <Link className="ghost-button" href={"/" as Route}>
           <ArrowLeft size={16} /> 홈
         </Link>
-        <h1>내 방</h1>
+        <h1>캐릭터 방</h1>
       </header>
       <section className="room-stage">
         <div className="room-window" />

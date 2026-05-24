@@ -21,6 +21,8 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   const [isEligible, setIsEligible] = useState(false);
   const [todayXp, setTodayXp] = useState(initialTodayXp);
   const [activeSeconds, setActiveSeconds] = useState(0);
+  const [activeWindowName, setActiveWindowName] = useState("선택한 작업창");
+  const [windowStats, setWindowStats] = useState<Record<string, { seconds: number; xp: number }>>({});
   const [, startTransition] = useTransition();
 
   function checkEligibility() {
@@ -35,7 +37,13 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         video: true,
         audio: false
       });
+      const trackLabel = stream.getVideoTracks()[0]?.label || "선택한 작업창";
       streamRef.current = stream;
+      setActiveWindowName(trackLabel);
+      setWindowStats((current) => ({
+        ...current,
+        [trackLabel]: current[trackLabel] ?? { seconds: 0, xp: 0 }
+      }));
       setIsRunning(true);
       setIsEligible(document.visibilityState === "visible" && document.hasFocus());
 
@@ -81,6 +89,13 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       setIsEligible(true);
       setTodayXp((current) => current + 1);
       setActiveSeconds((current) => current + 10);
+      setWindowStats((current) => ({
+        ...current,
+        [activeWindowName]: {
+          seconds: (current[activeWindowName]?.seconds ?? 0) + 10,
+          xp: (current[activeWindowName]?.xp ?? 0) + 1
+        }
+      }));
       startTransition(async () => {
         await awardFocusXp(1);
       });
@@ -92,19 +107,36 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       window.removeEventListener("blur", checkEligibility);
       document.removeEventListener("visibilitychange", checkEligibility);
     };
-  }, [isRunning, startTransition]);
+  }, [activeWindowName, isRunning, startTransition]);
 
   return (
     <section className="panel focus-panel">
-      <div>
+      <div className="focus-panel-header">
         <h2>작업 시간</h2>
-        <p className="subtle">{isRunning && !isEligible ? "일시정지" : "오늘 얻은 경험치"}</p>
+        <div className="focus-summary-row">
+          <span>오늘 얻은 경험치</span>
+          <strong>{todayXp} XP</strong>
+        </div>
+      </div>
+      <div className="focus-program-list">
+        {Object.entries(windowStats).length > 0 ? (
+          Object.entries(windowStats).map(([name, stats]) => (
+            <div className="focus-program-row" key={name}>
+              <span>{name}</span>
+              <strong>
+                {formatSeconds(stats.seconds)} · {stats.xp} XP
+              </strong>
+            </div>
+          ))
+        ) : (
+          <div className="focus-program-row muted">
+            <span>선택한 작업창 없음</span>
+            <strong>{formatSeconds(activeSeconds)}</strong>
+          </div>
+        )}
       </div>
       <div className="focus-panel-actions">
-        <div className="focus-stats">
-          <strong>{todayXp} XP</strong>
-          <span>오늘 활성 시간 {formatSeconds(activeSeconds)}</span>
-        </div>
+        <span className="subtle">{isRunning && !isEligible ? "일시정지" : ""}</span>
         {isRunning ? (
           <button className="ghost-button" type="button" onClick={stop}>
             <Square size={16} /> 중지

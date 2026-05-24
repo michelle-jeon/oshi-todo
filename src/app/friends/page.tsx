@@ -2,6 +2,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { FriendSearch } from "@/components/friend-search";
+import { FriendTabs } from "@/components/friend-tabs";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -62,40 +63,13 @@ export default async function FriendsPage() {
         <h1>친구</h1>
       </header>
 
-      <div className="simple-grid">
+      <div className="simple-stack">
         <FriendSearch followingIds={followingIds} />
-        <section className="panel friend-list-panel">
-          <h2>팔로잉</h2>
-          <div className="friend-result-list">
-            {followingProfiles.map((profile) => (
-              <article className="friend-row" key={profile.id}>
-                <div>
-                  <strong>{profile.display_name ?? "이름 없음"}</strong>
-                  <p className="subtle">{profile.email}</p>
-                </div>
-              </article>
-            ))}
-            {followingProfiles.length === 0 ? (
-              <div className="empty-state">아직 팔로우한 친구가 없어요.</div>
-            ) : null}
-          </div>
-        </section>
-        <section className="panel friend-list-panel">
-          <h2>나를 팔로우</h2>
-          <div className="friend-result-list">
-            {followerProfiles.map((profile) => (
-              <article className="friend-row" key={profile.id}>
-                <div>
-                  <strong>{profile.display_name ?? "이름 없음"}</strong>
-                  <p className="subtle">{profile.email}</p>
-                </div>
-              </article>
-            ))}
-            {followerProfiles.length === 0 ? (
-              <div className="empty-state">아직 나를 팔로우한 친구가 없어요.</div>
-            ) : null}
-          </div>
-        </section>
+        <FriendTabs
+          followerProfiles={followerProfiles}
+          followingIds={followingIds}
+          followingProfiles={followingProfiles}
+        />
       </div>
     </main>
   );

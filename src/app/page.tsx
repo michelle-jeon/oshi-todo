@@ -1,4 +1,4 @@
-import { Coins, ShoppingBag } from "lucide-react";
+import { Coins, DoorOpen, ShoppingBag } from "lucide-react";
 import Link from "next/link";
 import { AccountMenu } from "@/components/account-menu";
 import { CharacterMenu } from "@/components/character-menu";
@@ -32,6 +32,7 @@ type TodoRowData = {
   completed_at: string | null;
   todo_date: string;
   sort_order: number;
+  routine_id: string | null;
 };
 
 type XpEventRow = {
@@ -46,6 +47,7 @@ type RoutineRowData = {
   weekdays: number[];
   xp_reward: number;
   is_active: boolean;
+  starts_on: string;
 };
 
 function getTodayString() {
@@ -80,7 +82,7 @@ export default async function Home({
       .single<CharacterRow>(),
     supabase
       .from("todos")
-      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order")
+      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
@@ -88,7 +90,7 @@ export default async function Home({
       .returns<TodoRowData[]>(),
     supabase
       .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, is_active")
+      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on")
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>(),
@@ -159,6 +161,9 @@ export default async function Home({
               <Coins size={18} />
               <span>{spendableXp.toLocaleString()} XP</span>
             </div>
+            <Link className="topbar-link-button" href={"/plaza" as Route}>
+              <DoorOpen size={18} /> 광장
+            </Link>
             <AccountMenu email={user.email} />
           </div>
         </header>

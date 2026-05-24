@@ -55,7 +55,7 @@ export async function createTodo(formData: FormData) {
       todo_date: todoDate,
       sort_order: (latestTodo?.sort_order ?? 0) + 1000
     })
-    .select("id, title, status, xp_reward, completed_at, todo_date, sort_order")
+    .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
     .single();
 
   if (error) {

@@ -10,17 +10,16 @@ type AccountMenuProps = {
 export function AccountMenu({ email }: AccountMenuProps) {
   return (
     <DropdownMenu
-      ariaLabel="내정보 메뉴"
-      button="내정보"
+      ariaLabel="계정 메뉴"
+      button="메뉴"
       className="account-menu"
       panelClassName="account-menu-panel"
     >
-      <p className="subtle">로그인 계정</p>
+      <p className="subtle">계정</p>
       <strong>{email}</strong>
       <nav className="account-menu-links" aria-label="계정 메뉴">
+        <Link href={"/profile" as Route}>내 프로필</Link>
         <Link href={"/friends" as Route}>친구</Link>
-        <Link href={"/plaza" as Route}>광장</Link>
-        <Link href={"/room" as Route}>내 방</Link>
       </nav>
       <form action={signOut}>
         <button className="ghost-button" type="submit">
