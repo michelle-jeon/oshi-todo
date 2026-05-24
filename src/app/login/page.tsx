@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { signIn, signUp } from "@/app/auth-actions";
+import { AuthSubmitButton } from "@/components/auth-submit-button";
 import { getCurrentUser } from "@/lib/auth";
 
 type LoginPageProps = {
@@ -45,9 +46,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 required
               />
             </label>
-            <button className="primary-button" type="submit">
+            <AuthSubmitButton className="primary-button" pendingText="로그인 중...">
               로그인
-            </button>
+            </AuthSubmitButton>
           </form>
 
           <form className="auth-form" action={signUp}>
@@ -66,9 +67,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
                 required
               />
             </label>
-            <button className="ghost-button" type="submit">
+            <AuthSubmitButton className="ghost-button" pendingText="가입 요청 중...">
               회원가입
-            </button>
+            </AuthSubmitButton>
           </form>
         </div>
       </section>

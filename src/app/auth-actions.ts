@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import type { Route } from "next";
+import { headers } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 function getCredentials(formData: FormData) {
@@ -38,11 +39,15 @@ export async function signIn(formData: FormData) {
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
   const { email, password } = getCredentials(formData);
+  const origin = (await headers()).get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
-  const { error } = await supabase.auth.signUp({
+  await supabase.auth.signOut();
+
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo: `${origin}/auth/confirm`,
       data: {
         display_name: email.split("@")[0]
       }
@@ -51,6 +56,10 @@ export async function signUp(formData: FormData) {
 
   if (error) {
     redirect(`/login?message=${encodeURIComponent(error.message)}` as Route);
+  }
+
+  if (data.session) {
+    await supabase.auth.signOut();
   }
 
   redirect(
