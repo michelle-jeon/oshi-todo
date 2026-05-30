@@ -39,12 +39,46 @@ npx supabase db push
 
 ## 인증 설정
 
-빠른 로컬 개발은 이메일/비밀번호 로그인이 가장 단순하다.
+현재 앱은 Google 로그인만 지원한다.
 
-이메일 확인이 켜져 있으면 회원가입 뒤 확인 메일을 눌러야 로그인된다. 테스트를 빠르게 하려면 잠시 끌 수 있다.
+Supabase 기본 이메일 발송 기능은 데모용이라 인증 메일 발송 제한이 매우 낮다. OshiTodo는 이 제한을 피하기 위해 이메일/비밀번호 회원가입을 열지 않고, Google OAuth로 가입과 로그인을 처리한다.
+
+## Google 로그인 설정
+
+Supabase Dashboard에서 아래를 설정한다.
 
 ```text
-Authentication > Providers > Email
+Authentication > Providers > Google
 ```
 
-실제 공개 전에 이메일 확인은 다시 켜는 편이 좋다.
+1. Google provider를 켠다.
+2. Google Cloud Console에서 만든 OAuth Client ID와 Client Secret을 넣는다.
+3. Supabase가 보여주는 Callback URL을 Google Cloud Console의 Authorized redirect URIs에 추가한다.
+4. 앱 주소를 Supabase URL Configuration에 넣는다.
+
+로컬 개발 주소:
+
+```text
+http://localhost:3000
+http://localhost:3000/auth/callback
+```
+
+배포 주소 예시:
+
+```text
+https://your-domain.com
+https://your-domain.com/auth/callback
+```
+
+Google Cloud Console에서는 OAuth Client를 만들 때 Web application으로 만들고, Authorized JavaScript origins에는 앱의 origin만 넣는다.
+
+```text
+http://localhost:3000
+https://your-domain.com
+```
+
+## Google 계정 선택 화면의 도메인 문구
+
+Google 계정 선택 화면에서 `프로젝트-ref.supabase.co(으)로 이동`처럼 표시될 수 있다. 이는 Supabase Auth의 OAuth callback 도메인이 Supabase 프로젝트 도메인이기 때문이다.
+
+운영에서 이 문구까지 브랜드 도메인으로 정리하려면 Supabase Custom Domain 또는 별도 auth 도메인을 검토한다. 로컬 개발 단계에서는 기능 검증을 우선한다.
