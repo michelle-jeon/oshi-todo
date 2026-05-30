@@ -6,8 +6,8 @@ import { CharacterShowcase } from "@/components/character-showcase";
 import { FocusTracker } from "@/components/focus-tracker";
 import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
+import { isCharacterOnboardingComplete } from "@/lib/character-onboarding";
 import type { CharacterSpecies } from "@/lib/character-assets";
-import { STARTER_CHARACTER } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
@@ -79,7 +79,7 @@ export default async function Home({
       .from("characters")
       .select("id, display_name, species, level, xp_current, xp_total, customization")
       .eq("is_active", true)
-      .single<CharacterRow>(),
+      .maybeSingle<CharacterRow>(),
     supabase
       .from("todos")
       .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
@@ -102,9 +102,25 @@ export default async function Home({
       .returns<XpEventRow[]>()
   ]);
 
+  if (!activeCharacter && !characterError) {
+    const { count } = await supabase
+      .from("characters")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id);
+
+    if ((count ?? 0) > 0) {
+      redirect("/characters" as Route);
+    }
+
+    redirect("/characters/new" as Route);
+  }
+
+  if (activeCharacter && !isCharacterOnboardingComplete(activeCharacter)) {
+    redirect("/characters/new" as Route);
+  }
+
   const character = activeCharacter
     ? {
-        ...STARTER_CHARACTER,
         id: activeCharacter.id,
         displayName: activeCharacter.display_name,
         species: activeCharacter.species,
@@ -113,19 +129,15 @@ export default async function Home({
         xpTotal: activeCharacter.xp_total,
         customization: activeCharacter.customization
       }
-    : STARTER_CHARACTER;
+    : null;
 
-  if (!activeCharacter && !characterError) {
-    redirect("/characters/new" as Route);
-  }
-
-  const progress = getLevelProgress(character.xpTotal);
-  const spendableXp = character.xpCurrent;
+  const progress = getLevelProgress(character?.xpTotal ?? 0);
+  const spendableXp = character?.xpCurrent ?? 0;
   const dbError = characterError ?? todosError ?? routinesError;
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayFocusXp = (focusEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
   const variantId =
-    "variantId" in character.customization ? character.customization.variantId : undefined;
+    character && "variantId" in character.customization ? character.customization.variantId : undefined;
 
   return (
     <main className="app-shell">
@@ -136,11 +148,11 @@ export default async function Home({
         </div>
 
         <CharacterShowcase
-          species={character.species}
+          species={character?.species ?? "human"}
           variantId={variantId}
         />
 
-        <h2>{character.displayName}</h2>
+        <h2>{character?.displayName}</h2>
         <p className="subtle">
           Lv. {progress.level} · {progress.currentLevelXp}/{progress.xpForNextLevel} XP
         </p>

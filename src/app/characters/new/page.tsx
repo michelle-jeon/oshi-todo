@@ -2,6 +2,10 @@ import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { createCharacter } from "@/app/character-actions";
+import {
+  isLegacyStarterCharacter,
+  MAX_CHARACTER_SLOTS
+} from "@/lib/character-onboarding";
 import { CHARACTER_VARIANTS } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -20,18 +24,26 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
     .from("characters")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id);
+  const { data: activeCharacter } = await supabase
+    .from("characters")
+    .select("display_name, customization")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .maybeSingle<{ display_name: string; customization: Record<string, string> }>();
 
-  if ((count ?? 0) > 0) {
-    redirect("/" as Route);
+  if ((count ?? 0) >= MAX_CHARACTER_SLOTS && !isLegacyStarterCharacter(activeCharacter)) {
+    redirect("/characters?message=캐릭터 슬롯이 모두 찼어요." as Route);
   }
+
+  const isFirstCharacter = (count ?? 0) === 0 || isLegacyStarterCharacter(activeCharacter);
 
   return (
     <main className="auth-shell">
       <section className="auth-panel character-create-panel">
         <div>
           <p className="subtle">OshiTodo</p>
-          <h1 className="brand">첫 캐릭터 생성</h1>
-          <p className="subtle">MVP에서는 캐릭터 슬롯 하나만 사용할 수 있어요.</p>
+          <h1 className="brand">{isFirstCharacter ? "첫 캐릭터 생성" : "새 캐릭터 생성"}</h1>
+          <p className="subtle">이름, 종류, 색상을 고른 뒤 투두 홈으로 이동합니다.</p>
         </div>
 
         {message ? <p className="notice">{message}</p> : null}
@@ -42,6 +54,7 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
             <input
               name="displayName"
               placeholder="캐릭터 이름"
+              defaultValue={isLegacyStarterCharacter(activeCharacter) ? "" : undefined}
               maxLength={32}
               required
               autoFocus

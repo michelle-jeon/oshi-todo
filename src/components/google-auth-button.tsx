@@ -40,7 +40,9 @@ const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 export function GoogleAuthButton() {
   const router = useRouter();
   const buttonRef = useRef<HTMLDivElement>(null);
-  const [scriptReady, setScriptReady] = useState(false);
+  const [scriptReady, setScriptReady] = useState(
+    () => typeof window !== "undefined" && Boolean(window.google?.accounts)
+  );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleCredential = useCallback(
@@ -108,8 +110,14 @@ export function GoogleAuthButton() {
         src="https://accounts.google.com/gsi/client"
         strategy="afterInteractive"
         onLoad={() => setScriptReady(true)}
+        onReady={() => setScriptReady(true)}
         onError={() => setErrorMessage("Google 로그인 스크립트를 불러오지 못했어요.")}
       />
+      {!scriptReady ? (
+        <button className="google-fallback-button" type="button" disabled>
+          Google 로그인 준비 중...
+        </button>
+      ) : null}
       <div className="google-button-host" ref={buttonRef} aria-live="polite" />
       {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
     </>
