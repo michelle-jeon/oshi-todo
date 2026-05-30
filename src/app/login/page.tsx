@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
+import { GoogleAuthButton } from "@/components/google-auth-button";
 import { getCurrentUser } from "@/lib/auth";
 
 type LoginPageProps = {
@@ -28,10 +29,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {message ? <p className="notice">{message}</p> : null}
 
         <div className="oauth-panel">
-          <a className="google-button" href="/auth/google">
-            <span aria-hidden="true">G</span>
-            Google로 계속하기
-          </a>
+          <GoogleAuthButton />
           <p className="subtle">
             OshiTodo는 지금 Google 계정으로만 가입하고 로그인합니다.
           </p>

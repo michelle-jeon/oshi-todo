@@ -14,6 +14,9 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 - 운영 배포 전에 인증 화면의 외부 이동 문구를 브랜드 도메인 중심으로 정리.
   - Supabase Custom Domain 또는 별도 auth 도메인 검토.
   - Google OAuth consent screen의 앱 이름과 로고 정리.
+- OshiTodo 앱 로고 제작 후 인증/브랜딩 설정에 반영.
+  - Google OAuth consent screen 로고 등록.
+  - 앱 파비콘과 소셜 공유 이미지에도 같은 방향성 적용.
 - 계정 설정 페이지.
   - 연결된 소셜 계정 확인.
   - 추가 provider 연결/해제.

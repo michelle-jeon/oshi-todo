@@ -7,6 +7,7 @@
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable-key
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=google-oauth-client-id.apps.googleusercontent.com
 ```
 
 Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
@@ -77,8 +78,16 @@ http://localhost:3000
 https://your-domain.com
 ```
 
+`.env.local`의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`에는 Google Cloud Console에서 발급된 Client ID를 넣는다. `OshiTodo` 같은 앱 이름을 넣는 칸이 아니다.
+
+```text
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=1234567890-abcdefg.apps.googleusercontent.com
+```
+
+Client Secret은 브라우저에 노출되는 `NEXT_PUBLIC_` 환경 변수에 넣지 않는다.
+
 ## Google 계정 선택 화면의 도메인 문구
 
-Google 계정 선택 화면에서 `프로젝트-ref.supabase.co(으)로 이동`처럼 표시될 수 있다. 이는 Supabase Auth의 OAuth callback 도메인이 Supabase 프로젝트 도메인이기 때문이다.
+Supabase redirect OAuth를 쓰면 Google 계정 선택 화면에서 `프로젝트-ref.supabase.co(으)로 이동`처럼 표시될 수 있다. 이는 Supabase Auth의 OAuth callback 도메인이 Supabase 프로젝트 도메인이기 때문이다.
 
 운영에서 이 문구까지 브랜드 도메인으로 정리하려면 Supabase Custom Domain 또는 별도 auth 도메인을 검토한다. 로컬 개발 단계에서는 기능 검증을 우선한다.
