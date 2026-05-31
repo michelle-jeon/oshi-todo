@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, MonitorPlay, Pencil, Square, X } from "lucide-react";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { awardFocusXp } from "@/app/focus-actions";
 
 type FocusTrackerProps = {
@@ -134,6 +134,11 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   const [draftWindowName, setDraftWindowName] = useState("");
   const [, startTransition] = useTransition();
 
+  const stopCaptureStream = useCallback(() => {
+    streamRef.current?.getTracks().forEach((track) => track.stop());
+    streamRef.current = null;
+  }, []);
+
   function checkEligibility() {
     setIsEligible(
       Boolean(streamRef.current) && document.visibilityState === "visible" && document.hasFocus()
@@ -187,7 +192,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       stream.getVideoTracks()[0]?.addEventListener("ended", () => {
         setIsRunning(false);
         setIsEligible(false);
-        streamRef.current = null;
+        stopCaptureStream();
         setPreviewStream(null);
       });
     } catch (error) {
@@ -202,8 +207,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   }
 
   function stop() {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
+    stopCaptureStream();
     setPreviewStream(null);
     setIsRunning(false);
     setIsEligible(false);
@@ -268,6 +272,17 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       return nextStats;
     });
   }
+
+  useEffect(() => {
+    window.addEventListener("pagehide", stopCaptureStream);
+    window.addEventListener("beforeunload", stopCaptureStream);
+
+    return () => {
+      window.removeEventListener("pagehide", stopCaptureStream);
+      window.removeEventListener("beforeunload", stopCaptureStream);
+      stopCaptureStream();
+    };
+  }, [stopCaptureStream]);
 
   useEffect(() => {
     if (!isRunning) {
