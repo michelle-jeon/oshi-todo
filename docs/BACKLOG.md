@@ -167,7 +167,7 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 
 ## 운영과 개발환경 / Admin And Operations
 
-- 상점 아이템 seed 스크립트 추가.
+- 상점 아이템 seed 스크립트 추가. (SQL 생성 스크립트 기본 구현 완료)
 - Supabase CLI 기반 migration workflow 더 정리.
 - staging/production Supabase 프로젝트 분리.
 - 배포 환경변수 체크리스트 추가.

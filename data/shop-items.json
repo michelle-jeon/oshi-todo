@@ -1,0 +1,93 @@
+[
+  {
+    "code": "human_hair_bob_brown",
+    "name": "브라운 단발",
+    "slot": "human_hair",
+    "species": "human",
+    "cost": 80,
+    "payload": {
+      "hairStyle": "bob",
+      "hairColor": "#7a4a39"
+    }
+  },
+  {
+    "code": "human_outfit_mint_hoodie",
+    "name": "민트 후드",
+    "slot": "human_outfit",
+    "species": "human",
+    "cost": 80,
+    "payload": {
+      "outfitColor": "#2f6f73"
+    }
+  },
+  {
+    "code": "cat_pattern_cheese",
+    "name": "치즈 줄무늬",
+    "slot": "cat_pattern",
+    "species": "cat",
+    "cost": 90,
+    "payload": {
+      "patternColor": "#d8a333"
+    }
+  },
+  {
+    "code": "human_eyes_bright",
+    "name": "반짝 눈",
+    "slot": "human_eyes",
+    "species": "human",
+    "cost": 60,
+    "payload": {
+      "eyeId": "bright"
+    }
+  },
+  {
+    "code": "human_eyes_calm",
+    "name": "차분한 눈",
+    "slot": "human_eyes",
+    "species": "human",
+    "cost": 60,
+    "payload": {
+      "eyeId": "calm"
+    }
+  },
+  {
+    "code": "human_accessory_ribbon",
+    "name": "하트 리본",
+    "slot": "accessory",
+    "species": "human",
+    "cost": 110,
+    "payload": {
+      "accessoryId": "ribbon"
+    }
+  },
+  {
+    "code": "cat_eyes_bright",
+    "name": "고양이 반짝 눈",
+    "slot": "cat_eyes",
+    "species": "cat",
+    "cost": 60,
+    "payload": {
+      "eyeId": "bright"
+    }
+  },
+  {
+    "code": "cat_eyes_calm",
+    "name": "고양이 차분한 눈",
+    "slot": "cat_eyes",
+    "species": "cat",
+    "cost": 60,
+    "payload": {
+      "eyeId": "calm"
+    }
+  },
+  {
+    "code": "cat_accessory_star_pin",
+    "name": "별 목걸이",
+    "slot": "accessory",
+    "species": "cat",
+    "cost": 110,
+    "payload": {
+      "accessoryId": "star-pin"
+    }
+  }
+]
