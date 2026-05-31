@@ -855,6 +855,112 @@ button {
   gap: 12px;
 }
 
+.character-wizard {
+  display: grid;
+  gap: 18px;
+}
+
+.species-pick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.species-pick-card {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.species-pick-card:hover {
+  border-color: var(--primary);
+  background: #e9f5f1;
+}
+
+.character-wizard:not(.species-step) {
+  grid-template-columns: minmax(280px, 1fr) minmax(320px, 1fr);
+  align-items: stretch;
+}
+
+.wizard-preview-pane {
+  min-height: 520px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8eb;
+  overflow: hidden;
+}
+
+.wizard-character-image {
+  width: min(420px, 82%);
+  height: auto;
+  object-fit: contain;
+}
+
+.wizard-side-stack {
+  position: relative;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.wizard-customize-pane,
+.wizard-name-pane {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 18px;
+  transition:
+    transform 260ms ease,
+    opacity 180ms ease;
+}
+
+.wizard-name-pane {
+  transform: translateY(105%);
+  opacity: 0;
+}
+
+.naming-open .wizard-customize-pane {
+  transform: translateY(105%);
+  opacity: 0;
+}
+
+.naming-open .wizard-name-pane {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+.wizard-name-pane label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.wizard-name-pane input {
+  height: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--foreground);
+  padding: 0 14px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
 .character-slot {
   min-height: 240px;
   display: grid;
@@ -1589,6 +1695,16 @@ button {
   .simple-grid,
   .routine-form {
     grid-template-columns: 1fr;
+  }
+
+  .character-wizard:not(.species-step),
+  .species-pick-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .wizard-preview-pane,
+  .wizard-side-stack {
+    min-height: 380px;
   }
 
   .focus-panel,

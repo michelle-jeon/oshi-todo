@@ -1,12 +1,10 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
-import { createCharacter } from "@/app/character-actions";
+import { CharacterCreateWizard } from "@/components/character-create-wizard";
 import {
   isLegacyStarterCharacter,
   MAX_CHARACTER_SLOTS
 } from "@/lib/character-onboarding";
-import { CHARACTER_VARIANTS } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -43,72 +41,12 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
         <div>
           <p className="subtle">OshiTodo</p>
           <h1 className="brand">{isFirstCharacter ? "첫 캐릭터 생성" : "새 캐릭터 생성"}</h1>
-          <p className="subtle">이름, 종류, 색상을 고른 뒤 투두 홈으로 이동합니다.</p>
+          <p className="subtle">종족을 고르고, 코스튬을 입혀본 다음 이름을 정해 주세요.</p>
         </div>
 
         {message ? <p className="notice">{message}</p> : null}
 
-        <form className="character-create-form" action={createCharacter}>
-          <label>
-            이름
-            <input
-              name="displayName"
-              placeholder="캐릭터 이름"
-              defaultValue={isLegacyStarterCharacter(activeCharacter) ? "" : undefined}
-              maxLength={32}
-              required
-              autoFocus
-            />
-          </label>
-
-          <section>
-            <h2>종류</h2>
-            <div className="species-grid">
-              <label className="choice-card">
-                <input name="species" type="radio" value="human" defaultChecked />
-                <Image
-                  src="/assets/characters/human-outfit-blue.png"
-                  alt="인간 캐릭터"
-                  width={512}
-                  height={512}
-                />
-                <span>인간</span>
-              </label>
-              <label className="choice-card">
-                <input name="species" type="radio" value="cat" />
-                <Image
-                  src="/assets/characters/cat-pattern-blue.png"
-                  alt="고양이 캐릭터"
-                  width={512}
-                  height={512}
-                />
-                <span>고양이</span>
-              </label>
-            </div>
-          </section>
-
-          <section>
-            <h2>기본 색상</h2>
-            <div className="color-choice-list">
-              {CHARACTER_VARIANTS.map((variant, index) => (
-                <label className="color-choice" key={variant.id}>
-                  <input
-                    name="variantId"
-                    type="radio"
-                    value={variant.id}
-                    defaultChecked={index === 0}
-                  />
-                  <span className="swatch" style={{ background: variant.color }} />
-                  {variant.label}
-                </label>
-              ))}
-            </div>
-          </section>
-
-          <button className="primary-button" type="submit">
-            이 캐릭터로 시작
-          </button>
-        </form>
+        <CharacterCreateWizard />
       </section>
     </main>
   );
