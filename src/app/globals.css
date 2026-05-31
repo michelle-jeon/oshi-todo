@@ -1553,9 +1553,61 @@ button {
   gap: 14px;
 }
 
+.profile-panel h2 {
+  margin: 0;
+}
+
 .profile-panel div {
   display: grid;
   gap: 4px;
+}
+
+.profile-settings-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.profile-setting-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.profile-setting-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff8eb;
+  color: var(--primary);
+}
+
+.provider-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.provider-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  width: fit-content;
+  border-radius: 999px;
+  background: #e9f5f1;
+  color: var(--primary);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: capitalize;
+}
+
+.muted-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
 .friend-search-panel h2,

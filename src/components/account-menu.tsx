@@ -18,7 +18,7 @@ export function AccountMenu({ email }: AccountMenuProps) {
       <p className="subtle">계정</p>
       <strong>{email}</strong>
       <nav className="account-menu-links" aria-label="계정 메뉴">
-        <Link href={"/profile" as Route}>내 프로필</Link>
+        <Link href={"/profile" as Route}>계정 설정</Link>
         <Link href={"/friends" as Route}>친구</Link>
       </nav>
       <form action={signOut}>
