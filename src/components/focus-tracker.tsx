@@ -12,6 +12,7 @@ type FocusWindowStats = {
   displayName: string;
   fullName: string;
   needsName: boolean;
+  sourceKey: string;
   seconds: number;
   xp: number;
 };
@@ -58,6 +59,10 @@ function saveCustomWindowName(key: string, name: string) {
 
 function getNamedWindowKey(name: string) {
   return `custom:${name.trim().toLocaleLowerCase()}`;
+}
+
+function getSourceWindowKey(name: string) {
+  return `source:${name.trim().toLocaleLowerCase()}`;
 }
 
 function getReadableWindowName(rawLabel: string) {
@@ -125,6 +130,7 @@ function FocusWindowPreview({ name, stream }: { name: string; stream: MediaStrea
 
 export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   const streamRef = useRef<MediaStream | null>(null);
+  const rewardTickRef = useRef(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
@@ -132,6 +138,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   const [activeSeconds, setActiveSeconds] = useState(0);
   const [activeWindowKey, setActiveWindowKey] = useState("선택한 작업창");
   const [windowStats, setWindowStats] = useState<Record<string, FocusWindowStats>>({});
+  const [windowOrder, setWindowOrder] = useState<string[]>([]);
   const [customWindowNames, setCustomWindowNames] =
     useState<Record<string, string>>(loadCustomWindowNames);
   const [editingWindowKey, setEditingWindowKey] = useState<string | null>(null);
@@ -158,6 +165,9 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       const videoTrack = stream.getVideoTracks()[0] as CaptureHandleMediaStreamTrack | undefined;
       const trackLabel = videoTrack?.label || "선택한 작업창";
       const captureHandle = videoTrack?.getCaptureHandle?.();
+      const sourceKey = captureHandle?.origin
+        ? `${captureHandle.handle ?? trackLabel} · ${captureHandle.origin}`
+        : trackLabel;
       const windowName = captureHandle?.handle
         ? {
             displayName: captureHandle.handle,
@@ -167,8 +177,12 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
             needsName: false
           }
         : getReadableWindowName(trackLabel);
-      const savedWindowName = customWindowNames[trackLabel];
-      const statsKey = savedWindowName ? getNamedWindowKey(savedWindowName) : trackLabel;
+      const savedWindowName = customWindowNames[sourceKey];
+      const statsKey = savedWindowName
+        ? getNamedWindowKey(savedWindowName)
+        : windowName.needsName
+          ? sourceKey
+          : getSourceWindowKey(windowName.fullName || windowName.displayName);
       const resolvedWindowName = savedWindowName
         ? {
             displayName: savedWindowName,
@@ -177,12 +191,15 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
           }
         : windowName;
       streamRef.current = stream;
+      rewardTickRef.current = 0;
       setPreviewStream(stream);
       setActiveWindowKey(statsKey);
+      setWindowOrder((current) => [statsKey, ...current.filter((key) => key !== statsKey)]);
       setWindowStats((current) => ({
         ...current,
         [statsKey]: current[statsKey] ?? {
           ...resolvedWindowName,
+          sourceKey,
           seconds: 0,
           xp: 0
         }
@@ -256,6 +273,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
           current[editingWindowKey]?.fullName ?? current[namedWindowKey]?.fullName ?? editingWindowKey
         }`,
         needsName: false,
+        sourceKey: current[editingWindowKey]?.sourceKey ?? current[namedWindowKey]?.sourceKey ?? editingWindowKey,
         seconds:
           (current[namedWindowKey]?.seconds ?? 0) +
           (namedWindowKey === editingWindowKey ? 0 : (current[editingWindowKey]?.seconds ?? 0)),
@@ -264,11 +282,16 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
           (namedWindowKey === editingWindowKey ? 0 : (current[editingWindowKey]?.xp ?? 0))
       }
     }));
-    saveCustomWindowName(editingWindowKey, nextName);
+    const sourceKey = windowStats[editingWindowKey]?.sourceKey ?? editingWindowKey;
+    saveCustomWindowName(sourceKey, nextName);
     setCustomWindowNames((current) => ({
       ...current,
-      [editingWindowKey]: nextName
+      [sourceKey]: nextName
     }));
+    setWindowOrder((current) => [
+      namedWindowKey,
+      ...current.filter((key) => key !== editingWindowKey && key !== namedWindowKey)
+    ]);
     setActiveWindowKey((current) => (current === editingWindowKey ? namedWindowKey : current));
     setEditingWindowKey(null);
   }
@@ -290,6 +313,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
 
       return nextStats;
     });
+    setWindowOrder((current) => current.filter((windowKey) => windowKey !== key));
   }
 
   useEffect(() => {
@@ -319,23 +343,34 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         return;
       }
 
+      rewardTickRef.current += 1;
+      const shouldAwardXp = rewardTickRef.current >= 10;
+
+      if (shouldAwardXp) {
+        rewardTickRef.current = 0;
+      }
+
       setIsEligible(true);
-      setTodayXp((current) => current + 1);
-      setActiveSeconds((current) => current + 10);
+      setActiveSeconds((current) => current + 1);
       setWindowStats((current) => ({
         ...current,
         [activeWindowKey]: {
           displayName: current[activeWindowKey]?.displayName ?? activeWindowKey,
           fullName: current[activeWindowKey]?.fullName ?? activeWindowKey,
           needsName: current[activeWindowKey]?.needsName ?? false,
-          seconds: (current[activeWindowKey]?.seconds ?? 0) + 10,
-          xp: (current[activeWindowKey]?.xp ?? 0) + 1
+          sourceKey: current[activeWindowKey]?.sourceKey ?? activeWindowKey,
+          seconds: (current[activeWindowKey]?.seconds ?? 0) + 1,
+          xp: (current[activeWindowKey]?.xp ?? 0) + (shouldAwardXp ? 1 : 0)
         }
       }));
-      startTransition(async () => {
-        await awardFocusXp(1);
-      });
-    }, 10000);
+
+      if (shouldAwardXp) {
+        setTodayXp((current) => current + 1);
+        startTransition(async () => {
+          await awardFocusXp(1);
+        });
+      }
+    }, 1000);
 
     return () => {
       window.clearInterval(interval);
@@ -344,6 +379,13 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       document.removeEventListener("visibilitychange", checkEligibility);
     };
   }, [activeWindowKey, isRunning, startTransition]);
+
+  const orderedWindowEntries = [
+    ...windowOrder
+      .filter((key) => windowStats[key])
+      .map((key) => [key, windowStats[key]] as const),
+    ...Object.entries(windowStats).filter(([key]) => !windowOrder.includes(key))
+  ];
 
   return (
     <section className="panel focus-panel">
@@ -355,10 +397,10 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         </div>
       </div>
       <div className="focus-program-list">
-        {Object.entries(windowStats).length > 0 ? (
-          Object.entries(windowStats).map(([key, stats]) => (
+        {orderedWindowEntries.length > 0 ? (
+          orderedWindowEntries.map(([key, stats]) => (
             <div className="focus-program-item" key={key}>
-              <div className="focus-program-row">
+              <div className={`focus-program-row ${isRunning && activeWindowKey === key ? "active" : ""}`}>
                 {editingWindowKey === key ? (
                   <div className="focus-window-edit">
                     <input

@@ -1349,6 +1349,12 @@ button {
   padding: 10px;
 }
 
+.focus-program-row.active {
+  border-color: var(--primary);
+  background: #e9f5f1;
+  box-shadow: 0 0 0 2px rgba(47, 111, 115, 0.12);
+}
+
 .focus-program-row strong {
   flex: 0 0 auto;
 }
