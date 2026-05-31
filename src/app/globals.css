@@ -571,6 +571,17 @@ button {
   gap: 18px;
 }
 
+.auth-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.auth-heading-row form {
+  flex: 0 0 auto;
+}
+
 .oauth-panel {
   display: grid;
   gap: 10px;
@@ -768,6 +779,10 @@ button {
 .wardrobe-preview img {
   width: 140px;
   height: auto;
+}
+
+.shop-character-preview h2 {
+  margin: 2px 0;
 }
 
 .wardrobe-avatar-stack {
@@ -1034,6 +1049,11 @@ button {
   flex-direction: column;
 }
 
+.shop-item-card.in-cart {
+  border-color: var(--primary);
+  background: #e9f5f1;
+}
+
 .shop-item-card.disabled {
   background: #f4f0e8;
   color: var(--muted);
@@ -1048,8 +1068,55 @@ button {
   color: var(--primary);
 }
 
+.cart-label {
+  border-radius: 999px;
+  background: #f4f0e8;
+  color: var(--muted);
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.shop-item-card.in-cart .cart-label {
+  background: var(--primary);
+  color: #ffffff;
+}
+
 .too-expensive .price-label {
   color: #b9473f;
+}
+
+.shop-cart-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.shop-cart-panel p,
+.shop-cart-panel strong {
+  margin: 0;
+}
+
+.shop-cart-list {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shop-cart-chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #fff8eb;
+  color: var(--foreground);
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 900;
 }
 
 .form-actions {
@@ -1120,9 +1187,139 @@ button {
 
 .focus-summary-row span,
 .focus-program-row span {
+  min-width: 0;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
+}
+
+.focus-window-name,
+.focus-window-name-button {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-window-name-wrap {
+  position: relative;
+  min-width: 0;
+  max-width: min(100%, 320px);
+}
+
+.focus-window-name-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.focus-window-name-button svg {
+  flex: 0 0 auto;
+  opacity: 0.65;
+}
+
+.focus-window-preview {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  z-index: 20;
+  width: min(300px, 72vw);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: 0 18px 38px rgba(35, 29, 24, 0.18);
+  color: var(--foreground);
+  opacity: 0;
+  padding: 8px;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease;
+}
+
+.focus-window-name-wrap:hover .focus-window-preview,
+.focus-window-name-wrap:focus-within .focus-window-preview {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.focus-window-preview video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 6px;
+  background: #1f1b18;
+  object-fit: cover;
+}
+
+.focus-window-preview span {
+  display: block;
+  margin-top: 7px;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.focus-window-edit {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1 1 auto;
+}
+
+.focus-window-edit input {
+  min-width: 0;
+  height: 30px;
+  flex: 1 1 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--foreground);
+  padding: 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.focus-window-edit button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+}
+
+.focus-window-delete-button {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.focus-window-delete-button:hover,
+.focus-window-delete-button:focus-visible {
+  border-color: #f4c6bb;
+  background: #fff2ef;
+  color: #b84730;
 }
 
 .focus-panel-actions {
@@ -1138,11 +1335,22 @@ button {
   gap: 8px;
 }
 
+.focus-program-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+  align-items: center;
+  gap: 8px;
+}
+
 .focus-program-row {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   padding: 10px;
+}
+
+.focus-program-row strong {
+  flex: 0 0 auto;
 }
 
 .focus-program-row.muted {
@@ -1719,6 +1927,10 @@ button {
 
   .topbar {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-heading-row {
     flex-direction: column;
   }
 

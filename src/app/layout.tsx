@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CaptureHandleConfig } from "@/components/capture-handle-config";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -13,7 +14,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <CaptureHandleConfig />
+        {children}
+      </body>
     </html>
   );
 }

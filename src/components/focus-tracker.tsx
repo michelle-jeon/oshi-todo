@@ -1,12 +1,29 @@
 "use client";
 
-import { MonitorPlay, Square } from "lucide-react";
+import { Check, MonitorPlay, Pencil, Square, X } from "lucide-react";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { awardFocusXp } from "@/app/focus-actions";
 
 type FocusTrackerProps = {
   initialTodayXp: number;
 };
+
+type FocusWindowStats = {
+  displayName: string;
+  fullName: string;
+  needsName: boolean;
+  seconds: number;
+  xp: number;
+};
+
+type CaptureHandleMediaStreamTrack = MediaStreamTrack & {
+  getCaptureHandle?(): {
+    handle?: string;
+    origin?: string;
+  } | null;
+};
+
+const FOCUS_WINDOW_NAME_STORAGE_KEY = "oshiTodo.focusWindowNames";
 
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -15,14 +32,106 @@ function formatSeconds(seconds: number) {
   return `${minutes}분 ${remainingSeconds}초`;
 }
 
+function loadCustomWindowNames() {
+  if (typeof window === "undefined") {
+    return {};
+  }
+
+  try {
+    const savedNames = window.localStorage.getItem(FOCUS_WINDOW_NAME_STORAGE_KEY);
+
+    return savedNames ? (JSON.parse(savedNames) as Record<string, string>) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveCustomWindowName(key: string, name: string) {
+  const currentNames = loadCustomWindowNames();
+  const nextNames = {
+    ...currentNames,
+    [key]: name
+  };
+
+  window.localStorage.setItem(FOCUS_WINDOW_NAME_STORAGE_KEY, JSON.stringify(nextNames));
+}
+
+function getReadableWindowName(rawLabel: string) {
+  const label = rawLabel.trim();
+
+  if (!label) {
+    return {
+      displayName: "선택한 작업창",
+      fullName: "선택한 작업창",
+      needsName: false
+    };
+  }
+
+  if (label.startsWith("web-contents-media-stream://")) {
+    return {
+      displayName: "",
+      fullName: label,
+      needsName: true
+    };
+  }
+
+  try {
+    const url = new URL(label);
+
+    return {
+      displayName: url.hostname || label,
+      fullName: label,
+      needsName: false
+    };
+  } catch {
+    return {
+      displayName: label,
+      fullName: label,
+      needsName: false
+    };
+  }
+}
+
+function FocusWindowPreview({ name, stream }: { name: string; stream: MediaStream }) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+
+  useEffect(() => {
+    const video = videoRef.current;
+
+    if (!video) {
+      return;
+    }
+
+    video.srcObject = stream;
+
+    return () => {
+      if (video.srcObject === stream) {
+        video.srcObject = null;
+      }
+    };
+  }, [stream]);
+
+  return (
+    <div className="focus-window-preview" role="tooltip">
+      <video ref={videoRef} autoPlay muted playsInline aria-label={`${name} 미리보기`} />
+      <span>{name}</span>
+    </div>
+  );
+}
+
 export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   const streamRef = useRef<MediaStream | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [todayXp, setTodayXp] = useState(initialTodayXp);
   const [activeSeconds, setActiveSeconds] = useState(0);
-  const [activeWindowName, setActiveWindowName] = useState("선택한 작업창");
-  const [windowStats, setWindowStats] = useState<Record<string, { seconds: number; xp: number }>>({});
+  const [activeWindowKey, setActiveWindowKey] = useState("선택한 작업창");
+  const [windowStats, setWindowStats] = useState<Record<string, FocusWindowStats>>({});
+  const [customWindowNames, setCustomWindowNames] =
+    useState<Record<string, string>>(loadCustomWindowNames);
+  const [editingWindowKey, setEditingWindowKey] = useState<string | null>(null);
+  const [draftWindowName, setDraftWindowName] = useState("");
   const [, startTransition] = useTransition();
 
   function checkEligibility() {
@@ -37,13 +146,41 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         video: true,
         audio: false
       });
-      const trackLabel = stream.getVideoTracks()[0]?.label || "선택한 작업창";
+      const videoTrack = stream.getVideoTracks()[0] as CaptureHandleMediaStreamTrack | undefined;
+      const trackLabel = videoTrack?.label || "선택한 작업창";
+      const captureHandle = videoTrack?.getCaptureHandle?.();
+      const windowName = captureHandle?.handle
+        ? {
+            displayName: captureHandle.handle,
+            fullName: captureHandle.origin
+              ? `${captureHandle.handle} (${captureHandle.origin})`
+              : captureHandle.handle,
+            needsName: false
+          }
+        : getReadableWindowName(trackLabel);
+      const savedWindowName = customWindowNames[trackLabel];
+      const resolvedWindowName = savedWindowName
+        ? {
+            displayName: savedWindowName,
+            fullName: `${savedWindowName} · ${windowName.fullName}`,
+            needsName: false
+          }
+        : windowName;
       streamRef.current = stream;
-      setActiveWindowName(trackLabel);
+      setPreviewStream(stream);
+      setActiveWindowKey(trackLabel);
       setWindowStats((current) => ({
         ...current,
-        [trackLabel]: current[trackLabel] ?? { seconds: 0, xp: 0 }
+        [trackLabel]: current[trackLabel] ?? {
+          ...resolvedWindowName,
+          seconds: 0,
+          xp: 0
+        }
       }));
+      if (resolvedWindowName.needsName) {
+        setEditingWindowKey(trackLabel);
+        setDraftWindowName("");
+      }
       setIsRunning(true);
       setIsEligible(document.visibilityState === "visible" && document.hasFocus());
 
@@ -51,6 +188,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         setIsRunning(false);
         setIsEligible(false);
         streamRef.current = null;
+        setPreviewStream(null);
       });
     } catch (error) {
       const isUserCancel =
@@ -66,8 +204,69 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
   function stop() {
     streamRef.current?.getTracks().forEach((track) => track.stop());
     streamRef.current = null;
+    setPreviewStream(null);
     setIsRunning(false);
     setIsEligible(false);
+  }
+
+  function startEditingWindowName(key: string, currentName: string) {
+    setEditingWindowKey(key);
+    setDraftWindowName(currentName);
+  }
+
+  function saveWindowName() {
+    if (!editingWindowKey) {
+      return;
+    }
+
+    const nextName = draftWindowName.trim();
+
+    if (!nextName) {
+      setWindowStats((current) => ({
+        ...current,
+        [editingWindowKey]: {
+          ...current[editingWindowKey],
+          displayName: "이름 없는 작업창",
+          needsName: true
+        }
+      }));
+      return;
+    }
+
+    setWindowStats((current) => ({
+      ...current,
+      [editingWindowKey]: {
+        ...current[editingWindowKey],
+        displayName: nextName,
+        fullName: `${nextName} · ${current[editingWindowKey]?.fullName ?? editingWindowKey}`,
+        needsName: false
+      }
+    }));
+    saveCustomWindowName(editingWindowKey, nextName);
+    setCustomWindowNames((current) => ({
+      ...current,
+      [editingWindowKey]: nextName
+    }));
+    setEditingWindowKey(null);
+  }
+
+  function deleteWindowStats(key: string) {
+    if (key === activeWindowKey) {
+      stop();
+      setActiveWindowKey("선택한 작업창");
+    }
+
+    if (editingWindowKey === key) {
+      setEditingWindowKey(null);
+      setDraftWindowName("");
+    }
+
+    setWindowStats((current) => {
+      const nextStats = { ...current };
+      delete nextStats[key];
+
+      return nextStats;
+    });
   }
 
   useEffect(() => {
@@ -91,9 +290,12 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       setActiveSeconds((current) => current + 10);
       setWindowStats((current) => ({
         ...current,
-        [activeWindowName]: {
-          seconds: (current[activeWindowName]?.seconds ?? 0) + 10,
-          xp: (current[activeWindowName]?.xp ?? 0) + 1
+        [activeWindowKey]: {
+          displayName: current[activeWindowKey]?.displayName ?? activeWindowKey,
+          fullName: current[activeWindowKey]?.fullName ?? activeWindowKey,
+          needsName: current[activeWindowKey]?.needsName ?? false,
+          seconds: (current[activeWindowKey]?.seconds ?? 0) + 10,
+          xp: (current[activeWindowKey]?.xp ?? 0) + 1
         }
       }));
       startTransition(async () => {
@@ -107,7 +309,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       window.removeEventListener("blur", checkEligibility);
       document.removeEventListener("visibilitychange", checkEligibility);
     };
-  }, [activeWindowName, isRunning, startTransition]);
+  }, [activeWindowKey, isRunning, startTransition]);
 
   return (
     <section className="panel focus-panel">
@@ -120,12 +322,73 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       </div>
       <div className="focus-program-list">
         {Object.entries(windowStats).length > 0 ? (
-          Object.entries(windowStats).map(([name, stats]) => (
-            <div className="focus-program-row" key={name}>
-              <span>{name}</span>
-              <strong>
-                {formatSeconds(stats.seconds)} · {stats.xp} XP
-              </strong>
+          Object.entries(windowStats).map(([key, stats]) => (
+            <div className="focus-program-item" key={key}>
+              <div className="focus-program-row">
+                {editingWindowKey === key ? (
+                  <div className="focus-window-edit">
+                    <input
+                      value={draftWindowName}
+                      placeholder="예: 인프런"
+                      maxLength={60}
+                      aria-label="작업창 이름"
+                      onChange={(event) => setDraftWindowName(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          saveWindowName();
+                        }
+
+                        if (event.key === "Escape") {
+                          setEditingWindowKey(null);
+                        }
+                      }}
+                      autoFocus
+                    />
+                    <button type="button" onClick={saveWindowName} aria-label="작업창 이름 저장">
+                      <Check size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditingWindowKey(null)}
+                      aria-label="작업창 이름 편집 취소"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="focus-window-name-wrap">
+                    <button
+                      className="focus-window-name-button"
+                      type="button"
+                      title={stats.fullName}
+                      onClick={() => startEditingWindowName(key, stats.displayName)}
+                    >
+                      <span className="focus-window-name">
+                        {stats.displayName || "작업창 이름 입력"}
+                      </span>
+                      <Pencil size={13} />
+                    </button>
+                    {isRunning && activeWindowKey === key && previewStream ? (
+                      <FocusWindowPreview
+                        name={stats.displayName || "작업창 미리보기"}
+                        stream={previewStream}
+                      />
+                    ) : null}
+                  </div>
+                )}
+                <strong>
+                  {formatSeconds(stats.seconds)} · {stats.xp} XP
+                </strong>
+              </div>
+              <button
+                className="focus-window-delete-button"
+                type="button"
+                aria-label={`${stats.displayName || "작업창"} 기록 삭제`}
+                title="기록 삭제"
+                onClick={() => deleteWindowStats(key)}
+              >
+                <X size={15} />
+              </button>
             </div>
           ))
         ) : (

@@ -12,16 +12,20 @@ type ShopPageProps = {
 
 type CharacterRow = {
   id: string;
+  display_name: string;
   species: CharacterSpecies;
   xp_current: number;
+  customization: Record<string, string>;
 };
 
 type ShopItem = {
   id: string;
+  code: string;
   name: string;
   slot: string;
   species: CharacterSpecies | null;
   cost: number;
+  payload: Record<string, string>;
 };
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
@@ -31,13 +35,13 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const [{ data: character }, { data: shopItems }, { data: inventory }] = await Promise.all([
     supabase
       .from("characters")
-      .select("id, species, xp_current")
+      .select("id, display_name, species, xp_current, customization")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .single<CharacterRow>(),
     supabase
       .from("shop_items")
-      .select("id, name, slot, species, cost")
+      .select("id, code, name, slot, species, cost, payload")
       .eq("is_active", true)
       .order("cost", { ascending: true })
       .returns<ShopItem[]>(),
@@ -59,6 +63,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       {message ? <p className="notice">{message}</p> : null}
 
       <ShopBrowser
+        character={{
+          displayName: character?.display_name ?? "캐릭터",
+          species: character?.species ?? "human",
+          customization: character?.customization ?? {}
+        }}
         activeSpecies={character?.species ?? "human"}
         currentXp={character?.xp_current ?? 0}
         items={shopItems ?? []}
