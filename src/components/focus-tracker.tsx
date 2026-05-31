@@ -551,70 +551,72 @@ export function FocusTracker({
           <strong>{isViewingToday ? `${todayXp} XP` : `${orderedWindowEntries.length}개 기록`}</strong>
         </div>
       </div>
-      <div className={`calendar-drawer ${isCalendarOpen ? "open" : ""}`}>
-        <div className="calendar-card">
-          <div className="calendar-card-header">
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={() =>
-                setVisibleMonth(
-                  (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
-                )
-              }
-            >
-              이전
-            </button>
-            <span className="calendar-month-trigger">{monthLabel}</span>
-            <button
-              className="ghost-button"
-              type="button"
-              onClick={() =>
-                setVisibleMonth(
-                  (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
-                )
-              }
-            >
-              다음
-            </button>
-          </div>
-          <div className="calendar-weekdays">
-            {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
-              <span key={day}>{day}</span>
-            ))}
-          </div>
-          <div className="calendar-grid">
-            {calendarDays.map((date) => {
-              const dateString = toDateString(date);
-              const isSelected = dateString === selectedDate;
-              const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
-              const dayLogs = focusLogs.filter((log) => log.work_date === dateString);
-              const totalMinutes = Math.floor(
-                dayLogs.reduce((sum, log) => sum + log.seconds, 0) / 60
-              );
+      {isCalendarOpen ? (
+        <div className="calendar-drawer open">
+          <div className="calendar-card">
+            <div className="calendar-card-header">
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() =>
+                  setVisibleMonth(
+                    (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+                  )
+                }
+              >
+                이전
+              </button>
+              <span className="calendar-month-trigger">{monthLabel}</span>
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() =>
+                  setVisibleMonth(
+                    (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+                  )
+                }
+              >
+                다음
+              </button>
+            </div>
+            <div className="calendar-weekdays">
+              {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+                <span key={day}>{day}</span>
+              ))}
+            </div>
+            <div className="calendar-grid">
+              {calendarDays.map((date) => {
+                const dateString = toDateString(date);
+                const isSelected = dateString === selectedDate;
+                const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
+                const dayLogs = focusLogs.filter((log) => log.work_date === dateString);
+                const totalMinutes = Math.floor(
+                  dayLogs.reduce((sum, log) => sum + log.seconds, 0) / 60
+                );
 
-              return (
-                <button
-                  className={`${isSelected ? "selected" : ""} ${
-                    isOutsideMonth ? "outside-month" : ""
-                  }`}
-                  key={dateString}
-                  type="button"
-                  onClick={() => showDate(dateString)}
-                >
-                  <span>{date.getDate()}</span>
-                  <span className="calendar-badges">
-                    {dayLogs.length > 0 ? <em className="open-count">{dayLogs.length}</em> : null}
-                    {totalMinutes > 0 ? (
-                      <em className="completed-count">{totalMinutes}m</em>
-                    ) : null}
-                  </span>
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    className={`${isSelected ? "selected" : ""} ${
+                      isOutsideMonth ? "outside-month" : ""
+                    }`}
+                    key={dateString}
+                    type="button"
+                    onClick={() => showDate(dateString)}
+                  >
+                    <span>{date.getDate()}</span>
+                    <span className="calendar-badges">
+                      {dayLogs.length > 0 ? <em className="open-count">{dayLogs.length}</em> : null}
+                      {totalMinutes > 0 ? (
+                        <em className="completed-count">{totalMinutes}m</em>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
       <div className="focus-program-list">
         {orderedWindowEntries.length > 0 ? (
           orderedWindowEntries.map(([key, stats]) => (
