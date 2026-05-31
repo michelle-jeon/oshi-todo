@@ -56,6 +56,10 @@ function saveCustomWindowName(key: string, name: string) {
   window.localStorage.setItem(FOCUS_WINDOW_NAME_STORAGE_KEY, JSON.stringify(nextNames));
 }
 
+function getNamedWindowKey(name: string) {
+  return `custom:${name.trim().toLocaleLowerCase()}`;
+}
+
 function getReadableWindowName(rawLabel: string) {
   const label = rawLabel.trim();
 
@@ -164,6 +168,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
           }
         : getReadableWindowName(trackLabel);
       const savedWindowName = customWindowNames[trackLabel];
+      const statsKey = savedWindowName ? getNamedWindowKey(savedWindowName) : trackLabel;
       const resolvedWindowName = savedWindowName
         ? {
             displayName: savedWindowName,
@@ -173,17 +178,17 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
         : windowName;
       streamRef.current = stream;
       setPreviewStream(stream);
-      setActiveWindowKey(trackLabel);
+      setActiveWindowKey(statsKey);
       setWindowStats((current) => ({
         ...current,
-        [trackLabel]: current[trackLabel] ?? {
+        [statsKey]: current[statsKey] ?? {
           ...resolvedWindowName,
           seconds: 0,
           xp: 0
         }
       }));
       if (resolvedWindowName.needsName) {
-        setEditingWindowKey(trackLabel);
+        setEditingWindowKey(statsKey);
         setDraftWindowName("");
       }
       setIsRunning(true);
@@ -237,13 +242,26 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       return;
     }
 
+    const namedWindowKey = getNamedWindowKey(nextName);
+
     setWindowStats((current) => ({
-      ...current,
-      [editingWindowKey]: {
+      ...Object.fromEntries(
+        Object.entries(current).filter(([key]) => key !== editingWindowKey && key !== namedWindowKey)
+      ),
+      [namedWindowKey]: {
         ...current[editingWindowKey],
+        ...current[namedWindowKey],
         displayName: nextName,
-        fullName: `${nextName} · ${current[editingWindowKey]?.fullName ?? editingWindowKey}`,
-        needsName: false
+        fullName: `${nextName} · ${
+          current[editingWindowKey]?.fullName ?? current[namedWindowKey]?.fullName ?? editingWindowKey
+        }`,
+        needsName: false,
+        seconds:
+          (current[namedWindowKey]?.seconds ?? 0) +
+          (namedWindowKey === editingWindowKey ? 0 : (current[editingWindowKey]?.seconds ?? 0)),
+        xp:
+          (current[namedWindowKey]?.xp ?? 0) +
+          (namedWindowKey === editingWindowKey ? 0 : (current[editingWindowKey]?.xp ?? 0))
       }
     }));
     saveCustomWindowName(editingWindowKey, nextName);
@@ -251,6 +269,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       ...current,
       [editingWindowKey]: nextName
     }));
+    setActiveWindowKey((current) => (current === editingWindowKey ? namedWindowKey : current));
     setEditingWindowKey(null);
   }
 
