@@ -35,9 +35,15 @@ type TodoRowData = {
   routine_id: string | null;
 };
 
-type XpEventRow = {
-  amount: number;
-  created_at: string;
+type FocusWindowLogRow = {
+  id: string;
+  work_date: string;
+  window_key: string;
+  display_name: string;
+  full_name: string;
+  seconds: number;
+  xp: number;
+  updated_at: string;
 };
 
 type RoutineRowData = {
@@ -73,7 +79,7 @@ export default async function Home({
     { data: activeCharacter, error: characterError },
     { data: todos, error: todosError },
     { data: routines, error: routinesError },
-    { data: focusEvents }
+    { data: focusLogs, error: focusLogsError }
   ] = await Promise.all([
     supabase
       .from("characters")
@@ -95,11 +101,11 @@ export default async function Home({
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>(),
     supabase
-      .from("xp_events")
-      .select("amount, created_at")
-      .eq("reason", "focus_window")
-      .gte("created_at", `${getTodayString()}T00:00:00+09:00`)
-      .returns<XpEventRow[]>()
+      .from("focus_window_logs")
+      .select("id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
+      .order("work_date", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .returns<FocusWindowLogRow[]>()
   ]);
 
   if (!activeCharacter && !characterError) {
@@ -133,9 +139,12 @@ export default async function Home({
 
   const progress = getLevelProgress(character?.xpTotal ?? 0);
   const spendableXp = character?.xpCurrent ?? 0;
-  const dbError = characterError ?? todosError ?? routinesError;
+  const dbError = characterError ?? todosError ?? routinesError ?? focusLogsError;
   const displayMessage = message?.includes("temp-") ? undefined : message;
-  const todayFocusXp = (focusEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
+  const todayString = getTodayString();
+  const todayFocusXp = (focusLogs ?? [])
+    .filter((log) => log.work_date === todayString)
+    .reduce((sum, log) => sum + log.xp, 0);
   const variantId =
     character && "variantId" in character.customization ? character.customization.variantId : undefined;
 
@@ -197,7 +206,11 @@ export default async function Home({
             />
           </section>
 
-          <FocusTracker initialTodayXp={todayFocusXp} />
+          <FocusTracker
+            initialLogs={focusLogs ?? []}
+            initialSelectedDate={todayString}
+            initialTodayXp={todayFocusXp}
+          />
         </div>
       </section>
     </main>

@@ -1,11 +1,13 @@
 "use client";
 
-import { Check, MonitorPlay, Pencil, Square, X } from "lucide-react";
+import { CalendarDays, Check, MonitorPlay, Pencil, Square, X } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { awardFocusXp } from "@/app/focus-actions";
+import { recordFocusProgress } from "@/app/focus-actions";
 
 type FocusTrackerProps = {
   initialTodayXp: number;
+  initialSelectedDate: string;
+  initialLogs: FocusWindowLogItem[];
 };
 
 type FocusWindowStats = {
@@ -15,6 +17,17 @@ type FocusWindowStats = {
   sourceKey: string;
   seconds: number;
   xp: number;
+};
+
+export type FocusWindowLogItem = {
+  id: string;
+  work_date: string;
+  window_key: string;
+  display_name: string;
+  full_name: string;
+  seconds: number;
+  xp: number;
+  updated_at: string;
 };
 
 type CaptureHandleMediaStreamTrack = MediaStreamTrack & {
@@ -31,6 +44,55 @@ function formatSeconds(seconds: number) {
   const remainingSeconds = seconds % 60;
 
   return `${minutes}분 ${remainingSeconds}초`;
+}
+
+function parseDate(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function toDateString(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getTodayString() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function getCalendarDays(monthDate: Date) {
+  const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const start = new Date(firstDay);
+  start.setDate(firstDay.getDate() - firstDay.getDay());
+
+  return Array.from({ length: 42 }, (_, index) => {
+    const date = new Date(start);
+    date.setDate(start.getDate() + index);
+    return date;
+  });
+}
+
+function logsToWindowStats(logs: FocusWindowLogItem[]) {
+  return Object.fromEntries(
+    logs.map((log) => [
+      log.window_key,
+      {
+        displayName: log.display_name,
+        fullName: log.full_name,
+        needsName: false,
+        sourceKey: log.window_key,
+        seconds: log.seconds,
+        xp: log.xp
+      } satisfies FocusWindowStats
+    ])
+  );
 }
 
 function loadCustomWindowNames() {
@@ -128,17 +190,34 @@ function FocusWindowPreview({ name, stream }: { name: string; stream: MediaStrea
   );
 }
 
-export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
+export function FocusTracker({
+  initialLogs,
+  initialSelectedDate,
+  initialTodayXp
+}: FocusTrackerProps) {
   const streamRef = useRef<MediaStream | null>(null);
   const rewardTickRef = useRef(0);
+  const todayString = getTodayString();
   const [isRunning, setIsRunning] = useState(false);
   const [isEligible, setIsEligible] = useState(false);
   const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const [todayXp, setTodayXp] = useState(initialTodayXp);
   const [activeSeconds, setActiveSeconds] = useState(0);
   const [activeWindowKey, setActiveWindowKey] = useState("선택한 작업창");
-  const [windowStats, setWindowStats] = useState<Record<string, FocusWindowStats>>({});
-  const [windowOrder, setWindowOrder] = useState<string[]>([]);
+  const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
+  const [visibleMonth, setVisibleMonth] = useState(parseDate(initialSelectedDate));
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [focusLogs, setFocusLogs] = useState(initialLogs);
+  const [windowStats, setWindowStats] = useState<Record<string, FocusWindowStats>>(() =>
+    logsToWindowStats(initialLogs.filter((log) => log.work_date === initialSelectedDate))
+  );
+  const windowStatsRef = useRef(windowStats);
+  const [windowOrder, setWindowOrder] = useState<string[]>(() =>
+    initialLogs
+      .filter((log) => log.work_date === initialSelectedDate)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())
+      .map((log) => log.window_key)
+  );
   const [customWindowNames, setCustomWindowNames] =
     useState<Record<string, string>>(loadCustomWindowNames);
   const [editingWindowKey, setEditingWindowKey] = useState<string | null>(null);
@@ -150,10 +229,40 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
     streamRef.current = null;
   }, []);
 
+  useEffect(() => {
+    windowStatsRef.current = windowStats;
+  }, [windowStats]);
+
   function checkEligibility() {
     setIsEligible(
       Boolean(streamRef.current) && document.visibilityState === "visible" && document.hasFocus()
     );
+  }
+
+  function showDate(dateString: string) {
+    if (dateString !== todayString && isRunning) {
+      stop();
+    }
+
+    setSelectedDate(dateString);
+
+    if (dateString !== todayString) {
+      const selectedLogs = focusLogs
+        .filter((log) => log.work_date === dateString)
+        .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+      setWindowStats(logsToWindowStats(selectedLogs));
+      setWindowOrder(selectedLogs.map((log) => log.window_key));
+      return;
+    }
+
+    const todayLogs = focusLogs
+      .filter((log) => log.work_date === todayString)
+      .sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    setWindowStats((current) => ({ ...logsToWindowStats(todayLogs), ...current }));
+    setWindowOrder((current) => [
+      ...current,
+      ...todayLogs.map((log) => log.window_key).filter((key) => !current.includes(key))
+    ]);
   }
 
   async function start() {
@@ -365,9 +474,34 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       }));
 
       if (shouldAwardXp) {
+        const activeStats = windowStatsRef.current[activeWindowKey];
         setTodayXp((current) => current + 1);
+        setFocusLogs((current) => {
+          const existingLog = current.find(
+            (log) => log.work_date === todayString && log.window_key === activeWindowKey
+          );
+          const nextLog: FocusWindowLogItem = {
+            id: existingLog?.id ?? `temp-${activeWindowKey}`,
+            work_date: todayString,
+            window_key: activeWindowKey,
+            display_name: activeStats?.displayName ?? activeWindowKey,
+            full_name: activeStats?.fullName ?? activeWindowKey,
+            seconds: (existingLog?.seconds ?? 0) + 10,
+            xp: (existingLog?.xp ?? 0) + 1,
+            updated_at: new Date().toISOString()
+          };
+
+          return [nextLog, ...current.filter((log) => log.id !== nextLog.id)];
+        });
         startTransition(async () => {
-          await awardFocusXp(1);
+          await recordFocusProgress({
+            windowKey: activeWindowKey,
+            displayName: activeStats?.displayName ?? activeWindowKey,
+            fullName: activeStats?.fullName ?? activeWindowKey,
+            secondsDelta: 10,
+            xpDelta: 1,
+            workDate: todayString
+          });
         });
       }
     }, 1000);
@@ -378,7 +512,7 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       window.removeEventListener("blur", checkEligibility);
       document.removeEventListener("visibilitychange", checkEligibility);
     };
-  }, [activeWindowKey, isRunning, startTransition]);
+  }, [activeWindowKey, isRunning, startTransition, todayString]);
 
   const orderedWindowEntries = [
     ...windowOrder
@@ -386,14 +520,99 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
       .map((key) => [key, windowStats[key]] as const),
     ...Object.entries(windowStats).filter(([key]) => !windowOrder.includes(key))
   ];
+  const calendarDays = getCalendarDays(visibleMonth);
+  const monthLabel = new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "long"
+  }).format(visibleMonth);
+  const selectedDateLabel = new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "short"
+  }).format(parseDate(selectedDate));
+  const isViewingToday = selectedDate === todayString;
 
   return (
     <section className="panel focus-panel">
       <div className="focus-panel-header">
-        <h2>작업 시간</h2>
+        <div className="todo-section-header">
+          <button
+            className="calendar-toggle"
+            type="button"
+            aria-label="작업시간 캘린더 열기"
+            onClick={() => setIsCalendarOpen((current) => !current)}
+          >
+            <CalendarDays size={20} />
+          </button>
+          <h2>작업 시간</h2>
+        </div>
         <div className="focus-summary-row">
-          <span>오늘 얻은 경험치</span>
-          <strong>{todayXp} XP</strong>
+          <span>{selectedDateLabel}</span>
+          <strong>{isViewingToday ? `${todayXp} XP` : `${orderedWindowEntries.length}개 기록`}</strong>
+        </div>
+      </div>
+      <div className={`calendar-drawer ${isCalendarOpen ? "open" : ""}`}>
+        <div className="calendar-card">
+          <div className="calendar-card-header">
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  (current) => new Date(current.getFullYear(), current.getMonth() - 1, 1)
+                )
+              }
+            >
+              이전
+            </button>
+            <span className="calendar-month-trigger">{monthLabel}</span>
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() =>
+                setVisibleMonth(
+                  (current) => new Date(current.getFullYear(), current.getMonth() + 1, 1)
+                )
+              }
+            >
+              다음
+            </button>
+          </div>
+          <div className="calendar-weekdays">
+            {["일", "월", "화", "수", "목", "금", "토"].map((day) => (
+              <span key={day}>{day}</span>
+            ))}
+          </div>
+          <div className="calendar-grid">
+            {calendarDays.map((date) => {
+              const dateString = toDateString(date);
+              const isSelected = dateString === selectedDate;
+              const isOutsideMonth = date.getMonth() !== visibleMonth.getMonth();
+              const dayLogs = focusLogs.filter((log) => log.work_date === dateString);
+              const totalMinutes = Math.floor(
+                dayLogs.reduce((sum, log) => sum + log.seconds, 0) / 60
+              );
+
+              return (
+                <button
+                  className={`${isSelected ? "selected" : ""} ${
+                    isOutsideMonth ? "outside-month" : ""
+                  }`}
+                  key={dateString}
+                  type="button"
+                  onClick={() => showDate(dateString)}
+                >
+                  <span>{date.getDate()}</span>
+                  <span className="calendar-badges">
+                    {dayLogs.length > 0 ? <em className="open-count">{dayLogs.length}</em> : null}
+                    {totalMinutes > 0 ? (
+                      <em className="completed-count">{totalMinutes}m</em>
+                    ) : null}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
       <div className="focus-program-list">
@@ -456,15 +675,17 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
                   {formatSeconds(stats.seconds)} · {stats.xp} XP
                 </strong>
               </div>
-              <button
-                className="focus-window-delete-button"
-                type="button"
-                aria-label={`${stats.displayName || "작업창"} 기록 삭제`}
-                title="기록 삭제"
-                onClick={() => deleteWindowStats(key)}
-              >
-                <X size={15} />
-              </button>
+              {isViewingToday ? (
+                <button
+                  className="focus-window-delete-button"
+                  type="button"
+                  aria-label={`${stats.displayName || "작업창"} 기록 삭제`}
+                  title="기록 삭제"
+                  onClick={() => deleteWindowStats(key)}
+                >
+                  <X size={15} />
+                </button>
+              ) : null}
             </div>
           ))
         ) : (
@@ -474,18 +695,20 @@ export function FocusTracker({ initialTodayXp }: FocusTrackerProps) {
           </div>
         )}
       </div>
-      <div className="focus-panel-actions">
-        <span className="subtle">{isRunning && !isEligible ? "일시정지" : ""}</span>
-        {isRunning ? (
-          <button className="ghost-button" type="button" onClick={stop}>
-            <Square size={16} /> 중지
-          </button>
-        ) : (
-          <button className="primary-button" type="button" onClick={start}>
-            <MonitorPlay size={16} /> 작업창 선택
-          </button>
-        )}
-      </div>
+      {isViewingToday ? (
+        <div className="focus-panel-actions">
+          <span className="subtle">{isRunning && !isEligible ? "일시정지" : ""}</span>
+          {isRunning ? (
+            <button className="ghost-button" type="button" onClick={stop}>
+              <Square size={16} /> 중지
+            </button>
+          ) : (
+            <button className="primary-button" type="button" onClick={start}>
+              <MonitorPlay size={16} /> 작업창 선택
+            </button>
+          )}
+        </div>
+      ) : null}
     </section>
   );
 }
