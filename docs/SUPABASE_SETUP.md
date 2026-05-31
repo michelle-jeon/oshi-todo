@@ -31,12 +31,45 @@ Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 
 이 프로젝트에서는 `supabase/migrations` 폴더의 SQL 파일들이 순서대로 적용된다.
 
+새 마이그레이션 파일 이름은 아래 형식을 쓴다.
+
+```text
+YYYYMMDDHHMMSS_변경_내용.sql
+```
+
+예시:
+
+```text
+20260531212355_add_focus_window_logs.sql
+```
+
+새 DB 기능을 만들 때 기본 순서는 다음과 같다.
+
+1. `supabase/migrations`에 SQL 파일을 추가한다.
+2. 테이블에는 RLS를 켠다.
+3. 사용자 소유 데이터는 `auth.uid()` 기준 정책을 추가한다.
+4. 앱에서 직접 insert/update가 필요하면 정책을 열지 않고, 가능하면 `security definer` RPC로 좁게 만든다.
+5. 로컬 타입체크/빌드를 통과시킨다.
+6. Supabase 원격 DB에 push한다.
+
 ```bash
 npx supabase link --project-ref 프로젝트-ref
 npx supabase db push
 ```
 
 `db push`를 실행하면 아직 Supabase 프로젝트에 적용되지 않은 마이그레이션이 원격 DB에 반영된다.
+
+DB push 전에 어떤 SQL이 적용될지 불안하면 Supabase Dashboard의 SQL Editor에서 파일 내용을 먼저 검토한다. 운영 데이터가 있는 테이블에는 `drop`, `truncate`, 대량 `update`를 바로 쓰지 않는다.
+
+## Seed 데이터
+
+상점 아이템처럼 반복해서 넣어야 하는 데이터는 `data/shop-items.json`에 적고, 아래 명령으로 upsert SQL을 만든다.
+
+```bash
+npm run seed:shop-items
+```
+
+출력된 SQL은 Supabase SQL Editor에 붙여넣어 실행한다. 이 스크립트는 `on conflict (code) do update`를 쓰기 때문에 같은 아이템 코드를 여러 번 실행해도 최신 값으로 갱신된다.
 
 ## 인증 설정
 
