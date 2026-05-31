@@ -906,6 +906,10 @@ button {
   object-fit: contain;
 }
 
+.wizard-avatar-stack {
+  width: min(420px, 82%);
+}
+
 .wizard-side-stack {
   position: relative;
   min-height: 520px;

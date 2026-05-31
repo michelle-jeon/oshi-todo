@@ -93,7 +93,24 @@ export function CharacterCreateWizard() {
   return (
     <section className={`character-wizard ${step === "name" ? "naming-open" : ""}`}>
       <div className="wizard-preview-pane">
-        {asset ? (
+        {asset?.layers ? (
+          <div
+            className="avatar-layer-stack wizard-avatar-stack"
+            aria-label={`인간 캐릭터 ${asset.label} 옷`}
+          >
+            {asset.layers.map((layer) => (
+              <Image
+                className="avatar-layer"
+                key={layer.id}
+                src={layer.src}
+                alt={layer.alt}
+                width={1024}
+                height={1024}
+                priority={layer.id === "base"}
+              />
+            ))}
+          </div>
+        ) : asset ? (
           <Image
             className="wizard-character-image"
             src={asset.src}
