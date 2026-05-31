@@ -1610,6 +1610,82 @@ button {
   opacity: 0.55;
 }
 
+.xp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.xp-summary-card,
+.xp-ledger-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.xp-summary-card p,
+.xp-ledger-row p {
+  margin: 0;
+}
+
+.xp-summary-card strong {
+  font-size: 22px;
+}
+
+.xp-ledger-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.xp-ledger-panel h2 {
+  margin: 0;
+}
+
+.xp-ledger-list {
+  display: grid;
+  gap: 8px;
+}
+
+.xp-ledger-row {
+  justify-content: space-between;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.xp-ledger-row > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.xp-ledger-icon {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+}
+
+.xp-ledger-icon.gain {
+  background: #e9f5f1;
+  color: var(--primary);
+}
+
+.xp-ledger-icon.spend {
+  background: #fff2ef;
+  color: #b84730;
+}
+
+.xp-gain {
+  color: var(--primary);
+}
+
+.xp-spend {
+  color: #b84730;
+}
+
 .friend-search-panel h2,
 .friend-list-panel h2,
 .simple-grid .panel h2 {
