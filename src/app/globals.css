@@ -210,12 +210,25 @@ button {
 .todo-section-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin-bottom: 12px;
 }
 
+.todo-section-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .todo-section-header h2 {
   margin: 0;
+}
+
+.compact-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
 }
 
 .calendar-toggle {
@@ -1684,6 +1697,38 @@ button {
 
 .xp-spend {
   color: #b84730;
+}
+
+.archive-panel,
+.archive-list {
+  display: grid;
+  gap: 10px;
+}
+
+.archive-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.archive-row p {
+  margin: 3px 0 0;
+}
+
+.archive-icon {
+  width: 34px;
+  height: 34px;
+  display: inline-grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: #e9f5f1;
+  color: var(--primary);
 }
 
 .friend-search-panel h2,

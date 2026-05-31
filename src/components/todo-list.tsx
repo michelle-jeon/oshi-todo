@@ -1,6 +1,8 @@
 "use client";
 
-import { CalendarDays, GripVertical, Plus, Repeat2, Trash2, X } from "lucide-react";
+import { Archive, CalendarDays, GripVertical, Plus, Repeat2, Trash2, X } from "lucide-react";
+import Link from "next/link";
+import type { Route } from "next";
 import { useMemo, useState, useTransition } from "react";
 import { completeRoutine, createRoutine, deleteRoutine, updateRoutine } from "@/app/routine-actions";
 import {
@@ -453,15 +455,20 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   return (
     <>
       <div className="todo-section-header">
-        <button
-          className="calendar-toggle"
-          type="button"
-          aria-label="캘린더 열기"
-          onClick={() => setIsCalendarOpen((current) => !current)}
-        >
-          <CalendarDays size={20} />
-        </button>
-        <h2>오늘의 퀘스트</h2>
+        <div className="todo-section-title-row">
+          <button
+            className="calendar-toggle"
+            type="button"
+            aria-label="캘린더 열기"
+            onClick={() => setIsCalendarOpen((current) => !current)}
+          >
+            <CalendarDays size={20} />
+          </button>
+          <h2>오늘의 퀘스트</h2>
+        </div>
+        <Link className="ghost-button compact-button" href={"/todos/archive" as Route}>
+          <Archive size={16} /> 아카이브
+        </Link>
       </div>
 
       <div className={`calendar-drawer ${isCalendarOpen ? "open" : ""}`}>
