@@ -25,6 +25,26 @@ Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 
 브라우저에서 쓰는 `NEXT_PUBLIC_` 값은 완전한 비밀키가 아니다. 그래도 저장소에 올리지 않는 습관을 유지한다. 서비스 롤 키처럼 강한 권한의 키는 클라이언트 코드에 절대 넣지 않는다.
 
+## 배포 환경변수 체크리스트
+
+Vercel 같은 배포 환경에는 최소한 아래 값이 필요하다.
+
+```text
+NEXT_PUBLIC_SUPABASE_URL
+NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_GOOGLE_CLIENT_ID
+```
+
+배포 전 확인할 것:
+
+- `NEXT_PUBLIC_SUPABASE_URL`이 운영 Supabase 프로젝트 URL인지 확인.
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`가 같은 프로젝트의 publishable/anon key인지 확인.
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 Google Cloud Console의 Web OAuth Client ID인지 확인.
+- Google OAuth Authorized JavaScript origins에 운영 도메인 추가.
+- Google OAuth Authorized redirect URIs에 Supabase Google provider의 callback URL 추가.
+- Supabase Auth URL Configuration에 운영 Site URL과 redirect URL 추가.
+- `.env.local` 값과 Vercel 환경변수를 서로 복사할 때 Client Secret을 `NEXT_PUBLIC_` 이름으로 넣지 않았는지 확인.
+
 ## 마이그레이션
 
 마이그레이션은 DB 구조 변경 내역을 파일로 남기는 것이다. 예를 들어 테이블 생성, 컬럼 추가, RLS 정책 추가, RPC 함수 수정 같은 작업이 마이그레이션에 들어간다.
