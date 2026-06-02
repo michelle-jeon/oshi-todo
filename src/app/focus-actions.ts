@@ -6,6 +6,14 @@ import type { Route } from "next";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+function isMissingFocusLogSchema(error: { code?: string; message?: string }) {
+  return (
+    error.code === "PGRST202" ||
+    error.message?.includes("record_focus_window_progress") ||
+    error.message?.includes("focus_window_logs")
+  );
+}
+
 export async function awardFocusXp(amount: number) {
   await requireUser();
   const supabase = await createClient();
@@ -42,6 +50,10 @@ export async function recordFocusProgress(input: {
   });
 
   if (error) {
+    if (isMissingFocusLogSchema(error)) {
+      return;
+    }
+
     redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
   }
 

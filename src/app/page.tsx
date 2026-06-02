@@ -79,7 +79,7 @@ export default async function Home({
     { data: activeCharacter, error: characterError },
     { data: todos, error: todosError },
     { data: routines, error: routinesError },
-    { data: focusLogs, error: focusLogsError }
+    { data: focusLogs }
   ] = await Promise.all([
     supabase
       .from("characters")
@@ -139,7 +139,7 @@ export default async function Home({
 
   const progress = getLevelProgress(character?.xpTotal ?? 0);
   const spendableXp = character?.xpCurrent ?? 0;
-  const dbError = characterError ?? todosError ?? routinesError ?? focusLogsError;
+  const dbError = characterError ?? todosError ?? routinesError;
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayString = getTodayString();
   const todayFocusXp = (focusLogs ?? [])

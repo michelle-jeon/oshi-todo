@@ -51,6 +51,14 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID
 
 이 프로젝트에서는 `supabase/migrations` 폴더의 SQL 파일들이 순서대로 적용된다.
 
+홈 화면에 `Supabase DB 스키마가 아직 준비되지 않았어요` 안내가 보이면, 우선 아직 적용하지 않은 최신 SQL 파일이 있는지 확인한다. 현재 작업시간 기록 기능에는 아래 파일이 필요하다.
+
+```text
+supabase/migrations/20260531212355_add_focus_window_logs.sql
+```
+
+Supabase Dashboard의 SQL Editor에서 위 파일 내용을 실행하면 작업시간 로그 테이블과 저장 함수가 준비된다. 이 파일은 `create table if not exists`와 `create or replace function`을 쓰므로 같은 프로젝트에서 다시 실행해도 비교적 안전하다. 단, 정책이나 트리거가 이미 있으면 Supabase가 중복 이름 오류를 낼 수 있으니, 오류가 나면 어떤 줄에서 났는지 확인한 뒤 이미 만들어진 항목은 건너뛴다.
+
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 
 ```text
