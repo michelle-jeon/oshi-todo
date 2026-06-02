@@ -198,9 +198,6 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
             <small>{item.source}</small>
           </button>
         ))}
-        {purchasedItems.length === 0 ? (
-          <div className="empty-state">구매한 {selectedTab.label} 아이템이 아직 없어요.</div>
-        ) : null}
       </>
     );
   }
