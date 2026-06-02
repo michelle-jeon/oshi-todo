@@ -99,6 +99,31 @@ npm run seed:shop-items
 
 출력된 SQL은 Supabase SQL Editor에 붙여넣어 실행한다. 이 스크립트는 `on conflict (code) do update`를 쓰기 때문에 같은 아이템 코드를 여러 번 실행해도 최신 값으로 갱신된다.
 
+작업시간 과거 기록을 화면에서 확인하려면 아래 파일 내용을 Supabase SQL Editor에서 실행한다.
+
+```text
+supabase/seed_demo_focus_logs.sql
+```
+
+이 SQL은 가장 최근 profile과 그 profile의 활성 캐릭터를 찾아 최근 2주 정도의 작업시간 더미 기록을 넣는다. 같은 날짜와 작업창 조합은 `on conflict`로 덮어쓰기 때문에 여러 번 실행해도 같은 더미 기록이 계속 중복되지는 않는다.
+
+## DB 조회 효율
+
+앱에서 자주 쓰는 조회는 아래처럼 사용자와 날짜, 생성일, 구매일 기준으로 정렬된다.
+
+- 홈: 활성 캐릭터, 투두 날짜별 목록, 루틴, 작업시간 로그
+- 작업시간: 날짜별 작업창 기록
+- XP 기록: XP 이벤트와 구매 기록
+- 친구/광장: 팔로잉/팔로워, 내가 만든 광장
+
+이 경로를 위해 아래 migration에 보조 인덱스를 추가했다.
+
+```text
+supabase/migrations/20260603090000_add_query_indexes.sql
+```
+
+이 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 실행해도 되고, Supabase CLI를 쓰면 `npx supabase db push`로 반영한다.
+
 ## 인증 설정
 
 현재 앱은 Google 로그인만 지원한다.
