@@ -115,7 +115,7 @@ supabase/sql_editor/03_demo_focus_logs.sql
 supabase/sql_editor_focus_demo_setup.sql
 ```
 
-이 SQL은 가장 최근 profile과 그 profile의 활성 캐릭터를 찾아 최근 2주 정도의 작업시간 더미 기록을 넣는다. 같은 날짜와 작업창 조합은 `on conflict`로 덮어쓰기 때문에 여러 번 실행해도 같은 더미 기록이 계속 중복되지는 않는다.
+이 SQL은 가장 최근 profile과 연결된 캐릭터를 찾아 최근 2주 정도의 작업시간 더미 기록을 넣는다. 활성 캐릭터가 없으면 최근 캐릭터를 활성화하고, 캐릭터가 아예 없으면 화면 확인용 더미 캐릭터를 만든다. 같은 날짜와 작업창 조합은 `on conflict`로 덮어쓰기 때문에 여러 번 실행해도 같은 더미 기록이 계속 중복되지는 않는다.
 
 ## DB 조회 효율
 

@@ -26,7 +26,34 @@ begin
   limit 1;
 
   if target_character_id is null then
-    raise exception '활성 캐릭터가 없습니다. 먼저 앱에서 캐릭터를 만들어 주세요.';
+    select characters.id
+    into target_character_id
+    from public.characters
+    where characters.user_id = target_user_id
+    order by characters.created_at desc
+    limit 1;
+  end if;
+
+  if target_character_id is not null then
+    update public.characters
+    set is_active = true
+    where id = target_character_id;
+  else
+    insert into public.characters (
+      user_id,
+      display_name,
+      species,
+      is_active,
+      customization
+    )
+    values (
+      target_user_id,
+      '작업시간 더미 친구',
+      'human',
+      true,
+      '{"species":"human","variantId":"blue","hairColor":"#5f3d2e","outfitColor":"#4f7cff"}'::jsonb
+    )
+    returning id into target_character_id;
   end if;
 
   create temp table demo_focus_logs (
