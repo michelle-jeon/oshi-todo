@@ -35,6 +35,7 @@ export default async function PlazaRoomPage({
     supabase
       .from("characters")
       .select("display_name, species")
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle<CharacterRow>()
   ]);

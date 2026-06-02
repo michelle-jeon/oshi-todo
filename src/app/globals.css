@@ -1515,6 +1515,16 @@ button {
   margin: 0;
 }
 
+.error-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.error-panel h1,
+.error-panel p {
+  margin: 0;
+}
+
 .simple-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

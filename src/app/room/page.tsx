@@ -14,11 +14,12 @@ type CharacterRow = {
 };
 
 export default async function RoomPage() {
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
   const { data: character } = await supabase
     .from("characters")
     .select("display_name, species, customization")
+    .eq("user_id", user.id)
     .eq("is_active", true)
     .maybeSingle<CharacterRow>();
   const currentCharacter = character ?? STARTER_CHARACTER;

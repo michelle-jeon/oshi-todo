@@ -116,13 +116,26 @@ export function ShopBrowser({
 
     const variantId = inferVariantId(item);
 
-    setPreview((current) => ({
-      ...current,
-      variantId: variantId ?? current.variantId,
-      accessoryId: item.payload.accessoryId ?? current.accessoryId,
-      hairId: item.payload.hairId ?? item.payload.hairStyle ?? current.hairId,
-      eyeId: item.payload.eyeId ?? current.eyeId
-    }));
+    setPreview((current) => {
+      const nextPreview = {
+        ...current,
+        variantId: variantId ?? current.variantId,
+        accessoryId: item.payload.accessoryId ?? current.accessoryId,
+        hairId: item.payload.hairId ?? item.payload.hairStyle ?? current.hairId,
+        eyeId: item.payload.eyeId ?? current.eyeId
+      };
+
+      if (
+        nextPreview.variantId === current.variantId &&
+        nextPreview.accessoryId === current.accessoryId &&
+        nextPreview.hairId === current.hairId &&
+        nextPreview.eyeId === current.eyeId
+      ) {
+        return current;
+      }
+
+      return nextPreview;
+    });
   }
 
   function tryOnItem(item: ShopBrowserItem) {
@@ -163,8 +176,9 @@ export function ShopBrowser({
       <div className="wardrobe-preview shop-character-preview">
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${preview.displayName} 미리보기`}>
-            {asset.layers.map((layer) => (
+            {asset.layers.map((layer, index) => (
               <Image
+                priority={index === 0}
                 className="avatar-layer"
                 key={layer.id}
                 src={layer.src}
@@ -175,7 +189,13 @@ export function ShopBrowser({
             ))}
           </div>
         ) : (
-          <Image src={asset.src} alt={`${preview.displayName} 미리보기`} width={512} height={512} />
+          <Image
+            priority
+            src={asset.src}
+            alt={`${preview.displayName} 미리보기`}
+            width={512}
+            height={512}
+          />
         )}
         <div>
           <p className="subtle">현재 캐릭터</p>
