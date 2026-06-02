@@ -20,40 +20,102 @@ type WardrobeEditorProps = {
     species: CharacterSpecies;
     customization: Record<string, string>;
   };
+  inventoryItems: WardrobeInventoryItem[];
+};
+
+type WardrobeInventoryItem = {
+  id: string;
+  code: string;
+  name: string;
+  slot: string;
+  species: CharacterSpecies | null;
+  payload: Record<string, string>;
+};
+
+type WardrobeDraft = {
+  displayName: string;
+  variantId: string;
+  accessoryId: string;
+  hairId: string;
+  eyeId: string;
 };
 
 const humanTabs = [
-  { id: "hair", label: "헤어", icon: Scissors },
-  { id: "eyes", label: "눈", icon: Eye },
-  { id: "outfit", label: "옷", icon: Shirt },
-  { id: "accessory", label: "악세서리", icon: Gem }
+  { id: "hair", label: "헤어", icon: Scissors, slot: "human_hair" },
+  { id: "eyes", label: "눈", icon: Eye, slot: "human_eyes" },
+  { id: "outfit", label: "옷", icon: Shirt, slot: "human_outfit" },
+  { id: "accessory", label: "악세서리", icon: Gem, slot: "accessory" }
 ] as const;
 
 const catTabs = [
-  { id: "eyes", label: "눈", icon: Eye },
-  { id: "pattern", label: "무늬", icon: Palette },
-  { id: "accessory", label: "악세서리", icon: Gem }
+  { id: "eyes", label: "눈", icon: Eye, slot: "cat_eyes" },
+  { id: "pattern", label: "무늬", icon: Palette, slot: "cat_pattern" },
+  { id: "accessory", label: "악세서리", icon: Gem, slot: "accessory" }
 ] as const;
 
-const accessoryItems = [
-  { id: "none", label: "없음" },
-  { id: "ribbon", label: "리본" },
-  { id: "star-pin", label: "별 핀" }
-];
+const freeItems = {
+  hair: [{ id: "free-hair-basic", label: "기본", payload: { hairId: "basic" } }],
+  eyes: [{ id: "free-eyes-basic", label: "기본", payload: { eyeId: "basic" } }],
+  outfit: CHARACTER_VARIANTS.map((variant) => ({
+    id: `free-outfit-${variant.id}`,
+    label: variant.label,
+    payload: { variantId: variant.id },
+    swatch: variant.color
+  })),
+  pattern: CHARACTER_VARIANTS.map((variant) => ({
+    id: `free-pattern-${variant.id}`,
+    label: variant.label,
+    payload: { variantId: variant.id },
+    swatch: variant.color
+  })),
+  accessory: [{ id: "free-accessory-none", label: "없음", payload: { accessoryId: "none" } }]
+} satisfies Record<WardrobeTab, { id: string; label: string; payload: Record<string, string>; swatch?: string }[]>;
 
-const hairItems = [
-  { id: "basic", label: "기본" },
-  { id: "bob", label: "단발" },
-  { id: "wave", label: "웨이브" }
-];
+function inferVariantId(item: Pick<WardrobeInventoryItem, "code" | "name" | "payload">) {
+  const directVariant = item.payload.variantId;
 
-const eyeItems = [
-  { id: "basic", label: "기본" },
-  { id: "bright", label: "반짝" },
-  { id: "calm", label: "차분" }
-];
+  if (CHARACTER_VARIANTS.some((variant) => variant.id === directVariant)) {
+    return directVariant;
+  }
 
-export function WardrobeEditor({ character }: WardrobeEditorProps) {
+  const color = item.payload.outfitColor ?? item.payload.patternColor;
+  const colorVariant = CHARACTER_VARIANTS.find((variant) => variant.color.toLowerCase() === color?.toLowerCase());
+
+  if (colorVariant) {
+    return colorVariant.id;
+  }
+
+  const searchableText = `${item.code} ${item.name}`.toLowerCase();
+  const matchingVariant = CHARACTER_VARIANTS.find(
+    (variant) =>
+      searchableText.includes(variant.id) || searchableText.includes(variant.label.toLowerCase())
+  );
+
+  return matchingVariant?.id;
+}
+
+function applyPayloadToDraft(draft: WardrobeDraft, item: Pick<WardrobeInventoryItem, "code" | "name" | "payload">) {
+  return {
+    ...draft,
+    variantId: inferVariantId(item) ?? draft.variantId,
+    accessoryId: item.payload.accessoryId ?? draft.accessoryId,
+    hairId: item.payload.hairId ?? item.payload.hairStyle ?? draft.hairId,
+    eyeId: item.payload.eyeId ?? draft.eyeId
+  };
+}
+
+function isItemSelected(draft: WardrobeDraft, item: Pick<WardrobeInventoryItem, "code" | "name" | "payload">) {
+  const nextDraft = applyPayloadToDraft(draft, item);
+
+  return (
+    nextDraft.variantId === draft.variantId &&
+    nextDraft.accessoryId === draft.accessoryId &&
+    nextDraft.hairId === draft.hairId &&
+    nextDraft.eyeId === draft.eyeId
+  );
+}
+
+export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const initialState = useMemo(
@@ -73,6 +135,9 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showLeaveModal, setShowLeaveModal] = useState(false);
   const asset = getCharacterAsset(character.species, draft.variantId);
+  const tabs = character.species === "human" ? humanTabs : catTabs;
+  const selectedTab = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+  const ownedItems = inventoryItems.filter((item) => item.slot === selectedTab.slot);
   const isDirty = JSON.stringify(draft) !== JSON.stringify(initialState);
 
   function leave() {
@@ -99,34 +164,45 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
   }
 
   function renderItems() {
-    if (activeTab === "outfit" || activeTab === "pattern") {
-      return CHARACTER_VARIANTS.map((variant) => (
-        <button
-          className={`wardrobe-item ${draft.variantId === variant.id ? "selected" : ""}`}
-          key={variant.id}
-          type="button"
-          onClick={() => setDraft((current) => ({ ...current, variantId: variant.id }))}
-        >
-          <span className="swatch" style={{ background: variant.color }} />
-          <span>{variant.label}</span>
-        </button>
-      ));
-    }
+    const defaultItems = freeItems[activeTab].map((item) => ({
+      id: item.id,
+      label: item.label,
+      payload: item.payload,
+      swatch: "swatch" in item ? item.swatch : undefined,
+      code: item.id,
+      name: item.label,
+      source: "기본"
+    }));
+    const purchasedItems = ownedItems.map((item) => ({
+      id: item.id,
+      label: item.name,
+      payload: item.payload,
+      swatch: item.payload.outfitColor ?? item.payload.patternColor,
+      code: item.code,
+      name: item.name,
+      source: "보유"
+    }));
+    const items = [...defaultItems, ...purchasedItems];
 
-    const items =
-      activeTab === "accessory" ? accessoryItems : activeTab === "hair" ? hairItems : eyeItems;
-    const key = activeTab === "accessory" ? "accessoryId" : activeTab === "hair" ? "hairId" : "eyeId";
-
-    return items.map((item) => (
-      <button
-        className={`wardrobe-item ${draft[key] === item.id ? "selected" : ""}`}
-        key={item.id}
-        type="button"
-        onClick={() => setDraft((current) => ({ ...current, [key]: item.id }))}
-      >
-        <span>{item.label}</span>
-      </button>
-    ));
+    return (
+      <>
+        {items.map((item) => (
+          <button
+            className={`wardrobe-item ${isItemSelected(draft, item) ? "selected" : ""}`}
+            key={item.id}
+            type="button"
+            onClick={() => setDraft((current) => applyPayloadToDraft(current, item))}
+          >
+            {item.swatch ? <span className="swatch" style={{ background: item.swatch }} /> : null}
+            <span>{item.label}</span>
+            <small>{item.source}</small>
+          </button>
+        ))}
+        {purchasedItems.length === 0 ? (
+          <div className="empty-state">구매한 {selectedTab.label} 아이템이 아직 없어요.</div>
+        ) : null}
+      </>
+    );
   }
 
   return (
@@ -167,7 +243,7 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
       </div>
 
       <div className="wardrobe-tabs" aria-label="옷장 탭">
-        {(character.species === "human" ? humanTabs : catTabs).map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <button
