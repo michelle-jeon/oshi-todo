@@ -1,15 +1,16 @@
--- Supabase SQL Editor에 이 파일 내용을 통째로 붙여넣고 실행하세요.
--- 파일 경로를 SQL Editor에 입력하면 안 됩니다.
+-- 이 파일은 통합 실행용입니다.
+-- 복사 중간 누락이 걱정되면 supabase/sql_editor 폴더의 01, 02, 03 파일을 순서대로 실행하세요.
+-- SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 합니다.
 
 create or replace function public.touch_updated_at()
 returns trigger
 language plpgsql
-as $$
+as $touch_updated_at$
 begin
   new.updated_at = now();
   return new;
 end;
-$$;
+$touch_updated_at$;
 
 create table if not exists public.focus_window_logs (
   id uuid primary key default gen_random_uuid(),
@@ -50,9 +51,9 @@ returns public.focus_window_logs
 language plpgsql
 security definer
 set search_path = public
-as $$
+as $record_focus_window_progress$
 declare
-  active_character public.characters;
+  selected_character_id uuid;
   updated_log public.focus_window_logs;
   safe_seconds integer;
   safe_xp integer;
@@ -64,14 +65,14 @@ begin
     raise exception 'Window key is required';
   end if;
 
-  select *
-  into active_character
+  select characters.id
+  into selected_character_id
   from public.characters
-  where user_id = auth.uid()
-    and is_active = true
+  where characters.user_id = auth.uid()
+    and characters.is_active = true
   for update;
 
-  if active_character.id is null then
+  if selected_character_id is null then
     raise exception 'Active character not found';
   end if;
 
@@ -80,10 +81,10 @@ begin
     set
       xp_total = xp_total + safe_xp,
       xp_current = xp_current + safe_xp
-    where id = active_character.id;
+    where id = selected_character_id;
 
     insert into public.xp_events (user_id, character_id, amount, reason)
-    values (auth.uid(), active_character.id, safe_xp, 'focus_window');
+    values (auth.uid(), selected_character_id, safe_xp, 'focus_window');
   end if;
 
   insert into public.focus_window_logs (
@@ -98,7 +99,7 @@ begin
   )
   values (
     auth.uid(),
-    active_character.id,
+    selected_character_id,
     work_date_input,
     window_key_input,
     display_name_input,
@@ -118,7 +119,7 @@ begin
 
   return updated_log;
 end;
-$$;
+$record_focus_window_progress$;
 
 do $$
 begin

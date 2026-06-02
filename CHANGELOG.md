@@ -6,6 +6,12 @@
 
 - 아직 없음.
 
+## 0.2.12 - 2026-06-03
+
+- Supabase SQL Editor 실행용 작업시간 SQL을 3단계 파일로 분리했다.
+- 긴 SQL 복사 중 함수가 잘려 `unterminated dollar-quoted string` 오류가 나는 상황을 줄였다.
+- 작업시간 저장 함수에서 캐릭터 row 변수 대신 캐릭터 id만 쓰도록 단순화했다.
+
 ## 0.2.11 - 2026-06-03
 
 - Supabase SQL Editor에 바로 붙여넣어 실행할 수 있는 작업시간 통합 SQL을 추가했다.
