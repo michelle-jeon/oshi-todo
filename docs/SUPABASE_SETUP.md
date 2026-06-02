@@ -134,6 +134,12 @@ supabase/migrations/20260603090000_add_query_indexes.sql
 
 이 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 실행해도 되고, Supabase CLI를 쓰면 `npx supabase db push`로 반영한다.
 
+루틴 종료 기능과 투두 생성 정렬 조회 인덱스는 아래 SQL Editor 파일로도 반영할 수 있다.
+
+```text
+supabase/sql_editor/04_routine_end_and_indexes.sql
+```
+
 ## 인증 설정
 
 현재 앱은 Google 로그인만 지원한다.

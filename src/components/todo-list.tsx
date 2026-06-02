@@ -1,10 +1,16 @@
 "use client";
 
-import { Archive, CalendarDays, GripVertical, Plus, Repeat2, Trash2, X } from "lucide-react";
+import { Archive, CalendarDays, GripVertical, Plus, Repeat2, Square, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useMemo, useState, useTransition } from "react";
-import { completeRoutine, createRoutine, deleteRoutine, updateRoutine } from "@/app/routine-actions";
+import {
+  completeRoutine,
+  createRoutine,
+  deleteRoutine,
+  endRoutine,
+  updateRoutine
+} from "@/app/routine-actions";
 import {
   createTodo,
   deleteTodo,
@@ -32,6 +38,7 @@ export type RoutineListItem = {
   xp_reward: number;
   is_active: boolean;
   starts_on: string;
+  ends_on: string | null;
 };
 
 type TodoListProps = {
@@ -86,6 +93,15 @@ const weekdayOptions = [
   { label: "일", value: 0 }
 ];
 
+function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, weekday: number) {
+  return (
+    routine.starts_on <= dateString &&
+    (!routine.ends_on || dateString < routine.ends_on) &&
+    (routine.is_active || Boolean(routine.ends_on)) &&
+    (routine.frequency === "daily" || routine.weekdays.includes(weekday))
+  );
+}
+
 export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }: TodoListProps) {
   const [todos, setTodos] = useState(initialTodos);
   const [routines, setRoutines] = useState(initialRoutines);
@@ -98,6 +114,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
+  const [endingRoutine, setEndingRoutine] = useState<RoutineListItem | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
   const [titleBackups, setTitleBackups] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -116,10 +133,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   );
   const selectedRoutines = routines.filter(
     (routine) =>
-      routine.is_active &&
-      routine.starts_on <= selectedDate &&
-      !selectedRoutineIds.has(routine.id) &&
-      (routine.frequency === "daily" || routine.weekdays.includes(selectedWeekday))
+      isRoutineAvailableOnDate(routine, selectedDate, selectedWeekday) &&
+      !selectedRoutineIds.has(routine.id)
   );
   const calendarDays = getCalendarDays(visibleMonth);
   const monthLabel = new Intl.DateTimeFormat("ko-KR", {
@@ -192,7 +207,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       weekdays,
       xp_reward: 10,
       is_active: true,
-      starts_on: initialSelectedDate
+      starts_on: selectedDate,
+      ends_on: null
     };
 
     const previousRoutines = routines;
@@ -234,6 +250,52 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         setRoutines(previousRoutines);
         reportActionError(result.error);
       }
+    });
+  }
+
+  function handleEndRoutine() {
+    if (!endingRoutine) {
+      return;
+    }
+
+    const routineToEnd = endingRoutine;
+    const previousRoutines = routines;
+    const formData = new FormData();
+    formData.set("todoDate", selectedDate);
+
+    setRoutines((current) =>
+      current.map((routine) =>
+        routine.id === routineToEnd.id
+          ? {
+              ...routine,
+              is_active: false,
+              ends_on: selectedDate
+            }
+          : routine
+      )
+    );
+    setEndingRoutine(null);
+    setOperationMessage(null);
+
+    if (routineToEnd.id.startsWith("temp-")) {
+      return;
+    }
+
+    startTransition(async () => {
+      const result = await endRoutine(routineToEnd.id, formData);
+
+      if (result.ok) {
+        setRoutines((current) =>
+          current.map((routine) =>
+            routine.id === routineToEnd.id ? (result.data as RoutineListItem) : routine
+          )
+        );
+        return;
+      }
+
+      setRoutines(previousRoutines);
+      setEndingRoutine(routineToEnd);
+      reportActionError(result.error);
     });
   }
 
@@ -656,10 +718,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               const weekday = date.getDay();
               const routineCount = routines.filter(
                 (routine) =>
-                  routine.is_active &&
-                  routine.starts_on <= dateString &&
-                  !routineIdsForDate.has(routine.id) &&
-                  (routine.frequency === "daily" || routine.weekdays.includes(weekday))
+                  isRoutineAvailableOnDate(routine, dateString, weekday) &&
+                  !routineIdsForDate.has(routine.id)
               ).length;
               const openCount =
                 dayTodos.filter((todo) => todo.status === "open").length + routineCount;
@@ -709,6 +769,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           </h3>
         </div>
         <form className="routine-form" action={handleCreateRoutine}>
+          <input type="hidden" name="todoDate" value={selectedDate} />
           <input
             name="title"
             placeholder="반복할 일을 입력하세요"
@@ -777,8 +838,18 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
                 <button
                   className="icon-button secondary"
                   type="button"
+                  onClick={() => setEndingRoutine(routine)}
+                  aria-label="루틴 종료"
+                  title="루틴 종료"
+                >
+                  <Square size={16} />
+                </button>
+                <button
+                  className="icon-button secondary"
+                  type="button"
                   onClick={() => handleDeleteRoutine(routine.id)}
                   aria-label="루틴 삭제"
+                  title="루틴 삭제"
                 >
                   <Trash2 size={16} />
                 </button>
@@ -865,6 +936,28 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               </button>
             </div>
           </form>
+        </div>
+      ) : null}
+
+      {endingRoutine ? (
+        <div className="modal-backdrop" onClick={() => setEndingRoutine(null)}>
+          <div
+            className="confirm-modal routine-end-modal"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>루틴 종료</h2>
+            <p>
+              {selectedDate}부로 <strong>{endingRoutine.title}</strong> 루틴을 종료하시겠습니까?
+            </p>
+            <div className="form-actions">
+              <button className="ghost-button" type="button" onClick={() => setEndingRoutine(null)}>
+                취소
+              </button>
+              <button className="primary-button danger-button" type="button" onClick={handleEndRoutine}>
+                종료
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </>

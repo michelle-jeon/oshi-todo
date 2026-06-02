@@ -54,6 +54,7 @@ type RoutineRowData = {
   xp_reward: number;
   is_active: boolean;
   starts_on: string;
+  ends_on: string | null;
 };
 
 function getTodayString() {
@@ -96,8 +97,7 @@ export default async function Home({
       .returns<TodoRowData[]>(),
     supabase
       .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on")
-      .eq("is_active", true)
+      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>(),
     supabase

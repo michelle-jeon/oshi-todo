@@ -9,6 +9,17 @@ type ActionResult<T = null> =
   | { ok: true; data: T }
   | { ok: false; error: string };
 
+type RoutineData = {
+  id: string;
+  title: string;
+  frequency: "daily" | "weekly";
+  weekdays: number[];
+  xp_reward: number;
+  is_active: boolean;
+  starts_on: string;
+  ends_on: string | null;
+};
+
 function cleanRoutineInput(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
   const frequency = String(formData.get("frequency") ?? "daily") === "weekly" ? "weekly" : "daily";
@@ -34,6 +45,7 @@ export async function createRoutine(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const { title, frequency, weekdays } = cleanRoutineInput(formData);
+  const todoDate = cleanTodoDate(formData);
 
   if (!title) {
     return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
@@ -46,10 +58,11 @@ export async function createRoutine(formData: FormData) {
       title,
       frequency,
       weekdays: frequency === "weekly" ? weekdays : [],
-      starts_on: new Date().toISOString().slice(0, 10)
+      starts_on: todoDate,
+      ends_on: null
     })
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on")
-    .single();
+    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .single<RoutineData>();
 
   if (error) {
     return { ok: false, error: error.message } satisfies ActionResult;
@@ -76,8 +89,8 @@ export async function updateRoutine(routineId: string, formData: FormData) {
       weekdays: frequency === "weekly" ? weekdays : []
     })
     .eq("id", routineId)
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on")
-    .single();
+    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .single<RoutineData>();
 
   if (error) {
     return { ok: false, error: error.message } satisfies ActionResult;
@@ -94,14 +107,24 @@ export async function completeRoutine(routineId: string, formData: FormData) {
 
   const { data: routine, error: routineError } = await supabase
     .from("routines")
-    .select("id, title, xp_reward")
+    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
     .eq("id", routineId)
     .eq("user_id", user.id)
-    .eq("is_active", true)
-    .single<{ id: string; title: string; xp_reward: number }>();
+    .single<RoutineData>();
 
   if (routineError || !routine) {
     return { ok: false, error: "루틴을 찾을 수 없어요." } satisfies ActionResult;
+  }
+
+  const routineWeekday = new Date(`${todoDate}T00:00:00`).getDay();
+  const appliesToDate =
+    routine.starts_on <= todoDate &&
+    (!routine.ends_on || todoDate < routine.ends_on) &&
+    (routine.is_active || Boolean(routine.ends_on)) &&
+    (routine.frequency === "daily" || routine.weekdays.includes(routineWeekday));
+
+  if (!appliesToDate) {
+    return { ok: false, error: "이 날짜에는 적용되지 않는 루틴이에요." } satisfies ActionResult;
   }
 
   const { data: latestTodo } = await supabase
@@ -176,4 +199,28 @@ export async function deleteRoutine(routineId: string) {
 
   revalidatePath("/");
   return { ok: true, data: null } satisfies ActionResult;
+}
+
+export async function endRoutine(routineId: string, formData: FormData) {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const endsOn = cleanTodoDate(formData);
+
+  const { data, error } = await supabase
+    .from("routines")
+    .update({
+      is_active: false,
+      ends_on: endsOn
+    })
+    .eq("id", routineId)
+    .eq("user_id", user.id)
+    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .single<RoutineData>();
+
+  if (error) {
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
 }

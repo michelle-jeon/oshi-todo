@@ -45,15 +45,18 @@ export function GoogleAuthButton() {
     () => typeof window !== "undefined" && Boolean(window.google?.accounts)
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleCredential = useCallback(
     async (response: GoogleCredentialResponse) => {
       if (!response.credential) {
         setErrorMessage("Google 로그인 응답을 받지 못했어요. 다시 시도해 주세요.");
+        setIsSigningIn(false);
         return;
       }
 
       setErrorMessage(null);
+      setIsSigningIn(true);
       const supabase = createClient();
       const { error } = await supabase.auth.signInWithIdToken({
         provider: "google",
@@ -62,6 +65,7 @@ export function GoogleAuthButton() {
 
       if (error) {
         setErrorMessage(error.message);
+        setIsSigningIn(false);
         return;
       }
 
@@ -135,6 +139,13 @@ export function GoogleAuthButton() {
       ) : null}
       <div className="google-button-host" ref={buttonRef} aria-live="polite" />
       {errorMessage ? <p className="auth-error">{errorMessage}</p> : null}
+      {isSigningIn ? (
+        <div className="login-splash" role="status" aria-live="polite">
+          <div className="login-splash-logo-slot" aria-label="OshiTodo 로딩">
+            OshiTodo
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
