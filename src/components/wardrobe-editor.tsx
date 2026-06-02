@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import { Eye, Gem, Palette, Scissors, Shirt } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
@@ -134,18 +135,20 @@ export function WardrobeEditor({ character }: WardrobeEditorProps) {
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${draft.displayName} 미리보기`}>
             {asset.layers.map((layer) => (
-              <Image
+              <img
                 className="avatar-layer"
                 key={layer.id}
                 src={layer.src}
                 alt={layer.alt}
-                width={1024}
-                height={1024}
               />
             ))}
           </div>
         ) : (
-          <Image src={asset.src} alt={`${draft.displayName} 미리보기`} width={512} height={512} />
+          <img
+            className="avatar-image"
+            src={asset.src}
+            alt={`${draft.displayName} 미리보기`}
+          />
         )}
         <div>
           <p className="subtle">현재 캐릭터</p>

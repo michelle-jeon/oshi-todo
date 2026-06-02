@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import { Cat, Check, Eye, Gem, Scissors, Shirt, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
@@ -99,25 +100,19 @@ export function CharacterCreateWizard() {
             aria-label={`인간 캐릭터 ${asset.label} 옷`}
           >
             {asset.layers.map((layer) => (
-              <Image
+              <img
                 className="avatar-layer"
                 key={layer.id}
                 src={layer.src}
                 alt={layer.alt}
-                width={1024}
-                height={1024}
-                priority={layer.id === "base"}
               />
             ))}
           </div>
         ) : asset ? (
-          <Image
+          <img
             className="wizard-character-image"
             src={asset.src}
             alt={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label}`}
-            width={512}
-            height={512}
-            priority
           />
         ) : null}
       </div>

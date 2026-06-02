@@ -1,4 +1,5 @@
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import type { Route } from "next";
@@ -75,23 +76,19 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
                   {asset.layers ? (
                     <div className="avatar-layer-stack slot-layer-stack">
                       {asset.layers.map((layer) => (
-                        <Image
+                        <img
                           className="avatar-layer"
                           key={layer.id}
                           src={layer.src}
                           alt={layer.alt}
-                          width={1024}
-                          height={1024}
                         />
                       ))}
                     </div>
                   ) : (
-                    <Image
+                    <img
                       className="avatar-image"
                       src={asset.src}
                       alt={character.display_name}
-                      width={512}
-                      height={512}
                     />
                   )}
                 </div>
