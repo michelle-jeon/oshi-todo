@@ -1,6 +1,7 @@
 "use client";
 
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import { Eye, Gem, Palette, Scissors, Shirt } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
@@ -177,24 +178,19 @@ export function ShopBrowser({
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${preview.displayName} 미리보기`}>
             {asset.layers.map((layer) => (
-              <Image
-                priority
+              <img
                 className="avatar-layer"
                 key={layer.id}
                 src={layer.src}
                 alt={layer.alt}
-                width={1024}
-                height={1024}
               />
             ))}
           </div>
         ) : (
-          <Image
-            priority
+          <img
+            className="avatar-image"
             src={asset.src}
             alt={`${preview.displayName} 미리보기`}
-            width={512}
-            height={512}
           />
         )}
         <div>

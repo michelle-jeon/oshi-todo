@@ -1,4 +1,5 @@
-import Image from "next/image";
+/* eslint-disable @next/next/no-img-element */
+
 import { getCharacterAsset, type CharacterSpecies } from "@/lib/character-assets";
 
 type CharacterShowcaseProps = {
@@ -17,25 +18,19 @@ export function CharacterShowcase({ species, variantId }: CharacterShowcaseProps
           aria-label={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label} 색상`}
         >
           {asset.layers.map((layer) => (
-            <Image
-              priority
+            <img
               className="avatar-layer"
               key={layer.id}
               src={layer.src}
               alt={layer.alt}
-              width={1024}
-              height={1024}
             />
           ))}
         </div>
       ) : (
-        <Image
-          priority
+        <img
           className="avatar-image"
           src={asset.src}
           alt={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label} 색상`}
-          width={512}
-          height={512}
         />
       )}
     </div>
