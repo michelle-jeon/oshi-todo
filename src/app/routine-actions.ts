@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import type { Route } from "next";
 import { DEFAULT_TODO_XP } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+
+type ActionResult<T = null> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
 
 function cleanRoutineInput(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
@@ -34,7 +36,7 @@ export async function createRoutine(formData: FormData) {
   const { title, frequency, weekdays } = cleanRoutineInput(formData);
 
   if (!title) {
-    redirect("/?message=루틴 이름을 입력해 주세요." as Route);
+    return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
   }
 
   const { data, error } = await supabase
@@ -50,11 +52,11 @@ export async function createRoutine(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
-  return data;
+  return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
 export async function updateRoutine(routineId: string, formData: FormData) {
@@ -63,7 +65,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
   const { title, frequency, weekdays } = cleanRoutineInput(formData);
 
   if (!title) {
-    redirect("/?message=루틴 이름을 입력해 주세요." as Route);
+    return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
   }
 
   const { data, error } = await supabase
@@ -78,11 +80,11 @@ export async function updateRoutine(routineId: string, formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
-  return data;
+  return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
 export async function completeRoutine(routineId: string, formData: FormData) {
@@ -99,7 +101,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
     .single<{ id: string; title: string; xp_reward: number }>();
 
   if (routineError || !routine) {
-    redirect("/?message=루틴을 찾을 수 없어요." as Route);
+    return { ok: false, error: "루틴을 찾을 수 없어요." } satisfies ActionResult;
   }
 
   const { data: latestTodo } = await supabase
@@ -120,7 +122,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
     .maybeSingle<{ id: string; status: "open" | "completed" | "archived" }>();
 
   if (existingTodo?.status === "completed") {
-    redirect("/?message=이미 완료한 루틴이에요." as Route);
+    return { ok: false, error: "이미 완료한 루틴이에요." } satisfies ActionResult;
   }
 
   const { data: todo, error } = existingTodo
@@ -139,7 +141,10 @@ export async function completeRoutine(routineId: string, formData: FormData) {
         .single<{ id: string }>();
 
   if (error || !todo) {
-    redirect(`/?message=${encodeURIComponent(error?.message ?? "루틴을 완료할 수 없어요.")}` as Route);
+    return {
+      ok: false,
+      error: error?.message ?? "루틴을 완료할 수 없어요."
+    } satisfies ActionResult;
   }
 
   const { error: completeError } = await supabase.rpc("complete_todo", {
@@ -147,7 +152,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
   });
 
   if (completeError) {
-    redirect(`/?message=${encodeURIComponent(completeError.message)}` as Route);
+    return { ok: false, error: completeError.message } satisfies ActionResult;
   }
 
   const { data: completedTodo } = await supabase
@@ -157,7 +162,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
     .single();
 
   revalidatePath("/");
-  return completedTodo;
+  return { ok: true, data: completedTodo } satisfies ActionResult<typeof completedTodo>;
 }
 
 export async function deleteRoutine(routineId: string) {
@@ -166,8 +171,9 @@ export async function deleteRoutine(routineId: string) {
   const { error } = await supabase.from("routines").delete().eq("id", routineId);
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
+  return { ok: true, data: null } satisfies ActionResult;
 }

@@ -1,7 +1,9 @@
-# Changelog
+# 변경 기록
 
-## Unreleased
+## 다음 릴리스 준비 중
 
+- 투두/루틴 낙관적 UI가 서버 실패 시 이전 상태로 복구되게 했다.
+- 투두/루틴 서버 액션 오류를 페이지 이동 대신 화면 안의 메시지로 표시하게 했다.
 - 캐릭터 방 메뉴 위치를 캐릭터 메뉴로 옮겼다.
 - 루틴 완료/수정 흐름을 추가하고, 루틴 완료가 실제 투두와 XP로 기록되게 바꿨다.
 - 캘린더에 년월 선택 모달과 완료/미완료 배지를 추가했다.
@@ -21,5 +23,5 @@
 
 ## 0.1.0
 
-- Started OshiTodo MVP.
-- Added Supabase auth, character creation, todo CRUD, XP, wardrobe, shop, and focus XP experiments.
+- OshiTodo MVP를 시작했다.
+- Supabase 인증, 캐릭터 생성, 투두 CRUD, XP, 옷장, 상점, 작업 XP 실험을 추가했다.

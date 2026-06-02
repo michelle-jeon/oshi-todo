@@ -98,6 +98,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
+  const [operationMessage, setOperationMessage] = useState<string | null>(null);
+  const [titleBackups, setTitleBackups] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const selectedTodos = useMemo(
@@ -128,6 +130,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const visibleMonthIndex = visibleMonth.getMonth();
   const yearOptions = Array.from({ length: 9 }, (_, index) => visibleYear - 4 + index);
 
+  function reportActionError(message: string) {
+    setOperationMessage(message);
+  }
+
   function handleCreate(formData: FormData) {
     const title = String(formData.get("title") ?? "").trim();
 
@@ -148,19 +154,26 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       routine_id: null
     };
 
+    const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
+    setOperationMessage(null);
 
     startTransition(async () => {
-      const savedTodo = await createTodo(formData);
+      const result = await createTodo(formData);
 
-      if (savedTodo) {
+      if (result.ok) {
         setTodos((current) =>
           current.map((todo) =>
-            todo.id === optimisticId ? (savedTodo as TodoListItem) : todo
+            todo.id === optimisticId ? (result.data as TodoListItem) : todo
           )
         );
+        return;
       }
+
+      setTodos(previousTodos);
+      setNewTitle(title);
+      reportActionError(result.error);
     });
   }
 
@@ -182,31 +195,45 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       starts_on: initialSelectedDate
     };
 
+    const previousRoutines = routines;
     setRoutines((current) => [optimisticRoutine, ...current]);
     setRoutineTitle("");
+    setOperationMessage(null);
 
     startTransition(async () => {
-      const savedRoutine = await createRoutine(formData);
+      const result = await createRoutine(formData);
 
-      if (savedRoutine) {
+      if (result.ok) {
         setRoutines((current) =>
           current.map((routine) =>
-            routine.id === optimisticRoutine.id ? (savedRoutine as RoutineListItem) : routine
+            routine.id === optimisticRoutine.id ? (result.data as RoutineListItem) : routine
           )
         );
+        return;
       }
+
+      setRoutines(previousRoutines);
+      setRoutineTitle(title);
+      reportActionError(result.error);
     });
   }
 
   function handleDeleteRoutine(routineId: string) {
+    const previousRoutines = routines;
     setRoutines((current) => current.filter((routine) => routine.id !== routineId));
+    setOperationMessage(null);
 
     if (routineId.startsWith("temp-")) {
       return;
     }
 
     startTransition(async () => {
-      await deleteRoutine(routineId);
+      const result = await deleteRoutine(routineId);
+
+      if (!result.ok) {
+        setRoutines(previousRoutines);
+        reportActionError(result.error);
+      }
     });
   }
 
@@ -225,18 +252,24 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const formData = new FormData();
     formData.set("todoDate", selectedDate);
 
+    const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
+    setOperationMessage(null);
 
     startTransition(async () => {
-      const savedTodo = await completeRoutine(routine.id, formData);
+      const result = await completeRoutine(routine.id, formData);
 
-      if (savedTodo) {
+      if (result.ok && result.data) {
         setTodos((current) =>
           current.map((todo) =>
-            todo.id === optimisticId ? (savedTodo as TodoListItem) : todo
+            todo.id === optimisticId ? (result.data as TodoListItem) : todo
           )
         );
+        return;
       }
+
+      setTodos(previousTodos);
+      reportActionError(result.ok ? "루틴을 완료할 수 없어요." : result.error);
     });
   }
 
@@ -263,21 +296,28 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       weekdays: frequency === "weekly" ? weekdays : []
     };
 
+    const previousRoutines = routines;
     setRoutines((current) =>
       current.map((routine) => (routine.id === editingRoutine.id ? nextRoutine : routine))
     );
     setEditingRoutine(null);
+    setOperationMessage(null);
 
     startTransition(async () => {
-      const savedRoutine = await updateRoutine(nextRoutine.id, formData);
+      const result = await updateRoutine(nextRoutine.id, formData);
 
-      if (savedRoutine) {
+      if (result.ok) {
         setRoutines((current) =>
           current.map((routine) =>
-            routine.id === nextRoutine.id ? (savedRoutine as RoutineListItem) : routine
+            routine.id === nextRoutine.id ? (result.data as RoutineListItem) : routine
           )
         );
+        return;
       }
+
+      setRoutines(previousRoutines);
+      setEditingRoutine(editingRoutine);
+      reportActionError(result.error);
     });
   }
 
@@ -295,6 +335,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     }
 
     const nextStatus = todo.status === "completed" ? "open" : "completed";
+    const previousTodos = todos;
 
     setTodos((current) =>
       current.map((item) =>
@@ -305,23 +346,36 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               completed_at: nextStatus === "completed" ? new Date().toISOString() : null
             }
           : item
-      )
+        )
     );
+    setOperationMessage(null);
 
     startTransition(async () => {
-      await toggleTodo(todo.id, nextStatus);
+      const result = await toggleTodo(todo.id, nextStatus);
+
+      if (!result.ok) {
+        setTodos(previousTodos);
+        reportActionError(result.error);
+      }
     });
   }
 
   function handleDelete(todoId: string) {
+    const previousTodos = todos;
     setTodos((current) => current.filter((item) => item.id !== todoId));
+    setOperationMessage(null);
 
     if (todoId.startsWith("temp-")) {
       return;
     }
 
     startTransition(async () => {
-      await deleteTodo(todoId);
+      const result = await deleteTodo(todoId);
+
+      if (!result.ok) {
+        setTodos(previousTodos);
+        reportActionError(result.error);
+      }
     });
   }
 
@@ -336,11 +390,27 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       return;
     }
 
+    const previousTitle = titleBackups[todoId] ?? title;
     const formData = new FormData();
     formData.set("title", title);
+    setOperationMessage(null);
 
     startTransition(async () => {
-      await updateTodoTitle(todoId, formData);
+      const result = await updateTodoTitle(todoId, formData);
+
+      if (!result.ok) {
+        setTodos((current) =>
+          current.map((item) => (item.id === todoId ? { ...item, title: previousTitle } : item))
+        );
+        reportActionError(result.error);
+        return;
+      }
+
+      setTitleBackups((current) => {
+        const next = { ...current };
+        delete next[todoId];
+        return next;
+      });
     });
   }
 
@@ -361,6 +431,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const [moved] = reordered.splice(fromIndex, 1);
     reordered.splice(toIndex, 0, moved);
     const reorderedIds = reordered.map((todo) => todo.id);
+    const previousTodos = todos;
 
     setTodos((current) =>
       current.map((todo) => {
@@ -376,7 +447,12 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
     if (shouldPersist) {
       startTransition(async () => {
-        await reorderTodos(reorderedIds.filter((todoId) => !todoId.startsWith("temp-")));
+        const result = await reorderTodos(reorderedIds.filter((todoId) => !todoId.startsWith("temp-")));
+
+        if (!result.ok) {
+          setTodos(previousTodos);
+          reportActionError(result.error);
+        }
       });
     }
   }
@@ -388,7 +464,11 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
     setDraggingId(null);
     startTransition(async () => {
-      await reorderTodos(persistedIds);
+      const result = await reorderTodos(persistedIds);
+
+      if (!result.ok) {
+        reportActionError(result.error);
+      }
     });
   }
 
@@ -425,6 +505,11 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <input
               className="inline-title-input"
               value={todo.title}
+              onFocus={() =>
+                setTitleBackups((current) =>
+                  todo.id in current ? current : { ...current, [todo.id]: todo.title }
+                )
+              }
               onChange={(event) => handleTitleChange(todo.id, event.target.value)}
               onBlur={(event) => handleTitleCommit(todo.id, event.target.value)}
               onKeyDown={(event) => {
@@ -470,6 +555,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <Archive size={16} /> 아카이브
         </Link>
       </div>
+
+      {operationMessage ? <p className="notice compact-notice">{operationMessage}</p> : null}
 
       <div className={`calendar-drawer ${isCalendarOpen ? "open" : ""}`}>
         <div className="calendar-card">

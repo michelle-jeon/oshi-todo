@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import type { Route } from "next";
 import { DEFAULT_TODO_XP } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+
+type ActionResult<T = null> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };
 
 function cleanTitle(formData: FormData) {
   return String(formData.get("title") ?? "").trim().slice(0, 160);
@@ -34,7 +36,7 @@ export async function createTodo(formData: FormData) {
   const todoDate = cleanTodoDate(formData);
 
   if (!title) {
-    redirect("/?message=할 일을 입력해 주세요." as Route);
+    return { ok: false, error: "할 일을 입력해 주세요." } satisfies ActionResult;
   }
 
   const { data: latestTodo } = await supabase
@@ -59,18 +61,18 @@ export async function createTodo(formData: FormData) {
     .single();
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
-  return data;
+  return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
 export async function toggleTodo(todoId: string, nextStatus: "open" | "completed") {
   await requireUser();
 
   if (!isUuid(todoId)) {
-    return;
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
   }
 
   const supabase = await createClient();
@@ -85,24 +87,25 @@ export async function toggleTodo(todoId: string, nextStatus: "open" | "completed
         });
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
+  return { ok: true, data: null } satisfies ActionResult;
 }
 
 export async function updateTodoTitle(todoId: string, formData: FormData) {
   await requireUser();
 
   if (!isUuid(todoId)) {
-    return;
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
   }
 
   const supabase = await createClient();
   const title = cleanTitle(formData);
 
   if (!title) {
-    redirect("/?message=할 일을 비워둘 수 없어요." as Route);
+    return { ok: false, error: "할 일을 비워둘 수 없어요." } satisfies ActionResult;
   }
 
   const { error } = await supabase
@@ -112,17 +115,18 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     .eq("status", "open");
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
+  return { ok: true, data: null } satisfies ActionResult;
 }
 
 export async function deleteTodo(todoId: string) {
   await requireUser();
 
   if (!isUuid(todoId)) {
-    return;
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
   }
 
   const supabase = await createClient();
@@ -130,10 +134,11 @@ export async function deleteTodo(todoId: string) {
   const { error } = await supabase.from("todos").delete().eq("id", todoId);
 
   if (error) {
-    redirect(`/?message=${encodeURIComponent(error.message)}` as Route);
+    return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
+  return { ok: true, data: null } satisfies ActionResult;
 }
 
 export async function reorderTodos(todoIds: string[]) {
@@ -141,7 +146,7 @@ export async function reorderTodos(todoIds: string[]) {
   const supabase = await createClient();
   const persistedTodoIds = todoIds.filter(isUuid);
 
-  await Promise.all(
+  const results = await Promise.all(
     persistedTodoIds.map((todoId, index) =>
       supabase
         .from("todos")
@@ -150,6 +155,12 @@ export async function reorderTodos(todoIds: string[]) {
         .eq("status", "open")
     )
   );
+  const error = results.find((result) => result.error)?.error;
+
+  if (error) {
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
 
   revalidatePath("/");
+  return { ok: true, data: null } satisfies ActionResult;
 }
