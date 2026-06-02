@@ -1,7 +1,6 @@
 "use client";
 
 import Script from "next/script";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -32,14 +31,16 @@ declare global {
     google?: {
       accounts?: GoogleAccounts;
     };
+    __oshiGoogleCredentialHandler?: (response: GoogleCredentialResponse) => void;
+    __oshiGoogleInitializedClientId?: string;
   }
 }
 
 const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
 export function GoogleAuthButton() {
-  const router = useRouter();
   const buttonRef = useRef<HTMLDivElement>(null);
+  const renderedButtonRef = useRef(false);
   const [scriptReady, setScriptReady] = useState(
     () => typeof window !== "undefined" && Boolean(window.google?.accounts)
   );
@@ -64,11 +65,14 @@ export function GoogleAuthButton() {
         return;
       }
 
-      router.replace("/");
-      router.refresh();
+      window.location.replace("/");
     },
-    [router]
+    []
   );
+
+  useEffect(() => {
+    window.__oshiGoogleCredentialHandler = handleCredential;
+  }, [handleCredential]);
 
   useEffect(() => {
     if (!scriptReady || !buttonRef.current || !googleClientId) {
@@ -81,11 +85,21 @@ export function GoogleAuthButton() {
       return;
     }
 
+    if (window.__oshiGoogleInitializedClientId !== googleClientId) {
+      googleAccounts.id.initialize({
+        client_id: googleClientId,
+        callback(response) {
+          window.__oshiGoogleCredentialHandler?.(response);
+        }
+      });
+      window.__oshiGoogleInitializedClientId = googleClientId;
+    }
+
+    if (renderedButtonRef.current) {
+      return;
+    }
+
     buttonRef.current.innerHTML = "";
-    googleAccounts.id.initialize({
-      client_id: googleClientId,
-      callback: handleCredential
-    });
     googleAccounts.id.renderButton(buttonRef.current, {
       theme: "outline",
       size: "large",
@@ -93,7 +107,8 @@ export function GoogleAuthButton() {
       shape: "rectangular",
       width: 320
     });
-  }, [handleCredential, scriptReady]);
+    renderedButtonRef.current = true;
+  }, [scriptReady]);
 
   if (!googleClientId) {
     return (

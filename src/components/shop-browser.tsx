@@ -176,9 +176,9 @@ export function ShopBrowser({
       <div className="wardrobe-preview shop-character-preview">
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${preview.displayName} 미리보기`}>
-            {asset.layers.map((layer, index) => (
+            {asset.layers.map((layer) => (
               <Image
-                priority={index === 0}
+                priority
                 className="avatar-layer"
                 key={layer.id}
                 src={layer.src}

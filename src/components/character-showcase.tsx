@@ -16,9 +16,9 @@ export function CharacterShowcase({ species, variantId }: CharacterShowcaseProps
           className="avatar-layer-stack"
           aria-label={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label} 색상`}
         >
-          {asset.layers.map((layer, index) => (
+          {asset.layers.map((layer) => (
             <Image
-              priority={index === 0}
+              priority
               className="avatar-layer"
               key={layer.id}
               src={layer.src}
