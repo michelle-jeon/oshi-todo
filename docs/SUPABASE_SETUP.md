@@ -99,9 +99,19 @@ npm run seed:shop-items
 
 출력된 SQL은 Supabase SQL Editor에 붙여넣어 실행한다. 이 스크립트는 `on conflict (code) do update`를 쓰기 때문에 같은 아이템 코드를 여러 번 실행해도 최신 값으로 갱신된다.
 
-작업시간 과거 기록을 화면에서 확인하려면 아래 파일 내용을 Supabase SQL Editor에서 실행한다.
+작업시간 과거 기록을 화면에서 확인하려면 아래 파일을 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 통째로 붙여넣어 실행한다.
 
 ```text
+supabase/sql_editor_focus_demo_setup.sql
+```
+
+이 통합 SQL은 작업시간 로그 테이블, 저장 함수, 조회 인덱스, 더미 기록을 한 번에 준비한다.
+
+파일을 나눠서 실행하고 싶다면 아래 순서대로 각 파일 내용을 복사해 SQL Editor에서 실행한다. SQL Editor에 `supabase/...sql` 같은 파일 경로를 입력하면 syntax error가 난다.
+
+```text
+supabase/migrations/20260531212355_add_focus_window_logs.sql
+supabase/migrations/20260603090000_add_query_indexes.sql
 supabase/seed_demo_focus_logs.sql
 ```
 
