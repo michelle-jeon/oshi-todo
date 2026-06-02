@@ -12,6 +12,19 @@ type CharacterRow = {
   customization: Record<string, string>;
 };
 
+type InventoryShopItem = {
+  id: string;
+  code: string;
+  name: string;
+  slot: string;
+  species: CharacterSpecies | null;
+  payload: Record<string, string>;
+};
+
+type InventoryRow = {
+  shop_items: InventoryShopItem | InventoryShopItem[] | null;
+};
+
 type WardrobePageProps = {
   searchParams: Promise<{
     message?: string;
@@ -33,6 +46,15 @@ export default async function WardrobePage({ searchParams }: WardrobePageProps) 
     redirect("/characters/new" as Route);
   }
 
+  const { data: inventory } = await supabase
+    .from("character_inventory")
+    .select("shop_items(id, code, name, slot, species, payload)")
+    .eq("character_id", character.id)
+    .returns<InventoryRow[]>();
+  const inventoryItems = (inventory ?? [])
+    .flatMap((row) => row.shop_items ?? [])
+    .filter((item) => item.species === null || item.species === character.species);
+
   return (
     <main className="auth-shell">
       <section className="auth-panel character-create-panel">
@@ -50,6 +72,7 @@ export default async function WardrobePage({ searchParams }: WardrobePageProps) 
             species: character.species,
             customization: character.customization
           }}
+          inventoryItems={inventoryItems}
         />
       </section>
     </main>
