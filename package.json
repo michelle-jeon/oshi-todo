@@ -1,9 +1,9 @@
 {
   "name": "oshi-todo",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack -H 127.0.0.1",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -14,9 +14,9 @@
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.4",
     "lucide-react": "^0.468.0",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "next": "16.2.6",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
     "zod": "^3.24.2"
   },
   "devDependencies": {

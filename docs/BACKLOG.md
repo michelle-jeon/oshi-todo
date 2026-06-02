@@ -175,6 +175,9 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 
 ## 운영과 개발환경
 
+- ✅ 상점, 광장, 캐릭터 방 진입 시 개발 서버 렌더 요청이 반복되는 문제 정리.
+  - Turbopack 개발 서버 패닉을 피하기 위해 `npm run dev`를 webpack 모드로 고정.
+  - 세션 쿠키가 없는 보호 페이지 요청은 Supabase 인증 API 호출 전에 로그인 화면으로 이동.
 - 상점 아이템 seed 스크립트 추가. (SQL 생성 스크립트 기본 구현 완료)
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
 - staging/production Supabase 프로젝트 분리.

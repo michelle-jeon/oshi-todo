@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
+import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
 function isMissingSessionError(error: unknown) {
@@ -12,7 +13,17 @@ function isMissingSessionError(error: unknown) {
   return name === "AuthSessionMissingError" || message === "Auth session missing!";
 }
 
+async function hasSupabaseAuthCookie() {
+  const cookieStore = await cookies();
+
+  return cookieStore.getAll().some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
+}
+
 export async function getCurrentUser() {
+  if (!(await hasSupabaseAuthCookie())) {
+    return null;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -27,6 +38,10 @@ export async function getCurrentUser() {
 }
 
 export async function requireUser() {
+  if (!(await hasSupabaseAuthCookie())) {
+    redirect("/login" as Route);
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
