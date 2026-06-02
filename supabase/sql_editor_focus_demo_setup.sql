@@ -156,17 +156,28 @@ end $$;
 
 do $$
 declare
+  -- 특정 계정에 넣고 싶으면 아래 null을 해당 public.profiles.id로 바꾸세요.
+  -- 예: target_user_id_input uuid := '00000000-0000-0000-0000-000000000000';
+  target_user_id_input uuid := null;
   target_user_id uuid;
   target_character_id uuid;
 begin
-  select profiles.id
-  into target_user_id
-  from public.profiles
-  order by profiles.created_at desc
-  limit 1;
+  if target_user_id_input is not null then
+    target_user_id = target_user_id_input;
+  else
+    select profiles.id
+    into target_user_id
+    from public.profiles
+    order by profiles.created_at desc
+    limit 1;
+  end if;
 
   if target_user_id is null then
     raise exception '더미 데이터를 넣을 profile이 없습니다. 먼저 앱에 로그인해 profile을 만들어 주세요.';
+  end if;
+
+  if not exists (select 1 from public.profiles where id = target_user_id) then
+    raise exception 'target_user_id % profile을 찾을 수 없습니다. public.profiles.id를 확인해 주세요.', target_user_id;
   end if;
 
   select characters.id
