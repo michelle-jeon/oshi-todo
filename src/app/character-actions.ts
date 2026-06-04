@@ -11,6 +11,23 @@ import { CHARACTER_VARIANTS, type CharacterSpecies } from "@/lib/character-asset
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+type InventoryShopItem = {
+  slot: string;
+  species: CharacterSpecies | null;
+  payload: Record<string, string>;
+};
+
+type InventoryRow = {
+  shop_items: InventoryShopItem | InventoryShopItem[] | null;
+};
+
+type WardrobeSelection = {
+  variantId: string;
+  hairId: string;
+  eyeId: string;
+  accessoryId: string;
+};
+
 function readSpecies(formData: FormData): CharacterSpecies {
   const species = String(formData.get("species") ?? "");
 
@@ -40,6 +57,67 @@ function readDisplayName(formData: FormData, fallback?: string) {
   }
 
   return displayName || fallback || "이름 없는 캐릭터";
+}
+
+function readWardrobeSelection(formData: FormData): WardrobeSelection {
+  return {
+    variantId: String(formData.get("variantId") ?? "blue"),
+    hairId: String(formData.get("hairId") ?? "basic"),
+    eyeId: String(formData.get("eyeId") ?? "basic"),
+    accessoryId: String(formData.get("accessoryId") ?? "none")
+  };
+}
+
+function getOwnedSlotValues(
+  inventoryItems: InventoryShopItem[],
+  species: CharacterSpecies,
+  slot: string,
+  payloadKeys: string[]
+) {
+  const values = new Set<string>();
+
+  inventoryItems
+    .filter((item) => item.slot === slot && (item.species === null || item.species === species))
+    .forEach((item) => {
+      payloadKeys.forEach((key) => {
+        const value = item.payload[key];
+
+        if (value) {
+          values.add(value);
+        }
+      });
+    });
+
+  return values;
+}
+
+function isWardrobeSelectionAllowed(
+  species: CharacterSpecies,
+  selection: WardrobeSelection,
+  inventoryItems: InventoryShopItem[]
+) {
+  const variant = CHARACTER_VARIANTS.some((candidate) => candidate.id === selection.variantId);
+
+  if (!variant) {
+    return false;
+  }
+
+  const hairValues = getOwnedSlotValues(inventoryItems, species, "human_hair", ["hairId", "hairStyle"]);
+  const eyeValues = getOwnedSlotValues(
+    inventoryItems,
+    species,
+    species === "human" ? "human_eyes" : "cat_eyes",
+    ["eyeId"]
+  );
+  const accessoryValues = getOwnedSlotValues(inventoryItems, species, "accessory", ["accessoryId"]);
+
+  const hairAllowed =
+    species === "cat" || selection.hairId === "basic" || hairValues.has(selection.hairId);
+  const eyeAllowed = selection.eyeId === "basic" || eyeValues.has(selection.eyeId);
+  const accessoryAllowed =
+    selection.accessoryId === "none" || accessoryValues.has(selection.accessoryId);
+
+  return hairAllowed && eyeAllowed && accessoryAllowed;
 }
 
 export async function createCharacter(formData: FormData) {
@@ -168,6 +246,7 @@ export async function updateWardrobe(formData: FormData) {
   const supabase = await createClient();
   const variant = readVariant(formData);
   const displayName = readDisplayName(formData, "이름 없는 캐릭터");
+  const selection = readWardrobeSelection(formData);
 
   const { data: activeCharacter, error: characterError } = await supabase
     .from("characters")
@@ -180,6 +259,22 @@ export async function updateWardrobe(formData: FormData) {
     redirect("/characters/new?message=먼저 캐릭터를 생성해 주세요." as Route);
   }
 
+  const { data: inventory, error: inventoryError } = await supabase
+    .from("character_inventory")
+    .select("shop_items(slot, species, payload)")
+    .eq("character_id", activeCharacter.id)
+    .returns<InventoryRow[]>();
+
+  if (inventoryError) {
+    redirect(`/characters/wardrobe?message=${encodeURIComponent(inventoryError.message)}` as Route);
+  }
+
+  const inventoryItems = (inventory ?? []).flatMap((row) => row.shop_items ?? []);
+
+  if (!isWardrobeSelectionAllowed(activeCharacter.species, selection, inventoryItems)) {
+    redirect("/characters/wardrobe?message=보유하지 않은 아이템은 장착할 수 없어요." as Route);
+  }
+
   const customization =
     activeCharacter.species === "human"
       ? {
@@ -187,18 +282,18 @@ export async function updateWardrobe(formData: FormData) {
           variantId: variant.id,
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
-          hairId: String(formData.get("hairId") ?? "basic"),
-          eyeId: String(formData.get("eyeId") ?? "basic"),
-          accessoryId: String(formData.get("accessoryId") ?? "none")
+          hairId: selection.hairId,
+          eyeId: selection.eyeId,
+          accessoryId: selection.accessoryId
         }
       : {
           species: activeCharacter.species,
           variantId: variant.id,
           furColor: "#f4d0a1",
           patternColor: variant.color,
-          hairId: String(formData.get("hairId") ?? "basic"),
-          eyeId: String(formData.get("eyeId") ?? "basic"),
-          accessoryId: String(formData.get("accessoryId") ?? "none")
+          hairId: selection.hairId,
+          eyeId: selection.eyeId,
+          accessoryId: selection.accessoryId
         };
 
   const { error } = await supabase

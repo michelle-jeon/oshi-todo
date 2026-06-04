@@ -263,8 +263,8 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         <button className="ghost-button" type="button" onClick={leave}>
           돌아가기
         </button>
-        <button className="primary-button" type="button" onClick={save} disabled={isSaving}>
-          저장
+        <button className="primary-button" type="button" onClick={save} disabled={isSaving || !isDirty}>
+          {isSaving ? "저장 중" : "저장"}
         </button>
       </div>
 
