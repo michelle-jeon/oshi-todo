@@ -66,6 +66,21 @@ function getTodayString() {
   }).format(new Date());
 }
 
+function getDbSchemaMessage(error: unknown) {
+  if (!error) {
+    return null;
+  }
+
+  const message =
+    typeof error === "object" && "message" in error ? String(error.message) : String(error);
+
+  if (message.includes("ends_on") || message.includes("schema cache")) {
+    return "루틴 종료 기능 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/04_routine_end_and_indexes.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  }
+
+  return "Supabase DB 스키마가 아직 준비되지 않았어요. SQL Editor에서 migration을 실행한 뒤 새로고침해 주세요.";
+}
+
 export default async function Home({
   searchParams
 }: {
@@ -140,6 +155,7 @@ export default async function Home({
   const progress = getLevelProgress(character?.xpTotal ?? 0);
   const spendableXp = character?.xpCurrent ?? 0;
   const dbError = characterError ?? todosError ?? routinesError;
+  const dbSchemaMessage = getDbSchemaMessage(dbError);
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayString = getTodayString();
   const todayFocusXp = (focusLogs ?? [])
@@ -190,12 +206,7 @@ export default async function Home({
         </header>
 
         {displayMessage ? <p className="notice">{displayMessage}</p> : null}
-        {dbError ? (
-          <p className="notice">
-            Supabase DB 스키마가 아직 준비되지 않았어요. SQL Editor에서 migration을 실행한 뒤 새로고침해
-            주세요.
-          </p>
-        ) : null}
+        {dbSchemaMessage ? <p className="notice">{dbSchemaMessage}</p> : null}
 
         <div className="grid">
           <section className="panel">
