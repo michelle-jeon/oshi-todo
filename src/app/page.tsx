@@ -36,6 +36,8 @@ type TodoRowData = {
   routine_id: string | null;
 };
 
+type TodoRowDataWithoutBaseXp = Omit<TodoRowData, "base_xp_reward">;
+
 type FocusWindowLogRow = {
   id: string;
   work_date: string;
@@ -58,6 +60,8 @@ type RoutineRowData = {
   starts_on: string;
   ends_on: string | null;
 };
+
+type RoutineRowDataWithoutBaseXp = Omit<RoutineRowData, "base_xp_reward">;
 
 function getTodayString() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -91,6 +95,15 @@ function getDbSchemaMessage(error: unknown) {
   return "Supabase DB 스키마가 아직 준비되지 않았어요. SQL Editor에서 migration을 실행한 뒤 새로고침해 주세요.";
 }
 
+function isMissingBaseXpError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("base_xp_reward");
+}
+
 export default async function Home({
   searchParams
 }: {
@@ -100,11 +113,69 @@ export default async function Home({
   await ensureUserBootstrap({ id: user.id, email: user.email });
   const supabase = await createClient();
   const { message } = await searchParams;
+  const fetchTodos = async () => {
+    const withBaseXp = await supabase
+      .from("todos")
+      .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .order("todo_date", { ascending: false })
+      .order("status", { ascending: false })
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .returns<TodoRowData[]>();
+
+    if (!isMissingBaseXpError(withBaseXp.error)) {
+      return { ...withBaseXp, isBaseXpSchemaMissing: false };
+    }
+
+    const fallback = await supabase
+      .from("todos")
+      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .order("todo_date", { ascending: false })
+      .order("status", { ascending: false })
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true })
+      .returns<TodoRowDataWithoutBaseXp[]>();
+
+    return {
+      data: fallback.data?.map((todo) => ({
+        ...todo,
+        base_xp_reward: todo.xp_reward
+      })) ?? null,
+      error: fallback.error,
+      isBaseXpSchemaMissing: true
+    };
+  };
+  const fetchRoutines = async () => {
+    const withBaseXp = await supabase
+      .from("routines")
+      .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+      .order("created_at", { ascending: false })
+      .returns<RoutineRowData[]>();
+
+    if (!isMissingBaseXpError(withBaseXp.error)) {
+      return { ...withBaseXp, isBaseXpSchemaMissing: false };
+    }
+
+    const fallback = await supabase
+      .from("routines")
+      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+      .order("created_at", { ascending: false })
+      .returns<RoutineRowDataWithoutBaseXp[]>();
+
+    return {
+      data: fallback.data?.map((routine) => ({
+        ...routine,
+        base_xp_reward: routine.xp_reward
+      })) ?? null,
+      error: fallback.error,
+      isBaseXpSchemaMissing: true
+    };
+  };
 
   const [
     { data: activeCharacter, error: characterError },
-    { data: todos, error: todosError },
-    { data: routines, error: routinesError },
+    { data: todos, error: todosError, isBaseXpSchemaMissing: isTodoBaseXpSchemaMissing },
+    { data: routines, error: routinesError, isBaseXpSchemaMissing: isRoutineBaseXpSchemaMissing },
     { data: focusLogs }
   ] = await Promise.all([
     supabase
@@ -112,19 +183,8 @@ export default async function Home({
       .select("id, display_name, species, level, xp_current, xp_total, customization")
       .eq("is_active", true)
       .maybeSingle<CharacterRow>(),
-    supabase
-      .from("todos")
-      .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
-      .order("todo_date", { ascending: false })
-      .order("status", { ascending: false })
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true })
-      .returns<TodoRowData[]>(),
-    supabase
-      .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
-      .order("created_at", { ascending: false })
-      .returns<RoutineRowData[]>(),
+    fetchTodos(),
+    fetchRoutines(),
     supabase
       .from("focus_window_logs")
       .select("id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
@@ -165,7 +225,10 @@ export default async function Home({
   const progress = getLevelProgress(character?.xpTotal ?? 0);
   const spendableXp = character?.xpCurrent ?? 0;
   const dbError = characterError ?? todosError ?? routinesError;
-  const dbSchemaMessage = getDbSchemaMessage(dbError);
+  const dbSchemaMessage =
+    isTodoBaseXpSchemaMissing || isRoutineBaseXpSchemaMissing
+      ? "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요."
+      : getDbSchemaMessage(dbError);
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayString = getTodayString();
   const todayFocusXp = (focusLogs ?? [])
