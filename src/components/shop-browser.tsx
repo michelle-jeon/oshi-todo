@@ -79,7 +79,7 @@ export function ShopBrowser({
   ownedIds
 }: ShopBrowserProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
+  const [isPending, startTransition] = useTransition();
   const [species, setSpecies] = useState<CharacterSpecies>(activeSpecies);
   const [activeTab, setActiveTab] = useState<ShopTab>(activeSpecies === "human" ? "hair" : "eyes");
   const [cartBySlot, setCartBySlot] = useState<Record<string, ShopBrowserItem>>({});
@@ -299,8 +299,8 @@ export function ShopBrowser({
             ))}
           </div>
         ) : null}
-        <button className="primary-button" type="button" onClick={checkout} disabled={!canCheckout}>
-          한 번에 구매
+        <button className="primary-button" type="button" onClick={checkout} disabled={!canCheckout || isPending}>
+          {isPending ? "구매 중" : "한 번에 구매"}
         </button>
         {cartTotal > currentXp ? <p className="subtle">XP가 부족해요.</p> : null}
       </div>

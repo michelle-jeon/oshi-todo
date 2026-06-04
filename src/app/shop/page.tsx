@@ -32,20 +32,25 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const user = await requireUser();
   const supabase = await createClient();
   const { message } = await searchParams;
-  const [{ data: character }, { data: shopItems }, { data: inventory }] = await Promise.all([
-    supabase
-      .from("characters")
-      .select("id, display_name, species, xp_current, customization")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .single<CharacterRow>(),
+  const { data: character } = await supabase
+    .from("characters")
+    .select("id, display_name, species, xp_current, customization")
+    .eq("user_id", user.id)
+    .eq("is_active", true)
+    .single<CharacterRow>();
+  const [{ data: shopItems }, { data: inventory }] = await Promise.all([
     supabase
       .from("shop_items")
       .select("id, code, name, slot, species, cost, payload")
       .eq("is_active", true)
       .order("cost", { ascending: true })
       .returns<ShopItem[]>(),
-    supabase.from("character_inventory").select("shop_item_id")
+    character
+      ? supabase
+          .from("character_inventory")
+          .select("shop_item_id")
+          .eq("character_id", character.id)
+      : Promise.resolve({ data: [] })
   ]);
   const ownedIds = (inventory ?? []).map((item) => item.shop_item_id as string);
 
