@@ -8,6 +8,7 @@ import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import { isCharacterOnboardingComplete } from "@/lib/character-onboarding";
 import type { CharacterSpecies } from "@/lib/character-assets";
+import { DAILY_XP_CAP } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
@@ -49,6 +50,10 @@ type FocusWindowLogRow = {
   updated_at: string;
 };
 
+type XpEventRow = {
+  amount: number;
+};
+
 type RoutineRowData = {
   id: string;
   title: string;
@@ -72,6 +77,17 @@ function getTodayString() {
   }).format(new Date());
 }
 
+function getKstDayBounds(dateString: string) {
+  const start = new Date(`${dateString}T00:00:00+09:00`);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 1);
+
+  return {
+    start: start.toISOString(),
+    end: end.toISOString()
+  };
+}
+
 function getDbSchemaMessage(error: unknown) {
   if (!error) {
     return null;
@@ -82,6 +98,10 @@ function getDbSchemaMessage(error: unknown) {
 
   if (message.includes("base_xp_reward")) {
     return "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/migrations/20260604093000_add_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  }
+
+  if (message.includes("get_remaining_daily_xp") || message.includes("get_daily_xp_cap")) {
+    return "하루 XP 상한 DB 함수가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/06_daily_xp_cap.sql 내용을 실행한 뒤 새로고침해 주세요.";
   }
 
   if (message.includes("ends_on")) {
@@ -113,6 +133,8 @@ export default async function Home({
   await ensureUserBootstrap({ id: user.id, email: user.email });
   const supabase = await createClient();
   const { message } = await searchParams;
+  const todayString = getTodayString();
+  const todayBounds = getKstDayBounds(todayString);
   const fetchTodos = async () => {
     const withBaseXp = await supabase
       .from("todos")
@@ -176,7 +198,9 @@ export default async function Home({
     { data: activeCharacter, error: characterError },
     { data: todos, error: todosError, isBaseXpSchemaMissing: isTodoBaseXpSchemaMissing },
     { data: routines, error: routinesError, isBaseXpSchemaMissing: isRoutineBaseXpSchemaMissing },
-    { data: focusLogs }
+    { data: focusLogs },
+    { data: todayXpEvents },
+    { error: dailyXpCapError }
   ] = await Promise.all([
     supabase
       .from("characters")
@@ -190,7 +214,16 @@ export default async function Home({
       .select("id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
       .order("work_date", { ascending: false })
       .order("updated_at", { ascending: false })
-      .returns<FocusWindowLogRow[]>()
+      .returns<FocusWindowLogRow[]>(),
+    supabase
+      .from("xp_events")
+      .select("amount")
+      .gte("created_at", todayBounds.start)
+      .lt("created_at", todayBounds.end)
+      .returns<XpEventRow[]>(),
+    supabase.rpc("get_remaining_daily_xp", {
+      target_date_input: todayString
+    })
   ]);
 
   if (!activeCharacter && !characterError) {
@@ -224,16 +257,16 @@ export default async function Home({
 
   const progress = getLevelProgress(character?.xpTotal ?? 0);
   const spendableXp = character?.xpCurrent ?? 0;
-  const dbError = characterError ?? todosError ?? routinesError;
+  const dbError = characterError ?? todosError ?? routinesError ?? dailyXpCapError;
   const dbSchemaMessage =
     isTodoBaseXpSchemaMissing || isRoutineBaseXpSchemaMissing
       ? "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요."
       : getDbSchemaMessage(dbError);
   const displayMessage = message?.includes("temp-") ? undefined : message;
-  const todayString = getTodayString();
   const todayFocusXp = (focusLogs ?? [])
     .filter((log) => log.work_date === todayString)
     .reduce((sum, log) => sum + log.xp, 0);
+  const todayEarnedXp = (todayXpEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
   const variantId =
     character && "variantId" in character.customization ? character.customization.variantId : undefined;
 
@@ -276,6 +309,10 @@ export default async function Home({
               <span>
                 <small>누적</small>
                 {(character?.xpTotal ?? 0).toLocaleString()} XP
+              </span>
+              <span>
+                <small>오늘</small>
+                {todayEarnedXp.toLocaleString()}/{DAILY_XP_CAP.toLocaleString()} XP
               </span>
             </div>
             <Link className="topbar-link-button" href={"/plaza" as Route}>

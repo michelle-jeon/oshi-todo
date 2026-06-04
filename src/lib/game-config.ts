@@ -1,6 +1,7 @@
 import type { Character } from "@/types/domain";
 
 export const DEFAULT_TODO_XP = 10;
+export const DAILY_XP_CAP = 500;
 
 export const LEVEL_THRESHOLDS = [
   0, 50, 120, 220, 360, 540, 760, 1020, 1320, 1660, 2040
