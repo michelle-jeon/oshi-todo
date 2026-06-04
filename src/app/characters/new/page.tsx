@@ -46,7 +46,7 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
             <p className="subtle">종족을 고르고, 코스튬을 입혀본 다음 이름을 정해 주세요.</p>
           </div>
           <form action={signOut}>
-            <button className="ghost-button" type="submit">
+            <button className="subtle-link-button" type="submit">
               다른 계정으로 로그인
             </button>
           </form>

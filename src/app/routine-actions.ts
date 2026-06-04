@@ -23,12 +23,17 @@ type RoutineData = {
 function cleanRoutineInput(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
   const frequency = String(formData.get("frequency") ?? "daily") === "weekly" ? "weekly" : "daily";
+  const xpRewardInput = Number(formData.get("xpReward") ?? DEFAULT_TODO_XP);
+  const xpReward =
+    Number.isInteger(xpRewardInput) && xpRewardInput >= 1 && xpRewardInput <= 100
+      ? xpRewardInput
+      : DEFAULT_TODO_XP;
   const weekdays = formData
     .getAll("weekdays")
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6);
 
-  return { title, frequency, weekdays };
+  return { title, frequency, weekdays, xpReward };
 }
 
 function cleanTodoDate(formData: FormData) {
@@ -44,7 +49,7 @@ function cleanTodoDate(formData: FormData) {
 export async function createRoutine(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
-  const { title, frequency, weekdays } = cleanRoutineInput(formData);
+  const { title, frequency, weekdays, xpReward } = cleanRoutineInput(formData);
   const todoDate = cleanTodoDate(formData);
 
   if (!title) {
@@ -58,6 +63,7 @@ export async function createRoutine(formData: FormData) {
       title,
       frequency,
       weekdays: frequency === "weekly" ? weekdays : [],
+      xp_reward: xpReward,
       starts_on: todoDate,
       ends_on: null
     })
@@ -75,7 +81,7 @@ export async function createRoutine(formData: FormData) {
 export async function updateRoutine(routineId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
-  const { title, frequency, weekdays } = cleanRoutineInput(formData);
+  const { title, frequency, weekdays, xpReward } = cleanRoutineInput(formData);
 
   if (!title) {
     return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
@@ -86,7 +92,8 @@ export async function updateRoutine(routineId: string, formData: FormData) {
     .update({
       title,
       frequency,
-      weekdays: frequency === "weekly" ? weekdays : []
+      weekdays: frequency === "weekly" ? weekdays : [],
+      xp_reward: xpReward
     })
     .eq("id", routineId)
     .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")

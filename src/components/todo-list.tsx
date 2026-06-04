@@ -107,6 +107,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [routines, setRoutines] = useState(initialRoutines);
   const [newTitle, setNewTitle] = useState("");
   const [routineTitle, setRoutineTitle] = useState("");
+  const [routineXpReward, setRoutineXpReward] = useState(10);
   const [routineFrequency, setRoutineFrequency] = useState<"daily" | "weekly">("daily");
   const [routineWeekdays, setRoutineWeekdays] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
@@ -205,7 +206,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title,
       frequency: routineFrequency,
       weekdays,
-      xp_reward: 10,
+      xp_reward: routineXpReward,
       is_active: true,
       starts_on: selectedDate,
       ends_on: null
@@ -214,6 +215,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousRoutines = routines;
     setRoutines((current) => [optimisticRoutine, ...current]);
     setRoutineTitle("");
+    setRoutineXpReward(10);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -230,6 +232,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setRoutines(previousRoutines);
       setRoutineTitle(title);
+      setRoutineXpReward(optimisticRoutine.xp_reward);
       reportActionError(result.error);
     });
   }
@@ -355,7 +358,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       ...editingRoutine,
       title,
       frequency,
-      weekdays: frequency === "weekly" ? weekdays : []
+      weekdays: frequency === "weekly" ? weekdays : [],
+      xp_reward: Number(formData.get("xpReward") ?? editingRoutine.xp_reward)
     };
 
     const previousRoutines = routines;
@@ -777,6 +781,16 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             value={routineTitle}
             onChange={(event) => setRoutineTitle(event.target.value)}
           />
+          <input
+            className="routine-xp-input"
+            type="number"
+            name="xpReward"
+            min={1}
+            max={100}
+            value={routineXpReward}
+            onChange={(event) => setRoutineXpReward(Number(event.target.value))}
+            aria-label="루틴 보상 XP"
+          />
           <div className="segmented-control compact">
             <button
               className={routineFrequency === "daily" ? "selected" : ""}
@@ -834,6 +848,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
                   onClick={() => setEditingRoutine(routine)}
                 >
                   <strong>{routine.title}</strong>
+                  <span>{routine.xp_reward} XP</span>
                 </button>
                 <button
                   className="icon-button secondary"
@@ -882,6 +897,16 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <label>
               루틴 이름
               <input name="title" defaultValue={editingRoutine.title} />
+            </label>
+            <label>
+              보상 XP
+              <input
+                name="xpReward"
+                type="number"
+                min={1}
+                max={100}
+                defaultValue={editingRoutine.xp_reward}
+              />
             </label>
             <input type="hidden" name="frequency" value={editingRoutine.frequency} readOnly />
             <div className="segmented-control compact smooth-toggle">
