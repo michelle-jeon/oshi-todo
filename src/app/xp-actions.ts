@@ -8,12 +8,17 @@ type XpTargetType = "todo" | "routine";
 type XpRecommendation = {
   xp: number;
   reason: string;
-  source: "ai" | "rule";
+  source: "ai" | "fallback";
+  notice?: string;
 };
 
 type ActionResult<T = null> =
   | { ok: true; data: T }
   | { ok: false; error: string };
+
+type AiRecommendationResult =
+  | { data: XpRecommendation; notice: null }
+  | { data: null; notice: string };
 
 const MIN_XP = 5;
 const MAX_XP = 100;
@@ -40,7 +45,11 @@ function extractJson(text: string) {
   }
 }
 
-function ruleBasedRecommend(title: string, targetType: XpTargetType): XpRecommendation {
+function ruleBasedRecommend(
+  title: string,
+  targetType: XpTargetType,
+  notice: string
+): XpRecommendation {
   const normalized = title.toLocaleLowerCase("ko-KR");
   let score = targetType === "routine" ? 15 : 10;
 
@@ -60,16 +69,36 @@ function ruleBasedRecommend(title: string, targetType: XpTargetType): XpRecommen
     "강의",
     "운동"
   ];
-  const easySignals = ["확인", "읽기", "정리", "답장", "메일", "청소", "물", "예약", "체크"];
+  const physicalSignals = [
+    "등산",
+    "하이킹",
+    "러닝",
+    "달리기",
+    "헬스",
+    "수영",
+    "요가",
+    "필라테스",
+    "자전거",
+    "산책",
+    "운동"
+  ];
+  const outdoorSignals = ["외출", "병원", "은행", "관공서", "장보기", "마트", "이동"];
+  const easySignals = ["확인", "읽기", "답장", "메일", "물", "예약", "체크"];
   const largeSignals = ["완성", "전체", "최종", "분석", "조사", "복습", "연습", "작성"];
 
   score += hardSignals.filter((signal) => normalized.includes(signal)).length * 15;
+  score += physicalSignals.filter((signal) => normalized.includes(signal)).length * 20;
+  score += outdoorSignals.filter((signal) => normalized.includes(signal)).length * 10;
   score += largeSignals.filter((signal) => normalized.includes(signal)).length * 10;
   score -= easySignals.filter((signal) => normalized.includes(signal)).length * 5;
 
   if (title.length >= 24) {
     score += 15;
-  } else if (title.length <= 8) {
+  } else if (
+    title.length <= 8 &&
+    !physicalSignals.some((signal) => normalized.includes(signal)) &&
+    !outdoorSignals.some((signal) => normalized.includes(signal))
+  ) {
     score -= 5;
   }
 
@@ -81,14 +110,20 @@ function ruleBasedRecommend(title: string, targetType: XpTargetType): XpRecommen
         ? "짧게 끝낼 수 있는 일로 보여서 낮게 잡았어요."
         : "보통 난이도의 작업으로 보고 중간 보상을 추천했어요.";
 
-  return { xp, reason, source: "rule" };
+  return { xp, reason, source: "fallback", notice };
 }
 
-async function requestAiRecommendation(title: string, targetType: XpTargetType) {
+async function requestAiRecommendation(
+  title: string,
+  targetType: XpTargetType
+): Promise<AiRecommendationResult> {
   const apiKey = process.env.OPENAI_API_KEY;
 
   if (!apiKey) {
-    return null;
+    return {
+      data: null,
+      notice: "OPENAI_API_KEY가 없어 AI 대신 임시 추천을 적용했어요."
+    };
   }
 
   const controller = new AbortController();
@@ -103,18 +138,48 @@ async function requestAiRecommendation(title: string, targetType: XpTargetType) 
       },
       body: JSON.stringify({
         model: process.env.OPENAI_XP_MODEL ?? "gpt-4.1-mini",
+        text: {
+          format: {
+            type: "json_schema",
+            name: "xp_recommendation",
+            strict: true,
+            schema: {
+              type: "object",
+              additionalProperties: false,
+              properties: {
+                xp: {
+                  type: "integer",
+                  minimum: MIN_XP,
+                  maximum: MAX_XP,
+                  description: "5~100 사이의 5 단위 XP"
+                },
+                reason: {
+                  type: "string",
+                  maxLength: 80,
+                  description: "사용자가 이해할 수 있는 짧은 한국어 이유"
+                }
+              },
+              required: ["xp", "reason"]
+            }
+          }
+        },
         input: [
           {
             role: "system",
             content:
-              "너는 OshiTodo의 XP 밸런스 도우미다. 한국어 투두/루틴 제목을 보고 보상 XP를 5~100 사이 5 단위로 추천한다. 간단한 일은 낮게, 오래 걸리거나 복잡한 일은 높게 잡는다. 반드시 JSON만 반환한다."
+              "너는 OshiTodo의 XP 밸런스 도우미다. 한국어 투두/루틴 제목을 보고 보상 XP를 추천한다. 5분 안팎의 사소한 확인은 5~10XP, 보통 집안일/개인 할 일은 15~25XP, 운동/등산/외출처럼 몸을 쓰거나 이동이 필요한 일은 25~45XP, 공부/개발/보고서처럼 집중이 필요한 일은 35~70XP, 여러 단계의 큰 프로젝트는 70~100XP로 잡는다. 제목이 짧다는 이유만으로 낮게 주지 말고 실제 행동 부담을 우선한다. XP는 반드시 5 단위다."
           },
           {
             role: "user",
             content: JSON.stringify({
               type: targetType,
               title,
-              schema: { xp: "number", reason: "짧은 한국어 이유" }
+              examples: [
+                { title: "물 마시기", xp: 5 },
+                { title: "메일 확인", xp: 10 },
+                { title: "등산하기", xp: 35 },
+                { title: "기획서 초안 작성", xp: 50 }
+              ]
             })
           }
         ],
@@ -124,7 +189,10 @@ async function requestAiRecommendation(title: string, targetType: XpTargetType) 
     });
 
     if (!response.ok) {
-      return null;
+      return {
+        data: null,
+        notice: "AI 추천 호출이 실패해서 임시 추천을 적용했어요."
+      };
     }
 
     const payload = (await response.json()) as {
@@ -142,16 +210,25 @@ async function requestAiRecommendation(title: string, targetType: XpTargetType) 
     const parsed = extractJson(text);
 
     if (!parsed || typeof parsed.xp !== "number" || typeof parsed.reason !== "string") {
-      return null;
+      return {
+        data: null,
+        notice: "AI 추천 응답을 읽지 못해서 임시 추천을 적용했어요."
+      };
     }
 
     return {
-      xp: clampXp(parsed.xp),
-      reason: parsed.reason.slice(0, 120),
-      source: "ai" as const
+      data: {
+        xp: clampXp(parsed.xp),
+        reason: parsed.reason.slice(0, 120),
+        source: "ai" as const
+      },
+      notice: null
     };
   } catch {
-    return null;
+    return {
+      data: null,
+      notice: "AI 추천 연결이 지연되어 임시 추천을 적용했어요."
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -171,8 +248,16 @@ export async function recommendXpReward(input: {
   }
 
   const aiRecommendation = await requestAiRecommendation(title, targetType);
+
+  if (aiRecommendation.data) {
+    return {
+      ok: true,
+      data: aiRecommendation.data
+    };
+  }
+
   return {
     ok: true,
-    data: aiRecommendation ?? ruleBasedRecommend(title, targetType)
+    data: ruleBasedRecommend(title, targetType, aiRecommendation.notice)
   };
 }

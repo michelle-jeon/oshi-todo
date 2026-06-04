@@ -244,9 +244,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       setRoutineXpReward(cleanXpInput(result.data.xp));
     }
 
-    setOperationMessage(
-      `${result.data.source === "ai" ? "AI" : "임시 규칙"} 추천: ${result.data.xp} XP · ${result.data.reason}`
-    );
+    const prefix =
+      result.data.source === "ai" ? "AI 추천" : (result.data.notice ?? "AI 연결 전 임시 추천");
+
+    setOperationMessage(`${prefix}: ${result.data.xp} XP · ${result.data.reason}`);
   }
 
   function handleCreateRoutine(formData: FormData) {

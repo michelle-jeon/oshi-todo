@@ -17,7 +17,9 @@ Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 - Project Settings > API > Project URL
 - Project Settings > API > publishable key 또는 anon public key
 
-`OPENAI_API_KEY`는 투두/루틴 XP 추천 기능에 쓴다. 이 값은 서버에서만 읽어야 하므로 `NEXT_PUBLIC_` 접두사를 붙이지 않는다. 키가 없으면 앱은 AI 호출 대신 임시 규칙 기반 XP 추천을 사용한다.
+`OPENAI_API_KEY`는 투두/루틴 XP 추천 기능에 쓴다. 이 값은 서버에서만 읽어야 하므로 `NEXT_PUBLIC_` 접두사를 붙이지 않는다.
+
+`OPENAI_API_KEY`가 비어 있으면 실제 AI 추천은 호출되지 않는다. 이때 앱은 화면에 키가 없다는 안내를 띄우고 임시 추천값만 적용한다. 실제 AI 추천을 확인하려면 `.env.local`과 배포 환경변수에 `OPENAI_API_KEY`를 반드시 넣은 뒤 개발 서버를 다시 시작한다.
 
 `.env.local`은 절대 Git에 올리지 않는다. 현재 저장소는 이미 `.gitignore`에서 이 파일을 제외한다.
 
