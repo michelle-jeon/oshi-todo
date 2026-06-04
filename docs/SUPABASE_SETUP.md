@@ -8,12 +8,16 @@
 NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable-key
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=google-oauth-client-id.apps.googleusercontent.com
+OPENAI_API_KEY=openai-api-key
+OPENAI_XP_MODEL=gpt-4.1-mini
 ```
 
 Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 
 - Project Settings > API > Project URL
 - Project Settings > API > publishable key 또는 anon public key
+
+`OPENAI_API_KEY`는 투두/루틴 XP 추천 기능에 쓴다. 이 값은 서버에서만 읽어야 하므로 `NEXT_PUBLIC_` 접두사를 붙이지 않는다. 키가 없으면 앱은 AI 호출 대신 임시 규칙 기반 XP 추천을 사용한다.
 
 `.env.local`은 절대 Git에 올리지 않는다. 현재 저장소는 이미 `.gitignore`에서 이 파일을 제외한다.
 
@@ -33,6 +37,8 @@ Vercel 같은 배포 환경에는 최소한 아래 값이 필요하다.
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
+OPENAI_API_KEY
+OPENAI_XP_MODEL
 ```
 
 배포 전 확인할 것:
@@ -40,6 +46,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID
 - `NEXT_PUBLIC_SUPABASE_URL`이 운영 Supabase 프로젝트 URL인지 확인.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`가 같은 프로젝트의 publishable/anon key인지 확인.
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 Google Cloud Console의 Web OAuth Client ID인지 확인.
+- `OPENAI_API_KEY`는 서버 환경변수로만 등록하고 브라우저 공개 값으로 만들지 않았는지 확인.
 - Google OAuth Authorized JavaScript origins에 운영 도메인 추가.
 - Google OAuth Authorized redirect URIs에 Supabase Google provider의 callback URL 추가.
 - Supabase Auth URL Configuration에 운영 Site URL과 redirect URL 추가.

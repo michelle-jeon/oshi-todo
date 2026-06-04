@@ -18,6 +18,8 @@ import {
   toggleTodo,
   updateTodoTitle
 } from "@/app/todo-actions";
+import { recommendXpReward } from "@/app/xp-actions";
+import { DEFAULT_TODO_XP } from "@/lib/game-config";
 
 export type TodoListItem = {
   id: string;
@@ -102,12 +104,21 @@ function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, 
   );
 }
 
+function cleanXpInput(value: number) {
+  if (!Number.isFinite(value)) {
+    return DEFAULT_TODO_XP;
+  }
+
+  return Math.min(100, Math.max(1, Math.round(value)));
+}
+
 export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }: TodoListProps) {
   const [todos, setTodos] = useState(initialTodos);
   const [routines, setRoutines] = useState(initialRoutines);
   const [newTitle, setNewTitle] = useState("");
+  const [newTodoXpReward, setNewTodoXpReward] = useState(DEFAULT_TODO_XP);
   const [routineTitle, setRoutineTitle] = useState("");
-  const [routineXpReward, setRoutineXpReward] = useState(10);
+  const [routineXpReward, setRoutineXpReward] = useState(DEFAULT_TODO_XP);
   const [routineFrequency, setRoutineFrequency] = useState<"daily" | "weekly">("daily");
   const [routineWeekdays, setRoutineWeekdays] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
@@ -117,6 +128,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
   const [endingRoutine, setEndingRoutine] = useState<RoutineListItem | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
+  const [isSuggestingTodoXp, setIsSuggestingTodoXp] = useState(false);
+  const [isSuggestingRoutineXp, setIsSuggestingRoutineXp] = useState(false);
   const [titleBackups, setTitleBackups] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -157,13 +170,16 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       return;
     }
 
+    const xpReward = cleanXpInput(newTodoXpReward);
+
     formData.set("todoDate", selectedDate);
+    formData.set("xpReward", String(xpReward));
     const optimisticId = `temp-${crypto.randomUUID()}`;
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
       title,
       status: "open",
-      xp_reward: 10,
+      xp_reward: xpReward,
       completed_at: null,
       todo_date: selectedDate,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
@@ -173,6 +189,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
+    setNewTodoXpReward(DEFAULT_TODO_XP);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -189,8 +206,47 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setTodos(previousTodos);
       setNewTitle(title);
+      setNewTodoXpReward(optimisticTodo.xp_reward);
       reportActionError(result.error);
     });
+  }
+
+  async function handleSuggestXp(targetType: "todo" | "routine") {
+    const title = targetType === "todo" ? newTitle.trim() : routineTitle.trim();
+
+    if (!title) {
+      reportActionError("먼저 제목을 입력해 주세요.");
+      return;
+    }
+
+    if (targetType === "todo") {
+      setIsSuggestingTodoXp(true);
+    } else {
+      setIsSuggestingRoutineXp(true);
+    }
+
+    const result = await recommendXpReward({ title, type: targetType });
+
+    if (targetType === "todo") {
+      setIsSuggestingTodoXp(false);
+    } else {
+      setIsSuggestingRoutineXp(false);
+    }
+
+    if (!result.ok) {
+      reportActionError(result.error);
+      return;
+    }
+
+    if (targetType === "todo") {
+      setNewTodoXpReward(cleanXpInput(result.data.xp));
+    } else {
+      setRoutineXpReward(cleanXpInput(result.data.xp));
+    }
+
+    setOperationMessage(
+      `${result.data.source === "ai" ? "AI" : "임시 규칙"} 추천: ${result.data.xp} XP · ${result.data.reason}`
+    );
   }
 
   function handleCreateRoutine(formData: FormData) {
@@ -206,7 +262,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title,
       frequency: routineFrequency,
       weekdays,
-      xp_reward: routineXpReward,
+      xp_reward: cleanXpInput(routineXpReward),
       is_active: true,
       starts_on: selectedDate,
       ends_on: null
@@ -215,7 +271,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousRoutines = routines;
     setRoutines((current) => [optimisticRoutine, ...current]);
     setRoutineTitle("");
-    setRoutineXpReward(10);
+    setRoutineXpReward(DEFAULT_TODO_XP);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -761,6 +817,24 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           value={newTitle}
           onChange={(event) => setNewTitle(event.target.value)}
         />
+        <input
+          className="todo-xp-input"
+          type="number"
+          name="xpReward"
+          min={1}
+          max={100}
+          value={newTodoXpReward}
+          onChange={(event) => setNewTodoXpReward(cleanXpInput(Number(event.target.value)))}
+          aria-label="할 일 보상 XP"
+        />
+        <button
+          className="ghost-button compact-button"
+          type="button"
+          onClick={() => void handleSuggestXp("todo")}
+          disabled={isSuggestingTodoXp}
+        >
+          {isSuggestingTodoXp ? "추천 중" : "AI XP"}
+        </button>
         <button className="icon-button" type="submit" aria-label="할 일 추가">
           <Plus size={18} />
         </button>
@@ -788,7 +862,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             min={1}
             max={100}
             value={routineXpReward}
-            onChange={(event) => setRoutineXpReward(Number(event.target.value))}
+            onChange={(event) => setRoutineXpReward(cleanXpInput(Number(event.target.value)))}
             aria-label="루틴 보상 XP"
           />
           <div className="segmented-control compact">
@@ -829,6 +903,14 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           ) : null}
           <button className="ghost-button" type="submit">
             <Plus size={16} /> 루틴 추가
+          </button>
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => void handleSuggestXp("routine")}
+            disabled={isSuggestingRoutineXp}
+          >
+            {isSuggestingRoutineXp ? "추천 중" : "AI XP"}
           </button>
         </form>
 

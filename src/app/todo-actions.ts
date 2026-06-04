@@ -23,6 +23,16 @@ function cleanTodoDate(formData: FormData) {
   return new Date().toISOString().slice(0, 10);
 }
 
+function cleanXpReward(formData: FormData) {
+  const value = Number(formData.get("xpReward") ?? DEFAULT_TODO_XP);
+
+  if (Number.isInteger(value) && value >= 1 && value <= 100) {
+    return value;
+  }
+
+  return DEFAULT_TODO_XP;
+}
+
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
@@ -34,6 +44,7 @@ export async function createTodo(formData: FormData) {
   const supabase = await createClient();
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
+  const xpReward = cleanXpReward(formData);
 
   if (!title) {
     return { ok: false, error: "할 일을 입력해 주세요." } satisfies ActionResult;
@@ -53,7 +64,7 @@ export async function createTodo(formData: FormData) {
     .insert({
       user_id: user.id,
       title,
-      xp_reward: DEFAULT_TODO_XP,
+      xp_reward: xpReward,
       todo_date: todoDate,
       sort_order: (latestTodo?.sort_order ?? 0) + 1000
     })
