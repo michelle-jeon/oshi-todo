@@ -459,6 +459,35 @@ button {
   flex: 1;
 }
 
+.xp-reward-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.xp-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.xp-stepper button {
+  min-width: 42px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.xp-stepper button:disabled {
+  cursor: not-allowed;
+  opacity: 0.38;
+}
+
 .inline-title-input {
   width: min(100%, 640px);
   min-height: 34px;
@@ -1464,14 +1493,12 @@ button {
 
 .routine-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 76px minmax(150px, 180px) auto auto;
+  grid-template-columns: minmax(0, 1fr) minmax(150px, 180px) auto;
   gap: 10px;
   align-items: start;
 }
 
 .routine-form input[name="title"],
-.routine-xp-input,
-.todo-xp-input,
 .stack-form input,
 .stack-form select,
 .search-field input {
@@ -1562,11 +1589,6 @@ button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
-}
-
-.todo-xp-input {
-  width: 76px;
-  flex: 0 0 76px;
 }
 
 .simple-shell {

@@ -29,6 +29,7 @@ type TodoRowData = {
   title: string;
   status: "open" | "completed" | "archived";
   xp_reward: number;
+  base_xp_reward: number;
   completed_at: string | null;
   todo_date: string;
   sort_order: number;
@@ -52,6 +53,7 @@ type RoutineRowData = {
   frequency: "daily" | "weekly";
   weekdays: number[];
   xp_reward: number;
+  base_xp_reward: number;
   is_active: boolean;
   starts_on: string;
   ends_on: string | null;
@@ -74,8 +76,16 @@ function getDbSchemaMessage(error: unknown) {
   const message =
     typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
-  if (message.includes("ends_on") || message.includes("schema cache")) {
+  if (message.includes("base_xp_reward")) {
+    return "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/migrations/20260604093000_add_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  }
+
+  if (message.includes("ends_on")) {
     return "루틴 종료 기능 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/04_routine_end_and_indexes.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  }
+
+  if (message.includes("schema cache")) {
+    return "Supabase DB 스키마가 아직 준비되지 않았어요. 오류에 나온 컬럼이 포함된 migration을 SQL Editor에서 실행한 뒤 새로고침해 주세요.";
   }
 
   return "Supabase DB 스키마가 아직 준비되지 않았어요. SQL Editor에서 migration을 실행한 뒤 새로고침해 주세요.";
@@ -104,7 +114,7 @@ export default async function Home({
       .maybeSingle<CharacterRow>(),
     supabase
       .from("todos")
-      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
@@ -112,7 +122,7 @@ export default async function Home({
       .returns<TodoRowData[]>(),
     supabase
       .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+      .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>(),
     supabase

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { DEFAULT_TODO_XP } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getXpRecommendation } from "@/app/xp-actions";
 
 type ActionResult<T = null> =
   | { ok: true; data: T }
@@ -15,6 +16,7 @@ type RoutineData = {
   frequency: "daily" | "weekly";
   weekdays: number[];
   xp_reward: number;
+  base_xp_reward: number;
   is_active: boolean;
   starts_on: string;
   ends_on: string | null;
@@ -23,17 +25,19 @@ type RoutineData = {
 function cleanRoutineInput(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim().slice(0, 160);
   const frequency = String(formData.get("frequency") ?? "daily") === "weekly" ? "weekly" : "daily";
-  const xpRewardInput = Number(formData.get("xpReward") ?? DEFAULT_TODO_XP);
-  const xpReward =
-    Number.isInteger(xpRewardInput) && xpRewardInput >= 1 && xpRewardInput <= 100
-      ? xpRewardInput
-      : DEFAULT_TODO_XP;
   const weekdays = formData
     .getAll("weekdays")
     .map((value) => Number(value))
     .filter((value) => Number.isInteger(value) && value >= 0 && value <= 6);
 
-  return { title, frequency, weekdays, xpReward };
+  return { title, frequency, weekdays };
+}
+
+function clampAdjustedXp(baseXpReward: number, xpReward: number) {
+  const min = Math.max(1, baseXpReward - 10);
+  const max = Math.min(100, baseXpReward + 10);
+
+  return Math.min(max, Math.max(min, xpReward));
 }
 
 function cleanTodoDate(formData: FormData) {
@@ -49,12 +53,15 @@ function cleanTodoDate(formData: FormData) {
 export async function createRoutine(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
-  const { title, frequency, weekdays, xpReward } = cleanRoutineInput(formData);
+  const { title, frequency, weekdays } = cleanRoutineInput(formData);
   const todoDate = cleanTodoDate(formData);
 
   if (!title) {
     return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
   }
+
+  const xpRecommendation = await getXpRecommendation({ title, type: "routine" });
+  const xpReward = xpRecommendation.xp;
 
   const { data, error } = await supabase
     .from("routines")
@@ -63,11 +70,12 @@ export async function createRoutine(formData: FormData) {
       title,
       frequency,
       weekdays: frequency === "weekly" ? weekdays : [],
+      base_xp_reward: xpReward,
       xp_reward: xpReward,
       starts_on: todoDate,
       ends_on: null
     })
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
     .single<RoutineData>();
 
   if (error) {
@@ -81,11 +89,28 @@ export async function createRoutine(formData: FormData) {
 export async function updateRoutine(routineId: string, formData: FormData) {
   await requireUser();
   const supabase = await createClient();
-  const { title, frequency, weekdays, xpReward } = cleanRoutineInput(formData);
+  const { title, frequency, weekdays } = cleanRoutineInput(formData);
 
   if (!title) {
     return { ok: false, error: "루틴 이름을 입력해 주세요." } satisfies ActionResult;
   }
+
+  const { data: currentRoutine, error: currentError } = await supabase
+    .from("routines")
+    .select("title, xp_reward, base_xp_reward")
+    .eq("id", routineId)
+    .single<{ title: string; xp_reward: number; base_xp_reward: number }>();
+
+  if (currentError || !currentRoutine) {
+    return { ok: false, error: currentError?.message ?? "루틴을 찾을 수 없어요." } satisfies ActionResult;
+  }
+
+  const shouldRefreshXp = currentRoutine.title.trim() !== title;
+  const xpRecommendation = shouldRefreshXp
+    ? await getXpRecommendation({ title, type: "routine" })
+    : null;
+  const nextBaseXpReward = xpRecommendation?.xp ?? currentRoutine.base_xp_reward;
+  const nextXpReward = xpRecommendation?.xp ?? currentRoutine.xp_reward;
 
   const { data, error } = await supabase
     .from("routines")
@@ -93,10 +118,45 @@ export async function updateRoutine(routineId: string, formData: FormData) {
       title,
       frequency,
       weekdays: frequency === "weekly" ? weekdays : [],
-      xp_reward: xpReward
+      base_xp_reward: nextBaseXpReward,
+      xp_reward: nextXpReward
     })
     .eq("id", routineId)
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+    .single<RoutineData>();
+
+  if (error) {
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
+export async function adjustRoutineXp(routineId: string, direction: "down" | "up") {
+  await requireUser();
+  const supabase = await createClient();
+
+  const { data: routine, error: fetchError } = await supabase
+    .from("routines")
+    .select("base_xp_reward, xp_reward")
+    .eq("id", routineId)
+    .single<{ base_xp_reward: number; xp_reward: number }>();
+
+  if (fetchError || !routine) {
+    return { ok: false, error: fetchError?.message ?? "루틴을 찾을 수 없어요." } satisfies ActionResult;
+  }
+
+  const nextXp = clampAdjustedXp(
+    routine.base_xp_reward,
+    routine.xp_reward + (direction === "up" ? 10 : -10)
+  );
+
+  const { data, error } = await supabase
+    .from("routines")
+    .update({ xp_reward: nextXp })
+    .eq("id", routineId)
+    .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
     .single<RoutineData>();
 
   if (error) {
@@ -114,7 +174,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
 
   const { data: routine, error: routineError } = await supabase
     .from("routines")
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
     .eq("id", routineId)
     .eq("user_id", user.id)
     .single<RoutineData>();
@@ -162,6 +222,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
         .insert({
           user_id: user.id,
           title: routine.title,
+          base_xp_reward: routine.base_xp_reward ?? routine.xp_reward ?? DEFAULT_TODO_XP,
           xp_reward: routine.xp_reward ?? DEFAULT_TODO_XP,
           todo_date: todoDate,
           routine_id: routine.id,
@@ -187,7 +248,7 @@ export async function completeRoutine(routineId: string, formData: FormData) {
 
   const { data: completedTodo } = await supabase
     .from("todos")
-    .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+    .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
     .eq("id", todo.id)
     .single();
 
@@ -221,7 +282,7 @@ export async function endRoutine(routineId: string, formData: FormData) {
     })
     .eq("id", routineId)
     .eq("user_id", user.id)
-    .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+    .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
     .single<RoutineData>();
 
   if (error) {

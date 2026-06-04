@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { useMemo, useState, useTransition } from "react";
 import {
+  adjustRoutineXp,
   completeRoutine,
   createRoutine,
   deleteRoutine,
@@ -12,13 +13,13 @@ import {
   updateRoutine
 } from "@/app/routine-actions";
 import {
+  adjustTodoXp,
   createTodo,
   deleteTodo,
   reorderTodos,
   toggleTodo,
   updateTodoTitle
 } from "@/app/todo-actions";
-import { recommendXpReward } from "@/app/xp-actions";
 import { DEFAULT_TODO_XP } from "@/lib/game-config";
 
 export type TodoListItem = {
@@ -26,6 +27,7 @@ export type TodoListItem = {
   title: string;
   status: "open" | "completed" | "archived";
   xp_reward: number;
+  base_xp_reward: number;
   completed_at: string | null;
   todo_date: string;
   sort_order: number;
@@ -38,6 +40,7 @@ export type RoutineListItem = {
   frequency: "daily" | "weekly";
   weekdays: number[];
   xp_reward: number;
+  base_xp_reward: number;
   is_active: boolean;
   starts_on: string;
   ends_on: string | null;
@@ -104,21 +107,18 @@ function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, 
   );
 }
 
-function cleanXpInput(value: number) {
-  if (!Number.isFinite(value)) {
-    return DEFAULT_TODO_XP;
-  }
-
-  return Math.min(100, Math.max(1, Math.round(value)));
+function getXpBounds(baseXpReward: number) {
+  return {
+    min: Math.max(1, baseXpReward - 10),
+    max: Math.min(100, baseXpReward + 10)
+  };
 }
 
 export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }: TodoListProps) {
   const [todos, setTodos] = useState(initialTodos);
   const [routines, setRoutines] = useState(initialRoutines);
   const [newTitle, setNewTitle] = useState("");
-  const [newTodoXpReward, setNewTodoXpReward] = useState(DEFAULT_TODO_XP);
   const [routineTitle, setRoutineTitle] = useState("");
-  const [routineXpReward, setRoutineXpReward] = useState(DEFAULT_TODO_XP);
   const [routineFrequency, setRoutineFrequency] = useState<"daily" | "weekly">("daily");
   const [routineWeekdays, setRoutineWeekdays] = useState<number[]>([]);
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
@@ -128,8 +128,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
   const [endingRoutine, setEndingRoutine] = useState<RoutineListItem | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
-  const [isSuggestingTodoXp, setIsSuggestingTodoXp] = useState(false);
-  const [isSuggestingRoutineXp, setIsSuggestingRoutineXp] = useState(false);
   const [titleBackups, setTitleBackups] = useState<Record<string, string>>({});
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -170,16 +168,14 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       return;
     }
 
-    const xpReward = cleanXpInput(newTodoXpReward);
-
     formData.set("todoDate", selectedDate);
-    formData.set("xpReward", String(xpReward));
     const optimisticId = `temp-${crypto.randomUUID()}`;
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
       title,
       status: "open",
-      xp_reward: xpReward,
+      xp_reward: DEFAULT_TODO_XP,
+      base_xp_reward: DEFAULT_TODO_XP,
       completed_at: null,
       todo_date: selectedDate,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
@@ -189,7 +185,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
-    setNewTodoXpReward(DEFAULT_TODO_XP);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -206,48 +201,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setTodos(previousTodos);
       setNewTitle(title);
-      setNewTodoXpReward(optimisticTodo.xp_reward);
       reportActionError(result.error);
     });
-  }
-
-  async function handleSuggestXp(targetType: "todo" | "routine") {
-    const title = targetType === "todo" ? newTitle.trim() : routineTitle.trim();
-
-    if (!title) {
-      reportActionError("먼저 제목을 입력해 주세요.");
-      return;
-    }
-
-    if (targetType === "todo") {
-      setIsSuggestingTodoXp(true);
-    } else {
-      setIsSuggestingRoutineXp(true);
-    }
-
-    const result = await recommendXpReward({ title, type: targetType });
-
-    if (targetType === "todo") {
-      setIsSuggestingTodoXp(false);
-    } else {
-      setIsSuggestingRoutineXp(false);
-    }
-
-    if (!result.ok) {
-      reportActionError(result.error);
-      return;
-    }
-
-    if (targetType === "todo") {
-      setNewTodoXpReward(cleanXpInput(result.data.xp));
-    } else {
-      setRoutineXpReward(cleanXpInput(result.data.xp));
-    }
-
-    const prefix =
-      result.data.source === "ai" ? "AI 추천" : (result.data.notice ?? "AI 연결 전 임시 추천");
-
-    setOperationMessage(`${prefix}: ${result.data.xp} XP · ${result.data.reason}`);
   }
 
   function handleCreateRoutine(formData: FormData) {
@@ -263,7 +218,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title,
       frequency: routineFrequency,
       weekdays,
-      xp_reward: cleanXpInput(routineXpReward),
+      xp_reward: DEFAULT_TODO_XP,
+      base_xp_reward: DEFAULT_TODO_XP,
       is_active: true,
       starts_on: selectedDate,
       ends_on: null
@@ -272,7 +228,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousRoutines = routines;
     setRoutines((current) => [optimisticRoutine, ...current]);
     setRoutineTitle("");
-    setRoutineXpReward(DEFAULT_TODO_XP);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -289,7 +244,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setRoutines(previousRoutines);
       setRoutineTitle(title);
-      setRoutineXpReward(optimisticRoutine.xp_reward);
       reportActionError(result.error);
     });
   }
@@ -366,6 +320,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title: routine.title,
       status: "completed",
       xp_reward: routine.xp_reward,
+      base_xp_reward: routine.base_xp_reward,
       completed_at: new Date().toISOString(),
       todo_date: selectedDate,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
@@ -416,7 +371,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title,
       frequency,
       weekdays: frequency === "weekly" ? weekdays : [],
-      xp_reward: Number(formData.get("xpReward") ?? editingRoutine.xp_reward)
+      xp_reward: editingRoutine.xp_reward,
+      base_xp_reward: editingRoutine.base_xp_reward
     };
 
     const previousRoutines = routines;
@@ -514,8 +470,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     }
 
     const previousTitle = titleBackups[todoId] ?? title;
+    const normalizedTitle = title.trim();
+
+    if (previousTitle.trim() === normalizedTitle) {
+      setTitleBackups((current) => {
+        const next = { ...current };
+        delete next[todoId];
+        return next;
+      });
+      return;
+    }
+
     const formData = new FormData();
-    formData.set("title", title);
+    formData.set("title", normalizedTitle);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -529,11 +496,83 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         return;
       }
 
+      setTodos((current) =>
+        current.map((item) => (item.id === todoId ? (result.data as TodoListItem) : item))
+      );
       setTitleBackups((current) => {
         const next = { ...current };
         delete next[todoId];
         return next;
       });
+    });
+  }
+
+  function handleAdjustTodoXp(todo: TodoListItem, direction: "down" | "up") {
+    if (todo.id.startsWith("temp-") || todo.status !== "open") {
+      return;
+    }
+
+    const previousTodos = todos;
+    const { min, max } = getXpBounds(todo.base_xp_reward);
+    const nextXp = Math.min(max, Math.max(min, todo.xp_reward + (direction === "up" ? 10 : -10)));
+
+    if (nextXp === todo.xp_reward) {
+      return;
+    }
+
+    setTodos((current) =>
+      current.map((item) => (item.id === todo.id ? { ...item, xp_reward: nextXp } : item))
+    );
+    setOperationMessage(null);
+
+    startTransition(async () => {
+      const result = await adjustTodoXp(todo.id, direction);
+
+      if (result.ok) {
+        setTodos((current) =>
+          current.map((item) => (item.id === todo.id ? (result.data as TodoListItem) : item))
+        );
+        return;
+      }
+
+      setTodos(previousTodos);
+      reportActionError(result.error);
+    });
+  }
+
+  function handleAdjustRoutineXp(routine: RoutineListItem, direction: "down" | "up") {
+    if (routine.id.startsWith("temp-")) {
+      return;
+    }
+
+    const previousRoutines = routines;
+    const { min, max } = getXpBounds(routine.base_xp_reward);
+    const nextXp = Math.min(
+      max,
+      Math.max(min, routine.xp_reward + (direction === "up" ? 10 : -10))
+    );
+
+    if (nextXp === routine.xp_reward) {
+      return;
+    }
+
+    setRoutines((current) =>
+      current.map((item) => (item.id === routine.id ? { ...item, xp_reward: nextXp } : item))
+    );
+    setOperationMessage(null);
+
+    startTransition(async () => {
+      const result = await adjustRoutineXp(routine.id, direction);
+
+      if (result.ok) {
+        setRoutines((current) =>
+          current.map((item) => (item.id === routine.id ? (result.data as RoutineListItem) : item))
+        );
+        return;
+      }
+
+      setRoutines(previousRoutines);
+      reportActionError(result.error);
     });
   }
 
@@ -596,6 +635,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   }
 
   function renderTodo(todo: TodoListItem, isCompleted: boolean) {
+    const { min, max } = getXpBounds(todo.base_xp_reward);
+
     return (
       <article
         className={`todo-row ${isCompleted ? "completed" : ""}`}
@@ -643,9 +684,29 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               aria-label={`${todo.title} 수정`}
             />
           )}
-          <p className="subtle">
-            {isCompleted ? "완료됨" : "완료 보상"} {todo.xp_reward} XP
-          </p>
+          <div className="xp-reward-row">
+            <span className="subtle">
+              {isCompleted ? "완료됨" : "완료 보상"} {todo.xp_reward} XP
+            </span>
+            {!isCompleted ? (
+              <span className="xp-stepper" aria-label={`${todo.title} XP 조정`}>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustTodoXp(todo, "down")}
+                  disabled={todo.xp_reward <= min || todo.id.startsWith("temp-")}
+                >
+                  -10
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAdjustTodoXp(todo, "up")}
+                  disabled={todo.xp_reward >= max || todo.id.startsWith("temp-")}
+                >
+                  +10
+                </button>
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <button
@@ -818,24 +879,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           value={newTitle}
           onChange={(event) => setNewTitle(event.target.value)}
         />
-        <input
-          className="todo-xp-input"
-          type="number"
-          name="xpReward"
-          min={1}
-          max={100}
-          value={newTodoXpReward}
-          onChange={(event) => setNewTodoXpReward(cleanXpInput(Number(event.target.value)))}
-          aria-label="할 일 보상 XP"
-        />
-        <button
-          className="ghost-button compact-button"
-          type="button"
-          onClick={() => void handleSuggestXp("todo")}
-          disabled={isSuggestingTodoXp}
-        >
-          {isSuggestingTodoXp ? "추천 중" : "AI XP"}
-        </button>
         <button className="icon-button" type="submit" aria-label="할 일 추가">
           <Plus size={18} />
         </button>
@@ -855,16 +898,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             aria-label="새 루틴"
             value={routineTitle}
             onChange={(event) => setRoutineTitle(event.target.value)}
-          />
-          <input
-            className="routine-xp-input"
-            type="number"
-            name="xpReward"
-            min={1}
-            max={100}
-            value={routineXpReward}
-            onChange={(event) => setRoutineXpReward(cleanXpInput(Number(event.target.value)))}
-            aria-label="루틴 보상 XP"
           />
           <div className="segmented-control compact">
             <button
@@ -905,54 +938,66 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <button className="ghost-button" type="submit">
             <Plus size={16} /> 루틴 추가
           </button>
-          <button
-            className="ghost-button"
-            type="button"
-            onClick={() => void handleSuggestXp("routine")}
-            disabled={isSuggestingRoutineXp}
-          >
-            {isSuggestingRoutineXp ? "추천 중" : "AI XP"}
-          </button>
         </form>
 
         {selectedRoutines.length > 0 ? (
           <div className="routine-list">
-            {selectedRoutines.map((routine) => (
-              <article className="routine-row" key={routine.id}>
-                <button
-                  className="todo-check"
-                  type="button"
-                  onClick={() => handleCompleteRoutine(routine)}
-                  aria-label={`${routine.title} 루틴 완료`}
-                />
-                <button
-                  className="routine-edit-trigger"
-                  type="button"
-                  onClick={() => setEditingRoutine(routine)}
-                >
-                  <strong>{routine.title}</strong>
-                  <span>{routine.xp_reward} XP</span>
-                </button>
-                <button
-                  className="icon-button secondary"
-                  type="button"
-                  onClick={() => setEndingRoutine(routine)}
-                  aria-label="루틴 종료"
-                  title="루틴 종료"
-                >
-                  <Square size={16} />
-                </button>
-                <button
-                  className="icon-button secondary"
-                  type="button"
-                  onClick={() => handleDeleteRoutine(routine.id)}
-                  aria-label="루틴 삭제"
-                  title="루틴 삭제"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </article>
-            ))}
+            {selectedRoutines.map((routine) => {
+              const { min, max } = getXpBounds(routine.base_xp_reward);
+
+              return (
+                <article className="routine-row" key={routine.id}>
+                  <button
+                    className="todo-check"
+                    type="button"
+                    onClick={() => handleCompleteRoutine(routine)}
+                    aria-label={`${routine.title} 루틴 완료`}
+                  />
+                  <button
+                    className="routine-edit-trigger"
+                    type="button"
+                    onClick={() => setEditingRoutine(routine)}
+                  >
+                    <strong>{routine.title}</strong>
+                    <span>{routine.xp_reward} XP</span>
+                  </button>
+                  <span className="xp-stepper" aria-label={`${routine.title} XP 조정`}>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustRoutineXp(routine, "down")}
+                      disabled={routine.xp_reward <= min || routine.id.startsWith("temp-")}
+                    >
+                      -10
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAdjustRoutineXp(routine, "up")}
+                      disabled={routine.xp_reward >= max || routine.id.startsWith("temp-")}
+                    >
+                      +10
+                    </button>
+                  </span>
+                  <button
+                    className="icon-button secondary"
+                    type="button"
+                    onClick={() => setEndingRoutine(routine)}
+                    aria-label="루틴 종료"
+                    title="루틴 종료"
+                  >
+                    <Square size={16} />
+                  </button>
+                  <button
+                    className="icon-button secondary"
+                    type="button"
+                    onClick={() => handleDeleteRoutine(routine.id)}
+                    aria-label="루틴 삭제"
+                    title="루틴 삭제"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </article>
+              );
+            })}
           </div>
         ) : null}
       </section>
@@ -980,16 +1025,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <label>
               루틴 이름
               <input name="title" defaultValue={editingRoutine.title} />
-            </label>
-            <label>
-              보상 XP
-              <input
-                name="xpReward"
-                type="number"
-                min={1}
-                max={100}
-                defaultValue={editingRoutine.xp_reward}
-              />
             </label>
             <input type="hidden" name="frequency" value={editingRoutine.frequency} readOnly />
             <div className="segmented-control compact smooth-toggle">

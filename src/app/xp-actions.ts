@@ -22,6 +22,8 @@ type AiRecommendationResult =
 
 const MIN_XP = 1;
 const MAX_XP = 100;
+const CACHE_TTL_MS = 1000 * 60 * 60 * 24;
+const recommendationCache = new Map<string, { data: XpRecommendation; expiresAt: number }>();
 
 function clampXp(value: number) {
   if (!Number.isFinite(value)) {
@@ -43,6 +45,10 @@ function extractJson(text: string) {
   } catch {
     return null;
   }
+}
+
+function getCacheKey(title: string, targetType: XpTargetType) {
+  return `${targetType}:${title.toLocaleLowerCase("ko-KR").replace(/\s+/g, " ").trim()}`;
 }
 
 function ruleBasedRecommend(
@@ -253,30 +259,58 @@ async function requestAiRecommendation(
   }
 }
 
+export async function getXpRecommendation(input: {
+  title: string;
+  type: XpTargetType;
+}): Promise<XpRecommendation> {
+  const title = input.title.trim().slice(0, 160);
+  const targetType = input.type === "routine" ? "routine" : "todo";
+
+  if (!title) {
+    return ruleBasedRecommend(
+      "할 일",
+      targetType,
+      "제목이 비어 있어 기본 임시 추천을 적용했어요."
+    );
+  }
+
+  const cacheKey = getCacheKey(title, targetType);
+  const cachedRecommendation = recommendationCache.get(cacheKey);
+
+  if (cachedRecommendation && cachedRecommendation.expiresAt > Date.now()) {
+    return cachedRecommendation.data;
+  }
+
+  const aiRecommendation = await requestAiRecommendation(title, targetType);
+
+  if (aiRecommendation.data) {
+    recommendationCache.set(cacheKey, {
+      data: aiRecommendation.data,
+      expiresAt: Date.now() + CACHE_TTL_MS
+    });
+    return aiRecommendation.data;
+  }
+
+  const fallbackRecommendation = ruleBasedRecommend(title, targetType, aiRecommendation.notice);
+  recommendationCache.set(cacheKey, {
+    data: fallbackRecommendation,
+    expiresAt: Date.now() + CACHE_TTL_MS
+  });
+  return fallbackRecommendation;
+}
+
 export async function recommendXpReward(input: {
   title: string;
   type: XpTargetType;
 }): Promise<ActionResult<XpRecommendation>> {
   await requireUser();
 
-  const title = input.title.trim().slice(0, 160);
-  const targetType = input.type === "routine" ? "routine" : "todo";
-
-  if (!title) {
+  if (!input.title.trim()) {
     return { ok: false, error: "먼저 제목을 입력해 주세요." };
-  }
-
-  const aiRecommendation = await requestAiRecommendation(title, targetType);
-
-  if (aiRecommendation.data) {
-    return {
-      ok: true,
-      data: aiRecommendation.data
-    };
   }
 
   return {
     ok: true,
-    data: ruleBasedRecommend(title, targetType, aiRecommendation.notice)
+    data: await getXpRecommendation(input)
   };
 }

@@ -1,9 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { DEFAULT_TODO_XP } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getXpRecommendation } from "@/app/xp-actions";
 
 type ActionResult<T = null> =
   | { ok: true; data: T }
@@ -23,14 +23,11 @@ function cleanTodoDate(formData: FormData) {
   return new Date().toISOString().slice(0, 10);
 }
 
-function cleanXpReward(formData: FormData) {
-  const value = Number(formData.get("xpReward") ?? DEFAULT_TODO_XP);
+function clampAdjustedXp(baseXpReward: number, xpReward: number) {
+  const min = Math.max(1, baseXpReward - 10);
+  const max = Math.min(100, baseXpReward + 10);
 
-  if (Number.isInteger(value) && value >= 1 && value <= 100) {
-    return value;
-  }
-
-  return DEFAULT_TODO_XP;
+  return Math.min(max, Math.max(min, xpReward));
 }
 
 function isUuid(value: string) {
@@ -44,11 +41,13 @@ export async function createTodo(formData: FormData) {
   const supabase = await createClient();
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
-  const xpReward = cleanXpReward(formData);
 
   if (!title) {
     return { ok: false, error: "할 일을 입력해 주세요." } satisfies ActionResult;
   }
+
+  const xpRecommendation = await getXpRecommendation({ title, type: "todo" });
+  const xpReward = xpRecommendation.xp;
 
   const { data: latestTodo } = await supabase
     .from("todos")
@@ -64,11 +63,12 @@ export async function createTodo(formData: FormData) {
     .insert({
       user_id: user.id,
       title,
+      base_xp_reward: xpReward,
       xp_reward: xpReward,
       todo_date: todoDate,
       sort_order: (latestTodo?.sort_order ?? 0) + 1000
     })
-    .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+    .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
     .single();
 
   if (error) {
@@ -119,18 +119,66 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     return { ok: false, error: "할 일을 비워둘 수 없어요." } satisfies ActionResult;
   }
 
-  const { error } = await supabase
+  const xpRecommendation = await getXpRecommendation({ title, type: "todo" });
+
+  const { data, error } = await supabase
     .from("todos")
-    .update({ title })
+    .update({
+      title,
+      base_xp_reward: xpRecommendation.xp,
+      xp_reward: xpRecommendation.xp
+    })
     .eq("id", todoId)
-    .eq("status", "open");
+    .eq("status", "open")
+    .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+    .single();
 
   if (error) {
     return { ok: false, error: error.message } satisfies ActionResult;
   }
 
   revalidatePath("/");
-  return { ok: true, data: null } satisfies ActionResult;
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
+export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
+  await requireUser();
+
+  if (!isUuid(todoId)) {
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
+  }
+
+  const supabase = await createClient();
+  const { data: todo, error: fetchError } = await supabase
+    .from("todos")
+    .select("base_xp_reward, xp_reward")
+    .eq("id", todoId)
+    .eq("status", "open")
+    .single<{ base_xp_reward: number; xp_reward: number }>();
+
+  if (fetchError || !todo) {
+    return { ok: false, error: fetchError?.message ?? "할 일을 찾을 수 없어요." } satisfies ActionResult;
+  }
+
+  const nextXp = clampAdjustedXp(
+    todo.base_xp_reward,
+    todo.xp_reward + (direction === "up" ? 10 : -10)
+  );
+
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ xp_reward: nextXp })
+    .eq("id", todoId)
+    .eq("status", "open")
+    .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+    .single();
+
+  if (error) {
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
 export async function deleteTodo(todoId: string) {

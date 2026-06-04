@@ -83,6 +83,20 @@ supabase/migrations/20260531212355_add_focus_window_logs.sql
 
 Supabase Dashboard의 SQL Editor에서 위 파일 내용을 실행하면 작업시간 로그 테이블과 저장 함수가 준비된다. 이 파일은 `create table if not exists`와 `create or replace function`을 쓰므로 같은 프로젝트에서 다시 실행해도 비교적 안전하다. 단, 정책이나 트리거가 이미 있으면 Supabase가 중복 이름 오류를 낼 수 있으니, 오류가 나면 어떤 줄에서 났는지 확인한 뒤 이미 만들어진 항목은 건너뛴다.
 
+AI XP 기준값 조정 기능에는 아래 파일이 필요하다.
+
+```text
+supabase/migrations/20260604093000_add_base_xp_rewards.sql
+```
+
+SQL Editor에서 직접 실행할 때는 아래 파일 내용을 복사해 붙여 넣는다.
+
+```text
+supabase/sql_editor/05_base_xp_rewards.sql
+```
+
+이 파일은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. 이 컬럼이 없으면 홈 화면에서 AI XP 기준값 DB 스키마 안내가 뜬다.
+
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 
 ```text
