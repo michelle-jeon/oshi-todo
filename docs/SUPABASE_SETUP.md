@@ -9,7 +9,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable-key
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=google-oauth-client-id.apps.googleusercontent.com
 OPENAI_API_KEY=openai-api-key
-OPENAI_XP_MODEL=gpt-4.1-mini
+OPENAI_XP_MODEL=gpt-5-mini
 ```
 
 Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
@@ -20,6 +20,21 @@ Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 `OPENAI_API_KEY`는 투두/루틴 XP 추천 기능에 쓴다. 이 값은 서버에서만 읽어야 하므로 `NEXT_PUBLIC_` 접두사를 붙이지 않는다.
 
 `OPENAI_API_KEY`가 비어 있으면 실제 AI 추천은 호출되지 않는다. 이때 앱은 화면에 키가 없다는 안내를 띄우고 임시 추천값만 적용한다. 실제 AI 추천을 확인하려면 `.env.local`과 배포 환경변수에 `OPENAI_API_KEY`를 반드시 넣은 뒤 개발 서버를 다시 시작한다.
+
+### OpenAI API 키 넣는 방법
+
+1. [OpenAI API 키 페이지](https://platform.openai.com/api-keys)에 로그인한다.
+2. 새 Secret API key를 만든다.
+3. 생성 직후 보이는 키를 복사한다. 이 화면을 닫으면 전체 키를 다시 볼 수 없으므로 잃어버리면 새 키를 만든다.
+4. 프로젝트 루트의 `.env.local`에 아래처럼 넣는다.
+
+```bash
+OPENAI_API_KEY=sk-...
+OPENAI_XP_MODEL=gpt-5-mini
+```
+
+5. 실행 중인 개발 서버를 끄고 다시 시작한다. Next.js는 서버 환경변수를 시작할 때 읽기 때문에 키를 넣은 뒤 재시작해야 한다.
+6. 비용보다 판단 품질을 더 우선하고 싶으면 `OPENAI_XP_MODEL=gpt-5.2`로 바꿀 수 있다.
 
 `.env.local`은 절대 Git에 올리지 않는다. 현재 저장소는 이미 `.gitignore`에서 이 파일을 제외한다.
 

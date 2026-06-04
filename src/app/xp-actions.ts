@@ -20,7 +20,7 @@ type AiRecommendationResult =
   | { data: XpRecommendation; notice: null }
   | { data: null; notice: string };
 
-const MIN_XP = 5;
+const MIN_XP = 1;
 const MAX_XP = 100;
 
 function clampXp(value: number) {
@@ -28,7 +28,7 @@ function clampXp(value: number) {
     return DEFAULT_TODO_XP;
   }
 
-  return Math.min(MAX_XP, Math.max(MIN_XP, Math.round(value / 5) * 5));
+  return Math.min(MAX_XP, Math.max(MIN_XP, Math.round(value)));
 }
 
 function extractJson(text: string) {
@@ -51,7 +51,7 @@ function ruleBasedRecommend(
   notice: string
 ): XpRecommendation {
   const normalized = title.toLocaleLowerCase("ko-KR");
-  let score = targetType === "routine" ? 15 : 10;
+  let score = targetType === "routine" ? 18 : 10;
 
   const hardSignals = [
     "기획",
@@ -69,8 +69,20 @@ function ruleBasedRecommend(
     "강의",
     "운동"
   ];
+  const tinySignals = [
+    "휴지",
+    "버리기",
+    "치우기",
+    "끄기",
+    "켜기",
+    "닫기",
+    "열기",
+    "꺼내기",
+    "넣기"
+  ];
   const physicalSignals = [
     "등산",
+    "등반",
     "하이킹",
     "러닝",
     "달리기",
@@ -82,15 +94,18 @@ function ruleBasedRecommend(
     "산책",
     "운동"
   ];
-  const outdoorSignals = ["외출", "병원", "은행", "관공서", "장보기", "마트", "이동"];
-  const easySignals = ["확인", "읽기", "답장", "메일", "물", "예약", "체크"];
+  const intensePhysicalSignals = ["정상", "종주", "관악산", "북한산", "한라산", "마라톤"];
+  const outdoorSignals = ["외출", "병원", "은행", "관공서", "장보기", "마트", "이동", "방문"];
+  const easySignals = ["확인", "읽기", "답장", "메일", "물", "예약", "체크", "메모"];
   const largeSignals = ["완성", "전체", "최종", "분석", "조사", "복습", "연습", "작성"];
 
   score += hardSignals.filter((signal) => normalized.includes(signal)).length * 15;
   score += physicalSignals.filter((signal) => normalized.includes(signal)).length * 20;
+  score += intensePhysicalSignals.filter((signal) => normalized.includes(signal)).length * 35;
   score += outdoorSignals.filter((signal) => normalized.includes(signal)).length * 10;
   score += largeSignals.filter((signal) => normalized.includes(signal)).length * 10;
   score -= easySignals.filter((signal) => normalized.includes(signal)).length * 5;
+  score -= tinySignals.filter((signal) => normalized.includes(signal)).length * 4;
 
   if (title.length >= 24) {
     score += 15;
@@ -104,10 +119,12 @@ function ruleBasedRecommend(
 
   const xp = clampXp(score);
   const reason =
-    xp >= 50
+    xp >= 80
+      ? "체력이나 시간이 크게 드는 일로 보여서 아주 높게 잡았어요."
+      : xp >= 50
       ? "시간과 집중이 꽤 필요한 일로 보여서 높게 잡았어요."
       : xp <= 10
-        ? "짧게 끝낼 수 있는 일로 보여서 낮게 잡았어요."
+        ? "바로 끝낼 수 있는 작은 일로 보여서 낮게 잡았어요."
         : "보통 난이도의 작업으로 보고 중간 보상을 추천했어요.";
 
   return { xp, reason, source: "fallback", notice };
@@ -137,7 +154,7 @@ async function requestAiRecommendation(
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        model: process.env.OPENAI_XP_MODEL ?? "gpt-4.1-mini",
+        model: process.env.OPENAI_XP_MODEL ?? "gpt-5-mini",
         text: {
           format: {
             type: "json_schema",
@@ -151,7 +168,7 @@ async function requestAiRecommendation(
                   type: "integer",
                   minimum: MIN_XP,
                   maximum: MAX_XP,
-                  description: "5~100 사이의 5 단위 XP"
+                  description: "1~100 사이의 정수 XP. 1은 즉시 끝나는 사소한 일, 100은 매우 힘든 큰일."
                 },
                 reason: {
                   type: "string",
@@ -167,7 +184,7 @@ async function requestAiRecommendation(
           {
             role: "system",
             content:
-              "너는 OshiTodo의 XP 밸런스 도우미다. 한국어 투두/루틴 제목을 보고 보상 XP를 추천한다. 5분 안팎의 사소한 확인은 5~10XP, 보통 집안일/개인 할 일은 15~25XP, 운동/등산/외출처럼 몸을 쓰거나 이동이 필요한 일은 25~45XP, 공부/개발/보고서처럼 집중이 필요한 일은 35~70XP, 여러 단계의 큰 프로젝트는 70~100XP로 잡는다. 제목이 짧다는 이유만으로 낮게 주지 말고 실제 행동 부담을 우선한다. XP는 반드시 5 단위다."
+              "너는 OshiTodo의 XP 밸런스 도우미다. 한국어 투두/루틴 제목을 보고 보상 XP를 1~100 정수로 추천한다. XP는 시간, 체력, 집중력, 이동, 준비물, 심리적 부담을 함께 본다. 1~5는 책상 위 휴지 치우기처럼 즉시 끝나는 아주 사소한 일, 6~15는 메일 확인/짧은 정리, 16~30은 보통 집안일이나 개인 할 일, 31~55는 공부/운동/외출처럼 부담이 있는 일, 56~80은 오래 걸리거나 집중이 큰 일, 81~100은 관악산 정상 등반처럼 체력과 시간이 매우 많이 드는 일이다. 제목이 짧다는 이유만으로 낮게 주지 말고 실제 행동 부담을 우선한다."
           },
           {
             role: "user",
@@ -175,15 +192,17 @@ async function requestAiRecommendation(
               type: targetType,
               title,
               examples: [
-                { title: "물 마시기", xp: 5 },
-                { title: "메일 확인", xp: 10 },
-                { title: "등산하기", xp: 35 },
-                { title: "기획서 초안 작성", xp: 50 }
+                { title: "책상 위에 휴지 치우기", xp: 1 },
+                { title: "물 마시기", xp: 3 },
+                { title: "메일 확인", xp: 8 },
+                { title: "방 청소하기", xp: 28 },
+                { title: "등산하기", xp: 55 },
+                { title: "관악산 정상 등반하기", xp: 90 },
+                { title: "기획서 초안 작성", xp: 60 }
               ]
             })
           }
-        ],
-        temperature: 0.2
+        ]
       }),
       signal: controller.signal
     });
