@@ -345,7 +345,8 @@ button {
 }
 
 .calendar-picker select,
-.routine-edit-modal input {
+.routine-edit-modal input,
+.todo-detail-modal input {
   height: 42px;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -478,93 +479,71 @@ button {
   gap: 8px;
 }
 
-.xp-stepper {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.xp-stepper button {
-  min-width: 42px;
-  height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #ffffff;
-  color: var(--foreground);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.xp-stepper button:disabled {
-  cursor: not-allowed;
-  opacity: 0.38;
-}
-
-.priority-select,
-.priority-badge {
-  min-height: 28px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: #ffffff;
-  color: var(--foreground);
-  font-size: 12px;
-  font-weight: 900;
-}
-
-.priority-select {
-  padding: 0 28px 0 9px;
-}
-
-.priority-select.create {
-  width: 92px;
-  height: 42px;
-  flex: 0 0 auto;
-}
-
-.priority-select.high,
-.priority-badge.high {
-  border-color: #e5a29a;
-  background: #fff0ed;
-  color: #b84730;
-}
-
-.priority-select.normal,
-.priority-badge.normal {
-  border-color: #cdded8;
-  background: #eef8f4;
-  color: var(--primary);
-}
-
-.priority-select.low,
-.priority-badge.low {
-  border-color: #ded6c7;
-  background: #f7f2ea;
-  color: var(--muted);
-}
-
-.priority-badge {
-  display: inline-grid;
-  place-items: center;
-  min-width: 44px;
-  padding: 0 9px;
-}
-
-.inline-title-input {
-  width: min(100%, 640px);
-  min-height: 34px;
-  border: 1px solid transparent;
-  border-radius: 8px;
+.todo-title-button {
+  max-width: min(100%, 640px);
+  border: 0;
   background: transparent;
   color: var(--foreground);
-  padding: 0 8px;
+  padding: 0;
+  text-align: left;
+  font: inherit;
   font-weight: 800;
 }
 
-.inline-title-input:hover,
-.inline-title-input:focus {
-  border-color: var(--line);
-  background: #ffffff;
+.todo-title-button:hover,
+.todo-title-button:focus-visible {
+  color: var(--primary);
   outline: 0;
+}
+
+.todo-xp-label {
+  color: rgb(76 69 61 / 58%);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.difficulty-field {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.difficulty-field legend {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.difficulty-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.difficulty-options button {
+  min-height: 58px;
+  display: grid;
+  gap: 2px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+  padding: 8px;
+}
+
+.difficulty-options button.selected {
+  border-color: var(--primary);
+  background: #e9f5f1;
+  color: var(--primary);
+}
+
+.difficulty-options span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .todo-row.completed .todo-main strong {
@@ -1335,7 +1314,8 @@ button {
   color: var(--foreground);
 }
 
-.routine-edit-modal label {
+.routine-edit-modal label,
+.todo-detail-modal label {
   display: grid;
   gap: 6px;
   color: var(--muted);

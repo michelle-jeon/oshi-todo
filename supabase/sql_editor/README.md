@@ -11,6 +11,7 @@ SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 한
 5. `05_base_xp_rewards.sql`
 6. `06_daily_xp_cap.sql`
 7. `07_todo_priority.sql`
+8. `08_xp_difficulty.sql`
 
 각 단계가 성공하면 `완료` 상태 메시지가 나온다.
 

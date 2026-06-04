@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getXpRecommendation } from "@/app/xp-actions";
+import {
+  DEFAULT_XP_DIFFICULTY,
+  getXpRewardForDifficulty,
+  isXpDifficulty,
+  type XpDifficulty
+} from "@/lib/game-config";
 
 type ActionResult<T = null> =
   | { ok: true; data: T }
@@ -13,7 +18,7 @@ type TodoData = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
-  priority: TodoPriority;
+  xp_difficulty: XpDifficulty;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -22,12 +27,10 @@ type TodoData = {
   routine_id: string | null;
 };
 
-type TodoPriority = "low" | "normal" | "high";
-
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
-  "id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITH_BASE =
   "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITHOUT_BASE =
@@ -47,21 +50,14 @@ function cleanTodoDate(formData: FormData) {
   return new Date().toISOString().slice(0, 10);
 }
 
-function cleanPriority(formData: FormData): TodoPriority {
-  const value = String(formData.get("priority") ?? "normal");
+function cleanDifficulty(formData: FormData): XpDifficulty {
+  const value = String(formData.get("xpDifficulty") ?? DEFAULT_XP_DIFFICULTY);
 
-  if (value === "low" || value === "normal" || value === "high") {
+  if (isXpDifficulty(value)) {
     return value;
   }
 
-  return "normal";
-}
-
-function clampAdjustedXp(baseXpReward: number, xpReward: number) {
-  const min = Math.max(1, baseXpReward - 10);
-  const max = Math.min(100, baseXpReward + 10);
-
-  return Math.min(max, Math.max(min, xpReward));
+  return DEFAULT_XP_DIFFICULTY;
 }
 
 function isUuid(value: string) {
@@ -79,17 +75,21 @@ function isMissingBaseXpError(error: unknown) {
   return message.includes("base_xp_reward");
 }
 
-function isMissingPriorityError(error: unknown) {
+function isMissingDifficultyError(error: unknown) {
   const message =
     error && typeof error === "object" && "message" in error
       ? String(error.message)
       : String(error ?? "");
 
-  return message.includes("priority");
+  return message.includes("xp_difficulty");
 }
 
-function withFallbackBaseXp<T extends { xp_reward: number; priority?: TodoPriority }>(data: T) {
-  return { ...data, base_xp_reward: data.xp_reward, priority: data.priority ?? "normal" };
+function withFallbackBaseXp<T extends { xp_reward: number; xp_difficulty?: XpDifficulty }>(data: T) {
+  return {
+    ...data,
+    base_xp_reward: data.xp_reward,
+    xp_difficulty: data.xp_difficulty ?? DEFAULT_XP_DIFFICULTY
+  };
 }
 
 export async function createTodo(formData: FormData) {
@@ -97,14 +97,12 @@ export async function createTodo(formData: FormData) {
   const supabase = await createClient();
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
-  const priority = cleanPriority(formData);
+  const xpDifficulty = cleanDifficulty(formData);
+  const xpReward = getXpRewardForDifficulty(xpDifficulty);
 
   if (!title) {
     return { ok: false, error: "할 일을 입력해 주세요." } satisfies ActionResult;
   }
-
-  const xpRecommendation = await getXpRecommendation({ title, type: "todo" });
-  const xpReward = xpRecommendation.xp;
 
   const { data: latestTodo } = await supabase
     .from("todos")
@@ -118,7 +116,7 @@ export async function createTodo(formData: FormData) {
   const insertPayload = {
     user_id: user.id,
     title,
-    priority,
+    xp_difficulty: xpDifficulty,
     base_xp_reward: xpReward,
     xp_reward: xpReward,
     todo_date: todoDate,
@@ -131,7 +129,7 @@ export async function createTodo(formData: FormData) {
     .single();
 
   if (error) {
-    if (isMissingPriorityError(error)) {
+    if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")
         .insert({
@@ -143,13 +141,13 @@ export async function createTodo(formData: FormData) {
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
         })
         .select(TODO_SELECT_LEGACY_WITH_BASE)
-        .single<Omit<TodoData, "priority">>();
+        .single<Omit<TodoData, "xp_difficulty">>();
 
       if (!legacyError && legacyData) {
         revalidatePath("/");
         return {
           ok: true,
-          data: { ...legacyData, priority: "normal" } as TodoData
+          data: { ...legacyData, xp_difficulty: DEFAULT_XP_DIFFICULTY } as TodoData
         } satisfies ActionResult<TodoData>;
       }
 
@@ -165,7 +163,7 @@ export async function createTodo(formData: FormData) {
         .insert({
           user_id: user.id,
           title,
-          priority,
+          xp_difficulty: xpDifficulty,
           xp_reward: xpReward,
           todo_date: todoDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
@@ -181,7 +179,7 @@ export async function createTodo(formData: FormData) {
         } satisfies ActionResult<TodoData>;
       }
 
-      if (isMissingPriorityError(fallbackError)) {
+      if (isMissingDifficultyError(fallbackError)) {
         const { data: legacyData, error: legacyError } = await supabase
           .from("todos")
           .insert({
@@ -192,7 +190,7 @@ export async function createTodo(formData: FormData) {
             sort_order: (latestTodo?.sort_order ?? 0) + 1000
           })
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
-          .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+          .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
 
         if (!legacyError && legacyData) {
           revalidatePath("/");
@@ -261,39 +259,29 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     return { ok: false, error: "할 일을 비워둘 수 없어요." } satisfies ActionResult;
   }
 
-  const xpRecommendation = await getXpRecommendation({ title, type: "todo" });
-
   const { data, error } = await supabase
     .from("todos")
-    .update({
-      title,
-      base_xp_reward: xpRecommendation.xp,
-      xp_reward: xpRecommendation.xp
-    })
+    .update({ title })
     .eq("id", todoId)
     .eq("status", "open")
     .select(TODO_SELECT_WITH_BASE)
     .single();
 
   if (error) {
-    if (isMissingPriorityError(error)) {
+    if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")
-        .update({
-          title,
-          base_xp_reward: xpRecommendation.xp,
-          xp_reward: xpRecommendation.xp
-        })
+        .update({ title })
         .eq("id", todoId)
         .eq("status", "open")
         .select(TODO_SELECT_LEGACY_WITH_BASE)
-        .single<Omit<TodoData, "priority">>();
+        .single<Omit<TodoData, "xp_difficulty">>();
 
       if (!legacyError && legacyData) {
         revalidatePath("/");
         return {
           ok: true,
-          data: { ...legacyData, priority: "normal" } as TodoData
+          data: { ...legacyData, xp_difficulty: DEFAULT_XP_DIFFICULTY } as TodoData
         } satisfies ActionResult<TodoData>;
       }
 
@@ -306,10 +294,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     if (isMissingBaseXpError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
-        .update({
-          title,
-          xp_reward: xpRecommendation.xp
-        })
+        .update({ title })
         .eq("id", todoId)
         .eq("status", "open")
         .select(TODO_SELECT_WITHOUT_BASE)
@@ -323,17 +308,14 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
         } satisfies ActionResult<TodoData>;
       }
 
-      if (isMissingPriorityError(fallbackError)) {
+      if (isMissingDifficultyError(fallbackError)) {
         const { data: legacyData, error: legacyError } = await supabase
           .from("todos")
-          .update({
-            title,
-            xp_reward: xpRecommendation.xp
-          })
+          .update({ title })
           .eq("id", todoId)
           .eq("status", "open")
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
-          .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+          .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
 
         if (!legacyError && legacyData) {
           revalidatePath("/");
@@ -362,7 +344,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
   return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
-export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
+export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDifficulty) {
   await requireUser();
 
   if (!isUuid(todoId)) {
@@ -370,105 +352,32 @@ export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
   }
 
   const supabase = await createClient();
-  const { data: todo, error: fetchError } = await supabase
-    .from("todos")
-    .select("base_xp_reward, xp_reward")
-    .eq("id", todoId)
-    .eq("status", "open")
-    .single<{ base_xp_reward: number; xp_reward: number }>();
-
-  if (fetchError && isMissingBaseXpError(fetchError)) {
-    const { data: fallbackTodo, error: fallbackFetchError } = await supabase
-      .from("todos")
-      .select("xp_reward")
-      .eq("id", todoId)
-      .eq("status", "open")
-      .single<{ xp_reward: number }>();
-
-    if (fallbackFetchError || !fallbackTodo) {
-      return {
-        ok: false,
-        error: fallbackFetchError?.message ?? "할 일을 찾을 수 없어요."
-      } satisfies ActionResult;
-    }
-
-    const nextXp = clampAdjustedXp(
-      fallbackTodo.xp_reward,
-      fallbackTodo.xp_reward + (direction === "up" ? 10 : -10)
-    );
-    const { data: fallbackData, error: fallbackError } = await supabase
-      .from("todos")
-      .update({ xp_reward: nextXp })
-      .eq("id", todoId)
-      .eq("status", "open")
-      .select(TODO_SELECT_WITHOUT_BASE)
-      .single<Omit<TodoData, "base_xp_reward">>();
-
-    if (fallbackError && isMissingPriorityError(fallbackError)) {
-      const { data: legacyData, error: legacyError } = await supabase
-        .from("todos")
-        .update({ xp_reward: nextXp })
-        .eq("id", todoId)
-        .eq("status", "open")
-        .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
-        .single<Omit<TodoData, "base_xp_reward" | "priority">>();
-
-      if (legacyError) {
-        return { ok: false, error: legacyError.message } satisfies ActionResult;
-      }
-
-      if (!legacyData) {
-        return { ok: false, error: "할 일을 찾을 수 없어요." } satisfies ActionResult;
-      }
-
-      revalidatePath("/");
-      return {
-        ok: true,
-        data: withFallbackBaseXp(legacyData) as TodoData
-      } satisfies ActionResult<TodoData>;
-    }
-
-    if (fallbackError) {
-      return { ok: false, error: fallbackError.message } satisfies ActionResult;
-    }
-
-    if (!fallbackData) {
-      return { ok: false, error: "할 일을 찾을 수 없어요." } satisfies ActionResult;
-    }
-
-    revalidatePath("/");
-    return {
-      ok: true,
-      data: withFallbackBaseXp(fallbackData) as TodoData
-    } satisfies ActionResult<TodoData>;
-  }
-
-  if (fetchError || !todo) {
-    return { ok: false, error: fetchError?.message ?? "할 일을 찾을 수 없어요." } satisfies ActionResult;
-  }
-
-  const nextXp = clampAdjustedXp(
-    todo.base_xp_reward,
-    todo.xp_reward + (direction === "up" ? 10 : -10)
-  );
+  const xpReward = getXpRewardForDifficulty(xpDifficulty);
 
   const { data, error } = await supabase
     .from("todos")
-    .update({ xp_reward: nextXp })
+    .update({
+      xp_difficulty: xpDifficulty,
+      base_xp_reward: xpReward,
+      xp_reward: xpReward
+    })
     .eq("id", todoId)
     .eq("status", "open")
     .select(TODO_SELECT_WITH_BASE)
     .single<TodoData>();
 
   if (error) {
-    if (isMissingPriorityError(error)) {
+    if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")
-        .update({ xp_reward: nextXp })
+        .update({
+          base_xp_reward: xpReward,
+          xp_reward: xpReward
+        })
         .eq("id", todoId)
         .eq("status", "open")
         .select(TODO_SELECT_LEGACY_WITH_BASE)
-        .single<Omit<TodoData, "priority">>();
+        .single<Omit<TodoData, "xp_difficulty">>();
 
       if (legacyError) {
         return { ok: false, error: legacyError.message } satisfies ActionResult;
@@ -481,45 +390,17 @@ export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
       revalidatePath("/");
       return {
         ok: true,
-        data: { ...legacyData, priority: "normal" } as TodoData
+        data: { ...legacyData, xp_difficulty: DEFAULT_XP_DIFFICULTY } as TodoData
       } satisfies ActionResult<TodoData>;
-    }
-
-    return { ok: false, error: error.message } satisfies ActionResult;
-  }
-
-  revalidatePath("/");
-  return { ok: true, data } satisfies ActionResult<typeof data>;
-}
-
-export async function updateTodoPriority(todoId: string, priority: TodoPriority) {
-  await requireUser();
-
-  if (!isUuid(todoId)) {
-    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
-  }
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("todos")
-    .update({ priority })
-    .eq("id", todoId)
-    .eq("status", "open")
-    .select(TODO_SELECT_WITH_BASE)
-    .single<TodoData>();
-
-  if (error) {
-    if (isMissingPriorityError(error)) {
-      return {
-        ok: false,
-        error: "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 07_todo_priority.sql을 실행해 주세요."
-      } satisfies ActionResult;
     }
 
     if (isMissingBaseXpError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
-        .update({ priority })
+        .update({
+          xp_difficulty: xpDifficulty,
+          xp_reward: xpReward
+        })
         .eq("id", todoId)
         .eq("status", "open")
         .select(TODO_SELECT_WITHOUT_BASE)
@@ -533,9 +414,32 @@ export async function updateTodoPriority(todoId: string, priority: TodoPriority)
         } satisfies ActionResult<TodoData>;
       }
 
+      if (isMissingDifficultyError(fallbackError)) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("todos")
+          .update({ xp_reward: xpReward })
+          .eq("id", todoId)
+          .eq("status", "open")
+          .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+          .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
+
+        if (!legacyError && legacyData) {
+          revalidatePath("/");
+          return {
+            ok: true,
+            data: withFallbackBaseXp(legacyData) as TodoData
+          } satisfies ActionResult<TodoData>;
+        }
+
+        return {
+          ok: false,
+          error: legacyError?.message ?? "난이도를 수정할 수 없어요."
+        } satisfies ActionResult;
+      }
+
       return {
         ok: false,
-        error: fallbackError?.message ?? "우선순위를 수정할 수 없어요."
+        error: fallbackError?.message ?? "난이도를 수정할 수 없어요."
       } satisfies ActionResult;
     }
 

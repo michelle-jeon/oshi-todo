@@ -8,7 +8,12 @@ import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import { isCharacterOnboardingComplete } from "@/lib/character-onboarding";
 import type { CharacterSpecies } from "@/lib/character-assets";
-import { DAILY_XP_CAP } from "@/lib/game-config";
+import {
+  DAILY_XP_CAP,
+  DEFAULT_XP_DIFFICULTY,
+  isXpDifficulty,
+  type XpDifficulty
+} from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
@@ -29,7 +34,7 @@ type TodoRowData = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
-  priority: "low" | "normal" | "high";
+  xp_difficulty: XpDifficulty;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -39,10 +44,10 @@ type TodoRowData = {
 };
 
 type TodoRowDataWithoutBaseXp = Omit<TodoRowData, "base_xp_reward">;
-type TodoRowDataWithoutPriority = Omit<TodoRowData, "priority">;
-type TodoRowDataWithoutBaseXpAndPriority = Omit<
+type TodoRowDataWithoutDifficulty = Omit<TodoRowData, "xp_difficulty">;
+type TodoRowDataWithoutBaseXpAndDifficulty = Omit<
   TodoRowData,
-  "base_xp_reward" | "priority"
+  "base_xp_reward" | "xp_difficulty"
 >;
 
 type FocusWindowLogRow = {
@@ -65,6 +70,7 @@ type RoutineRowData = {
   title: string;
   frequency: "daily" | "weekly";
   weekdays: number[];
+  xp_difficulty: XpDifficulty;
   xp_reward: number;
   base_xp_reward: number;
   is_active: boolean;
@@ -73,6 +79,11 @@ type RoutineRowData = {
 };
 
 type RoutineRowDataWithoutBaseXp = Omit<RoutineRowData, "base_xp_reward">;
+type RoutineRowDataWithoutDifficulty = Omit<RoutineRowData, "xp_difficulty">;
+type RoutineRowDataWithoutBaseXpAndDifficulty = Omit<
+  RoutineRowData,
+  "base_xp_reward" | "xp_difficulty"
+>;
 
 function getTodayString() {
   return new Intl.DateTimeFormat("en-CA", {
@@ -103,11 +114,11 @@ function getDbSchemaMessage(error: unknown) {
     typeof error === "object" && "message" in error ? String(error.message) : String(error);
 
   if (message.includes("base_xp_reward")) {
-    return "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/migrations/20260604093000_add_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요.";
+    return "XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요.";
   }
 
-  if (message.includes("priority")) {
-    return "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/07_todo_priority.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  if (message.includes("xp_difficulty")) {
+    return "투두/루틴 난이도 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/08_xp_difficulty.sql 내용을 실행한 뒤 새로고침해 주세요.";
   }
 
   if (message.includes("get_remaining_daily_xp") || message.includes("get_daily_xp_cap")) {
@@ -134,13 +145,33 @@ function isMissingBaseXpError(error: unknown) {
   return message.includes("base_xp_reward");
 }
 
-function isMissingPriorityError(error: unknown) {
+function isMissingDifficultyError(error: unknown) {
   const message =
     error && typeof error === "object" && "message" in error
       ? String(error.message)
       : String(error ?? "");
 
-  return message.includes("priority");
+  return message.includes("xp_difficulty");
+}
+
+function normalizeXpDifficulty(value: string): XpDifficulty {
+  return isXpDifficulty(value) ? value : DEFAULT_XP_DIFFICULTY;
+}
+
+function normalizeTodoRows(rows: Array<Omit<TodoRowData, "xp_difficulty"> & { xp_difficulty: string }>) {
+  return rows.map((todo) => ({
+    ...todo,
+    xp_difficulty: normalizeXpDifficulty(todo.xp_difficulty)
+  }));
+}
+
+function normalizeRoutineRows(
+  rows: Array<Omit<RoutineRowData, "xp_difficulty"> & { xp_difficulty: string }>
+) {
+  return rows.map((routine) => ({
+    ...routine,
+    xp_difficulty: normalizeXpDifficulty(routine.xp_difficulty)
+  }));
 }
 
 export default async function Home({
@@ -157,18 +188,18 @@ export default async function Home({
   const fetchTodos = async () => {
     const withBaseXp = await supabase
       .from("todos")
-      .select("id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .select("id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true })
       .returns<TodoRowData[]>();
 
-    if (!isMissingBaseXpError(withBaseXp.error) && !isMissingPriorityError(withBaseXp.error)) {
-      return { ...withBaseXp, isBaseXpSchemaMissing: false, isPrioritySchemaMissing: false };
+    if (!isMissingBaseXpError(withBaseXp.error) && !isMissingDifficultyError(withBaseXp.error)) {
+      return { ...withBaseXp, isBaseXpSchemaMissing: false, isDifficultySchemaMissing: false };
     }
 
-    if (isMissingPriorityError(withBaseXp.error) && !isMissingBaseXpError(withBaseXp.error)) {
+    if (isMissingDifficultyError(withBaseXp.error) && !isMissingBaseXpError(withBaseXp.error)) {
       const fallback = await supabase
         .from("todos")
         .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
@@ -176,29 +207,29 @@ export default async function Home({
         .order("status", { ascending: false })
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
-        .returns<TodoRowDataWithoutPriority[]>();
+        .returns<TodoRowDataWithoutDifficulty[]>();
 
       return {
         data: fallback.data?.map((todo) => ({
           ...todo,
-          priority: "normal" as const
+          xp_difficulty: DEFAULT_XP_DIFFICULTY
         })) ?? null,
         error: fallback.error,
         isBaseXpSchemaMissing: false,
-        isPrioritySchemaMissing: true
+        isDifficultySchemaMissing: true
       };
     }
 
     const fallback = await supabase
       .from("todos")
-      .select("id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .select("id, title, status, xp_difficulty, xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true })
       .returns<TodoRowDataWithoutBaseXp[]>();
 
-    if (isMissingPriorityError(fallback.error)) {
+    if (isMissingDifficultyError(fallback.error)) {
       const legacyFallback = await supabase
         .from("todos")
         .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
@@ -206,17 +237,17 @@ export default async function Home({
         .order("status", { ascending: false })
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
-        .returns<TodoRowDataWithoutBaseXpAndPriority[]>();
+        .returns<TodoRowDataWithoutBaseXpAndDifficulty[]>();
 
       return {
         data: legacyFallback.data?.map((todo) => ({
           ...todo,
-          priority: "normal" as const,
+          xp_difficulty: DEFAULT_XP_DIFFICULTY,
           base_xp_reward: todo.xp_reward
         })) ?? null,
         error: legacyFallback.error,
         isBaseXpSchemaMissing: true,
-        isPrioritySchemaMissing: true
+        isDifficultySchemaMissing: true
       };
     }
 
@@ -227,25 +258,62 @@ export default async function Home({
       })) ?? null,
       error: fallback.error,
       isBaseXpSchemaMissing: true,
-      isPrioritySchemaMissing: false
+      isDifficultySchemaMissing: false
     };
   };
   const fetchRoutines = async () => {
     const withBaseXp = await supabase
       .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+      .select("id, title, frequency, weekdays, xp_difficulty, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>();
 
-    if (!isMissingBaseXpError(withBaseXp.error)) {
-      return { ...withBaseXp, isBaseXpSchemaMissing: false };
+    if (!isMissingBaseXpError(withBaseXp.error) && !isMissingDifficultyError(withBaseXp.error)) {
+      return { ...withBaseXp, isBaseXpSchemaMissing: false, isDifficultySchemaMissing: false };
+    }
+
+    if (isMissingDifficultyError(withBaseXp.error) && !isMissingBaseXpError(withBaseXp.error)) {
+      const fallback = await supabase
+        .from("routines")
+        .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+        .order("created_at", { ascending: false })
+        .returns<RoutineRowDataWithoutDifficulty[]>();
+
+      return {
+        data: fallback.data?.map((routine) => ({
+          ...routine,
+          xp_difficulty: DEFAULT_XP_DIFFICULTY
+        })) ?? null,
+        error: fallback.error,
+        isBaseXpSchemaMissing: false,
+        isDifficultySchemaMissing: true
+      };
     }
 
     const fallback = await supabase
       .from("routines")
-      .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+      .select("id, title, frequency, weekdays, xp_difficulty, xp_reward, is_active, starts_on, ends_on")
       .order("created_at", { ascending: false })
       .returns<RoutineRowDataWithoutBaseXp[]>();
+
+    if (isMissingDifficultyError(fallback.error)) {
+      const legacyFallback = await supabase
+        .from("routines")
+        .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+        .order("created_at", { ascending: false })
+        .returns<RoutineRowDataWithoutBaseXpAndDifficulty[]>();
+
+      return {
+        data: legacyFallback.data?.map((routine) => ({
+          ...routine,
+          xp_difficulty: DEFAULT_XP_DIFFICULTY,
+          base_xp_reward: routine.xp_reward
+        })) ?? null,
+        error: legacyFallback.error,
+        isBaseXpSchemaMissing: true,
+        isDifficultySchemaMissing: true
+      };
+    }
 
     return {
       data: fallback.data?.map((routine) => ({
@@ -253,7 +321,8 @@ export default async function Home({
         base_xp_reward: routine.xp_reward
       })) ?? null,
       error: fallback.error,
-      isBaseXpSchemaMissing: true
+      isBaseXpSchemaMissing: true,
+      isDifficultySchemaMissing: false
     };
   };
 
@@ -263,9 +332,14 @@ export default async function Home({
       data: todos,
       error: todosError,
       isBaseXpSchemaMissing: isTodoBaseXpSchemaMissing,
-      isPrioritySchemaMissing: isTodoPrioritySchemaMissing
+      isDifficultySchemaMissing: isTodoDifficultySchemaMissing
     },
-    { data: routines, error: routinesError, isBaseXpSchemaMissing: isRoutineBaseXpSchemaMissing },
+    {
+      data: routines,
+      error: routinesError,
+      isBaseXpSchemaMissing: isRoutineBaseXpSchemaMissing,
+      isDifficultySchemaMissing: isRoutineDifficultySchemaMissing
+    },
     { data: focusLogs },
     { data: todayXpEvents },
     { error: dailyXpCapError }
@@ -328,9 +402,9 @@ export default async function Home({
   const dbError = characterError ?? todosError ?? routinesError ?? dailyXpCapError;
   const dbSchemaMessage =
     isTodoBaseXpSchemaMissing || isRoutineBaseXpSchemaMissing
-      ? "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요."
-      : isTodoPrioritySchemaMissing
-        ? "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/07_todo_priority.sql 내용을 실행한 뒤 새로고침해 주세요."
+      ? "XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요."
+      : isTodoDifficultySchemaMissing || isRoutineDifficultySchemaMissing
+        ? "투두/루틴 난이도 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/08_xp_difficulty.sql 내용을 실행한 뒤 새로고침해 주세요."
       : getDbSchemaMessage(dbError);
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayFocusXp = (focusLogs ?? [])
@@ -398,9 +472,9 @@ export default async function Home({
         <div className="grid">
           <section className="panel">
             <TodoList
-              initialRoutines={routines ?? []}
+              initialRoutines={normalizeRoutineRows(routines ?? [])}
               initialSelectedDate={getTodayString()}
-              initialTodos={todos ?? []}
+              initialTodos={normalizeTodoRows(todos ?? [])}
             />
           </section>
 

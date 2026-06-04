@@ -8,33 +8,12 @@
 NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable-key
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=google-oauth-client-id.apps.googleusercontent.com
-OPENAI_API_KEY=openai-api-key
-OPENAI_XP_MODEL=gpt-5-mini
 ```
 
 Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 
 - Project Settings > API > Project URL
 - Project Settings > API > publishable key 또는 anon public key
-
-`OPENAI_API_KEY`는 투두/루틴 XP 추천 기능에 쓴다. 이 값은 서버에서만 읽어야 하므로 `NEXT_PUBLIC_` 접두사를 붙이지 않는다.
-
-`OPENAI_API_KEY`가 비어 있으면 실제 AI 추천은 호출되지 않는다. 이때 앱은 화면에 키가 없다는 안내를 띄우고 임시 추천값만 적용한다. 실제 AI 추천을 확인하려면 `.env.local`과 배포 환경변수에 `OPENAI_API_KEY`를 반드시 넣은 뒤 개발 서버를 다시 시작한다.
-
-### OpenAI API 키 넣는 방법
-
-1. [OpenAI API 키 페이지](https://platform.openai.com/api-keys)에 로그인한다.
-2. 새 Secret API key를 만든다.
-3. 생성 직후 보이는 키를 복사한다. 이 화면을 닫으면 전체 키를 다시 볼 수 없으므로 잃어버리면 새 키를 만든다.
-4. 프로젝트 루트의 `.env.local`에 아래처럼 넣는다.
-
-```bash
-OPENAI_API_KEY=sk-...
-OPENAI_XP_MODEL=gpt-5-mini
-```
-
-5. 실행 중인 개발 서버를 끄고 다시 시작한다. Next.js는 서버 환경변수를 시작할 때 읽기 때문에 키를 넣은 뒤 재시작해야 한다.
-6. 비용보다 판단 품질을 더 우선하고 싶으면 `OPENAI_XP_MODEL=gpt-5.2`로 바꿀 수 있다.
 
 `.env.local`은 절대 Git에 올리지 않는다. 현재 저장소는 이미 `.gitignore`에서 이 파일을 제외한다.
 
@@ -54,8 +33,6 @@ Vercel 같은 배포 환경에는 최소한 아래 값이 필요하다.
 NEXT_PUBLIC_SUPABASE_URL
 NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
-OPENAI_API_KEY
-OPENAI_XP_MODEL
 ```
 
 배포 전 확인할 것:
@@ -63,7 +40,6 @@ OPENAI_XP_MODEL
 - `NEXT_PUBLIC_SUPABASE_URL`이 운영 Supabase 프로젝트 URL인지 확인.
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`가 같은 프로젝트의 publishable/anon key인지 확인.
 - `NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 Google Cloud Console의 Web OAuth Client ID인지 확인.
-- `OPENAI_API_KEY`는 서버 환경변수로만 등록하고 브라우저 공개 값으로 만들지 않았는지 확인.
 - Google OAuth Authorized JavaScript origins에 운영 도메인 추가.
 - Google OAuth Authorized redirect URIs에 Supabase Google provider의 callback URL 추가.
 - Supabase Auth URL Configuration에 운영 Site URL과 redirect URL 추가.
@@ -83,19 +59,21 @@ supabase/migrations/20260531212355_add_focus_window_logs.sql
 
 Supabase Dashboard의 SQL Editor에서 위 파일 내용을 실행하면 작업시간 로그 테이블과 저장 함수가 준비된다. 이 파일은 `create table if not exists`와 `create or replace function`을 쓰므로 같은 프로젝트에서 다시 실행해도 비교적 안전하다. 단, 정책이나 트리거가 이미 있으면 Supabase가 중복 이름 오류를 낼 수 있으니, 오류가 나면 어떤 줄에서 났는지 확인한 뒤 이미 만들어진 항목은 건너뛴다.
 
-AI XP 기준값 조정 기능에는 아래 파일이 필요하다.
+XP 기준값과 난이도 기능에는 아래 파일들이 필요하다.
 
 ```text
 supabase/migrations/20260604093000_add_base_xp_rewards.sql
+supabase/migrations/20260604123000_add_xp_difficulty.sql
 ```
 
-SQL Editor에서 직접 실행할 때는 아래 파일 내용을 복사해 붙여 넣는다.
+SQL Editor에서 직접 실행할 때는 아래 파일 내용을 번호 순서대로 복사해 붙여 넣는다.
 
 ```text
 supabase/sql_editor/05_base_xp_rewards.sql
+supabase/sql_editor/08_xp_difficulty.sql
 ```
 
-이 파일은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. 이 컬럼이 없으면 홈 화면에서 AI XP 기준값 DB 스키마 안내가 뜬다.
+`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값 또는 난이도 DB 스키마 안내가 뜬다.
 
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 
