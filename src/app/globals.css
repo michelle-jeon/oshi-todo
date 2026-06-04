@@ -52,6 +52,8 @@ button {
 }
 
 .character-panel-top {
+  position: relative;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -72,6 +74,7 @@ button {
 
 .topbar-actions {
   position: relative;
+  z-index: 30;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -677,6 +680,7 @@ button {
 
 .account-menu {
   position: relative;
+  z-index: 40;
 }
 
 .menu-trigger {
@@ -696,7 +700,7 @@ button {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 10;
+  z-index: 120;
   width: min(280px, 82vw);
   display: grid;
   gap: 10px;
@@ -709,6 +713,7 @@ button {
 
 .character-menu {
   position: relative;
+  z-index: 40;
 }
 
 .character-menu .menu-trigger {
@@ -727,7 +732,7 @@ button {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
-  z-index: 10;
+  z-index: 120;
   width: 180px;
   display: grid;
   gap: 8px;

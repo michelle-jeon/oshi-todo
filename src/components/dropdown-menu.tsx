@@ -21,6 +21,10 @@ export function DropdownMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
     function handlePointerDown(event: PointerEvent) {
       if (!menuRef.current?.contains(event.target as Node)) {
         setIsOpen(false);
@@ -29,7 +33,7 @@ export function DropdownMenu({
 
     document.addEventListener("pointerdown", handlePointerDown);
     return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
+  }, [isOpen]);
 
   return (
     <div className={className} ref={menuRef}>
@@ -38,11 +42,16 @@ export function DropdownMenu({
         type="button"
         aria-label={ariaLabel}
         aria-expanded={isOpen}
+        onPointerDown={(event) => event.stopPropagation()}
         onClick={() => setIsOpen((current) => !current)}
       >
         {button}
       </button>
-      {isOpen ? <div className={panelClassName}>{children}</div> : null}
+      {isOpen ? (
+        <div className={panelClassName} onPointerDown={(event) => event.stopPropagation()}>
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
