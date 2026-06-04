@@ -13,6 +13,7 @@ type TodoData = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
+  priority: TodoPriority;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -21,9 +22,15 @@ type TodoData = {
   routine_id: string | null;
 };
 
+type TodoPriority = "low" | "normal" | "high";
+
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
+  "id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+const TODO_SELECT_LEGACY_WITH_BASE =
+  "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+const TODO_SELECT_LEGACY_WITHOUT_BASE =
   "id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id";
 
 function cleanTitle(formData: FormData) {
@@ -38,6 +45,16 @@ function cleanTodoDate(formData: FormData) {
   }
 
   return new Date().toISOString().slice(0, 10);
+}
+
+function cleanPriority(formData: FormData): TodoPriority {
+  const value = String(formData.get("priority") ?? "normal");
+
+  if (value === "low" || value === "normal" || value === "high") {
+    return value;
+  }
+
+  return "normal";
 }
 
 function clampAdjustedXp(baseXpReward: number, xpReward: number) {
@@ -62,8 +79,17 @@ function isMissingBaseXpError(error: unknown) {
   return message.includes("base_xp_reward");
 }
 
-function withFallbackBaseXp<T extends { xp_reward: number }>(data: T) {
-  return { ...data, base_xp_reward: data.xp_reward };
+function isMissingPriorityError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("priority");
+}
+
+function withFallbackBaseXp<T extends { xp_reward: number; priority?: TodoPriority }>(data: T) {
+  return { ...data, base_xp_reward: data.xp_reward, priority: data.priority ?? "normal" };
 }
 
 export async function createTodo(formData: FormData) {
@@ -71,6 +97,7 @@ export async function createTodo(formData: FormData) {
   const supabase = await createClient();
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
+  const priority = cleanPriority(formData);
 
   if (!title) {
     return { ok: false, error: "할 일을 입력해 주세요." } satisfies ActionResult;
@@ -91,6 +118,7 @@ export async function createTodo(formData: FormData) {
   const insertPayload = {
     user_id: user.id,
     title,
+    priority,
     base_xp_reward: xpReward,
     xp_reward: xpReward,
     todo_date: todoDate,
@@ -103,12 +131,41 @@ export async function createTodo(formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("todos")
+        .insert({
+          user_id: user.id,
+          title,
+          base_xp_reward: xpReward,
+          xp_reward: xpReward,
+          todo_date: todoDate,
+          sort_order: (latestTodo?.sort_order ?? 0) + 1000
+        })
+        .select(TODO_SELECT_LEGACY_WITH_BASE)
+        .single<Omit<TodoData, "priority">>();
+
+      if (!legacyError && legacyData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: { ...legacyData, priority: "normal" } as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: legacyError?.message ?? "할 일을 만들 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingBaseXpError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
         .insert({
           user_id: user.id,
           title,
+          priority,
           xp_reward: xpReward,
           todo_date: todoDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
@@ -122,6 +179,33 @@ export async function createTodo(formData: FormData) {
           ok: true,
           data: withFallbackBaseXp(fallbackData) as TodoData
         } satisfies ActionResult<TodoData>;
+      }
+
+      if (isMissingPriorityError(fallbackError)) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("todos")
+          .insert({
+            user_id: user.id,
+            title,
+            xp_reward: xpReward,
+            todo_date: todoDate,
+            sort_order: (latestTodo?.sort_order ?? 0) + 1000
+          })
+          .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+          .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+
+        if (!legacyError && legacyData) {
+          revalidatePath("/");
+          return {
+            ok: true,
+            data: withFallbackBaseXp(legacyData) as TodoData
+          } satisfies ActionResult<TodoData>;
+        }
+
+        return {
+          ok: false,
+          error: legacyError?.message ?? "할 일을 만들 수 없어요."
+        } satisfies ActionResult;
       }
 
       return {
@@ -192,6 +276,33 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("todos")
+        .update({
+          title,
+          base_xp_reward: xpRecommendation.xp,
+          xp_reward: xpRecommendation.xp
+        })
+        .eq("id", todoId)
+        .eq("status", "open")
+        .select(TODO_SELECT_LEGACY_WITH_BASE)
+        .single<Omit<TodoData, "priority">>();
+
+      if (!legacyError && legacyData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: { ...legacyData, priority: "normal" } as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: legacyError?.message ?? "할 일을 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingBaseXpError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
@@ -210,6 +321,32 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
           ok: true,
           data: withFallbackBaseXp(fallbackData) as TodoData
         } satisfies ActionResult<TodoData>;
+      }
+
+      if (isMissingPriorityError(fallbackError)) {
+        const { data: legacyData, error: legacyError } = await supabase
+          .from("todos")
+          .update({
+            title,
+            xp_reward: xpRecommendation.xp
+          })
+          .eq("id", todoId)
+          .eq("status", "open")
+          .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+          .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+
+        if (!legacyError && legacyData) {
+          revalidatePath("/");
+          return {
+            ok: true,
+            data: withFallbackBaseXp(legacyData) as TodoData
+          } satisfies ActionResult<TodoData>;
+        }
+
+        return {
+          ok: false,
+          error: legacyError?.message ?? "할 일을 수정할 수 없어요."
+        } satisfies ActionResult;
       }
 
       return {
@@ -267,6 +404,30 @@ export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
       .select(TODO_SELECT_WITHOUT_BASE)
       .single<Omit<TodoData, "base_xp_reward">>();
 
+    if (fallbackError && isMissingPriorityError(fallbackError)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("todos")
+        .update({ xp_reward: nextXp })
+        .eq("id", todoId)
+        .eq("status", "open")
+        .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+        .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+
+      if (legacyError) {
+        return { ok: false, error: legacyError.message } satisfies ActionResult;
+      }
+
+      if (!legacyData) {
+        return { ok: false, error: "할 일을 찾을 수 없어요." } satisfies ActionResult;
+      }
+
+      revalidatePath("/");
+      return {
+        ok: true,
+        data: withFallbackBaseXp(legacyData) as TodoData
+      } satisfies ActionResult<TodoData>;
+    }
+
     if (fallbackError) {
       return { ok: false, error: fallbackError.message } satisfies ActionResult;
     }
@@ -300,6 +461,84 @@ export async function adjustTodoXp(todoId: string, direction: "down" | "up") {
     .single<TodoData>();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: legacyData, error: legacyError } = await supabase
+        .from("todos")
+        .update({ xp_reward: nextXp })
+        .eq("id", todoId)
+        .eq("status", "open")
+        .select(TODO_SELECT_LEGACY_WITH_BASE)
+        .single<Omit<TodoData, "priority">>();
+
+      if (legacyError) {
+        return { ok: false, error: legacyError.message } satisfies ActionResult;
+      }
+
+      if (!legacyData) {
+        return { ok: false, error: "할 일을 찾을 수 없어요." } satisfies ActionResult;
+      }
+
+      revalidatePath("/");
+      return {
+        ok: true,
+        data: { ...legacyData, priority: "normal" } as TodoData
+      } satisfies ActionResult<TodoData>;
+    }
+
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
+export async function updateTodoPriority(todoId: string, priority: TodoPriority) {
+  await requireUser();
+
+  if (!isUuid(todoId)) {
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ priority })
+    .eq("id", todoId)
+    .eq("status", "open")
+    .select(TODO_SELECT_WITH_BASE)
+    .single<TodoData>();
+
+  if (error) {
+    if (isMissingPriorityError(error)) {
+      return {
+        ok: false,
+        error: "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 07_todo_priority.sql을 실행해 주세요."
+      } satisfies ActionResult;
+    }
+
+    if (isMissingBaseXpError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({ priority })
+        .eq("id", todoId)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITHOUT_BASE)
+        .single<Omit<TodoData, "base_xp_reward">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackBaseXp(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "우선순위를 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     return { ok: false, error: error.message } satisfies ActionResult;
   }
 

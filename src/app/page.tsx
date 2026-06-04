@@ -29,6 +29,7 @@ type TodoRowData = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
+  priority: "low" | "normal" | "high";
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -38,6 +39,11 @@ type TodoRowData = {
 };
 
 type TodoRowDataWithoutBaseXp = Omit<TodoRowData, "base_xp_reward">;
+type TodoRowDataWithoutPriority = Omit<TodoRowData, "priority">;
+type TodoRowDataWithoutBaseXpAndPriority = Omit<
+  TodoRowData,
+  "base_xp_reward" | "priority"
+>;
 
 type FocusWindowLogRow = {
   id: string;
@@ -100,6 +106,10 @@ function getDbSchemaMessage(error: unknown) {
     return "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/migrations/20260604093000_add_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요.";
   }
 
+  if (message.includes("priority")) {
+    return "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/07_todo_priority.sql 내용을 실행한 뒤 새로고침해 주세요.";
+  }
+
   if (message.includes("get_remaining_daily_xp") || message.includes("get_daily_xp_cap")) {
     return "하루 XP 상한 DB 함수가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/06_daily_xp_cap.sql 내용을 실행한 뒤 새로고침해 주세요.";
   }
@@ -124,6 +134,15 @@ function isMissingBaseXpError(error: unknown) {
   return message.includes("base_xp_reward");
 }
 
+function isMissingPriorityError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("priority");
+}
+
 export default async function Home({
   searchParams
 }: {
@@ -138,25 +157,68 @@ export default async function Home({
   const fetchTodos = async () => {
     const withBaseXp = await supabase
       .from("todos")
-      .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .select("id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true })
       .returns<TodoRowData[]>();
 
-    if (!isMissingBaseXpError(withBaseXp.error)) {
-      return { ...withBaseXp, isBaseXpSchemaMissing: false };
+    if (!isMissingBaseXpError(withBaseXp.error) && !isMissingPriorityError(withBaseXp.error)) {
+      return { ...withBaseXp, isBaseXpSchemaMissing: false, isPrioritySchemaMissing: false };
+    }
+
+    if (isMissingPriorityError(withBaseXp.error) && !isMissingBaseXpError(withBaseXp.error)) {
+      const fallback = await supabase
+        .from("todos")
+        .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+        .order("todo_date", { ascending: false })
+        .order("status", { ascending: false })
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .returns<TodoRowDataWithoutPriority[]>();
+
+      return {
+        data: fallback.data?.map((todo) => ({
+          ...todo,
+          priority: "normal" as const
+        })) ?? null,
+        error: fallback.error,
+        isBaseXpSchemaMissing: false,
+        isPrioritySchemaMissing: true
+      };
     }
 
     const fallback = await supabase
       .from("todos")
-      .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .select("id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id")
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true })
       .returns<TodoRowDataWithoutBaseXp[]>();
+
+    if (isMissingPriorityError(fallback.error)) {
+      const legacyFallback = await supabase
+        .from("todos")
+        .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+        .order("todo_date", { ascending: false })
+        .order("status", { ascending: false })
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+        .returns<TodoRowDataWithoutBaseXpAndPriority[]>();
+
+      return {
+        data: legacyFallback.data?.map((todo) => ({
+          ...todo,
+          priority: "normal" as const,
+          base_xp_reward: todo.xp_reward
+        })) ?? null,
+        error: legacyFallback.error,
+        isBaseXpSchemaMissing: true,
+        isPrioritySchemaMissing: true
+      };
+    }
 
     return {
       data: fallback.data?.map((todo) => ({
@@ -164,7 +226,8 @@ export default async function Home({
         base_xp_reward: todo.xp_reward
       })) ?? null,
       error: fallback.error,
-      isBaseXpSchemaMissing: true
+      isBaseXpSchemaMissing: true,
+      isPrioritySchemaMissing: false
     };
   };
   const fetchRoutines = async () => {
@@ -196,7 +259,12 @@ export default async function Home({
 
   const [
     { data: activeCharacter, error: characterError },
-    { data: todos, error: todosError, isBaseXpSchemaMissing: isTodoBaseXpSchemaMissing },
+    {
+      data: todos,
+      error: todosError,
+      isBaseXpSchemaMissing: isTodoBaseXpSchemaMissing,
+      isPrioritySchemaMissing: isTodoPrioritySchemaMissing
+    },
     { data: routines, error: routinesError, isBaseXpSchemaMissing: isRoutineBaseXpSchemaMissing },
     { data: focusLogs },
     { data: todayXpEvents },
@@ -261,6 +329,8 @@ export default async function Home({
   const dbSchemaMessage =
     isTodoBaseXpSchemaMissing || isRoutineBaseXpSchemaMissing
       ? "AI XP 기준값 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/05_base_xp_rewards.sql 내용을 실행한 뒤 새로고침해 주세요."
+      : isTodoPrioritySchemaMissing
+        ? "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/07_todo_priority.sql 내용을 실행한 뒤 새로고침해 주세요."
       : getDbSchemaMessage(dbError);
   const displayMessage = message?.includes("temp-") ? undefined : message;
   const todayFocusXp = (focusLogs ?? [])

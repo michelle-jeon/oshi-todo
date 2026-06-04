@@ -500,6 +500,55 @@ button {
   opacity: 0.38;
 }
 
+.priority-select,
+.priority-badge {
+  min-height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.priority-select {
+  padding: 0 28px 0 9px;
+}
+
+.priority-select.create {
+  width: 92px;
+  height: 42px;
+  flex: 0 0 auto;
+}
+
+.priority-select.high,
+.priority-badge.high {
+  border-color: #e5a29a;
+  background: #fff0ed;
+  color: #b84730;
+}
+
+.priority-select.normal,
+.priority-badge.normal {
+  border-color: #cdded8;
+  background: #eef8f4;
+  color: var(--primary);
+}
+
+.priority-select.low,
+.priority-badge.low {
+  border-color: #ded6c7;
+  background: #f7f2ea;
+  color: var(--muted);
+}
+
+.priority-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 44px;
+  padding: 0 9px;
+}
+
 .inline-title-input {
   width: min(100%, 640px);
   min-height: 34px;

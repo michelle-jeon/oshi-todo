@@ -22,10 +22,13 @@ type RoutineData = {
   ends_on: string | null;
 };
 
+type TodoPriority = "low" | "normal" | "high";
+
 type TodoData = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
+  priority: TodoPriority;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -39,8 +42,12 @@ const ROUTINE_SELECT_WITH_BASE =
 const ROUTINE_SELECT_WITHOUT_BASE =
   "id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on";
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
+  "id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+const TODO_SELECT_LEGACY_WITH_BASE =
+  "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+const TODO_SELECT_LEGACY_WITHOUT_BASE =
   "id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id";
 
 function cleanRoutineInput(formData: FormData) {
@@ -80,8 +87,17 @@ function isMissingBaseXpError(error: unknown) {
   return message.includes("base_xp_reward");
 }
 
-function withFallbackBaseXp<T extends { xp_reward: number }>(data: T) {
-  return { ...data, base_xp_reward: data.xp_reward };
+function isMissingPriorityError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("priority");
+}
+
+function withFallbackBaseXp<T extends { xp_reward: number; priority?: TodoPriority }>(data: T) {
+  return { ...data, base_xp_reward: data.xp_reward, priority: data.priority ?? "normal" };
 }
 
 export async function createRoutine(formData: FormData) {
@@ -461,7 +477,28 @@ async function completeRoutineWithData({
         .from("todos")
         .select(TODO_SELECT_WITHOUT_BASE)
         .eq("id", fallbackTodo.id)
-        .single();
+        .single<Omit<TodoData, "base_xp_reward">>();
+
+      if (fallbackCompletedTodoError && isMissingPriorityError(fallbackCompletedTodoError)) {
+        const { data: legacyCompletedTodo, error: legacyCompletedTodoError } = await supabase
+          .from("todos")
+          .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+          .eq("id", fallbackTodo.id)
+          .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+
+        if (legacyCompletedTodoError || !legacyCompletedTodo) {
+          return {
+            ok: false,
+            error: legacyCompletedTodoError?.message ?? "완료한 루틴을 불러올 수 없어요."
+          } satisfies ActionResult;
+        }
+
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackBaseXp(legacyCompletedTodo) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
 
       if (fallbackCompletedTodoError || !fallbackCompletedTodo) {
         return {
@@ -491,11 +528,39 @@ async function completeRoutineWithData({
     return { ok: false, error: completeError.message } satisfies ActionResult;
   }
 
-  const { data: completedTodo } = await supabase
+  const { data: completedTodo, error: completedTodoError } = await supabase
     .from("todos")
     .select(TODO_SELECT_WITH_BASE)
     .eq("id", todo.id)
-    .single();
+    .single<TodoData>();
+
+  if (completedTodoError && isMissingPriorityError(completedTodoError)) {
+    const { data: legacyCompletedTodo, error: legacyCompletedTodoError } = await supabase
+      .from("todos")
+      .select(TODO_SELECT_LEGACY_WITH_BASE)
+      .eq("id", todo.id)
+      .single<Omit<TodoData, "priority">>();
+
+    if (legacyCompletedTodoError || !legacyCompletedTodo) {
+      return {
+        ok: false,
+        error: legacyCompletedTodoError?.message ?? "완료한 루틴을 불러올 수 없어요."
+      } satisfies ActionResult;
+    }
+
+    revalidatePath("/");
+    return {
+      ok: true,
+      data: { ...legacyCompletedTodo, priority: "normal" } as TodoData
+    } satisfies ActionResult<TodoData>;
+  }
+
+  if (completedTodoError && !isMissingBaseXpError(completedTodoError)) {
+    return {
+      ok: false,
+      error: completedTodoError.message
+    } satisfies ActionResult;
+  }
 
   if (!completedTodo) {
     const { data: fallbackCompletedTodo, error: fallbackCompletedTodoError } = await supabase
@@ -503,6 +568,27 @@ async function completeRoutineWithData({
       .select(TODO_SELECT_WITHOUT_BASE)
       .eq("id", todo.id)
       .single<Omit<TodoData, "base_xp_reward">>();
+
+    if (fallbackCompletedTodoError && isMissingPriorityError(fallbackCompletedTodoError)) {
+      const { data: legacyCompletedTodo, error: legacyCompletedTodoError } = await supabase
+        .from("todos")
+        .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
+        .eq("id", todo.id)
+        .single<Omit<TodoData, "base_xp_reward" | "priority">>();
+
+      if (legacyCompletedTodoError || !legacyCompletedTodo) {
+        return {
+          ok: false,
+          error: legacyCompletedTodoError?.message ?? "완료한 루틴을 불러올 수 없어요."
+        } satisfies ActionResult;
+      }
+
+      revalidatePath("/");
+      return {
+        ok: true,
+        data: withFallbackBaseXp(legacyCompletedTodo) as TodoData
+      } satisfies ActionResult<TodoData>;
+    }
 
     if (fallbackCompletedTodoError || !fallbackCompletedTodo) {
       return {

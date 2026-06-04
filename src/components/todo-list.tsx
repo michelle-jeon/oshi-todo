@@ -18,14 +18,18 @@ import {
   deleteTodo,
   reorderTodos,
   toggleTodo,
+  updateTodoPriority,
   updateTodoTitle
 } from "@/app/todo-actions";
 import { DEFAULT_TODO_XP } from "@/lib/game-config";
+
+type TodoPriority = "low" | "normal" | "high";
 
 export type TodoListItem = {
   id: string;
   title: string;
   status: "open" | "completed" | "archived";
+  priority: TodoPriority;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -98,6 +102,18 @@ const weekdayOptions = [
   { label: "일", value: 0 }
 ];
 
+const priorityOptions: { value: TodoPriority; label: string }[] = [
+  { value: "low", label: "낮음" },
+  { value: "normal", label: "보통" },
+  { value: "high", label: "높음" }
+];
+
+const priorityLabels = {
+  low: "낮음",
+  normal: "보통",
+  high: "높음"
+} satisfies Record<TodoPriority, string>;
+
 function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, weekday: number) {
   return (
     routine.starts_on <= dateString &&
@@ -118,6 +134,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [todos, setTodos] = useState(initialTodos);
   const [routines, setRoutines] = useState(initialRoutines);
   const [newTitle, setNewTitle] = useState("");
+  const [newPriority, setNewPriority] = useState<TodoPriority>("normal");
   const [routineTitle, setRoutineTitle] = useState("");
   const [routineFrequency, setRoutineFrequency] = useState<"daily" | "weekly">("daily");
   const [routineWeekdays, setRoutineWeekdays] = useState<number[]>([]);
@@ -174,6 +191,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       id: optimisticId,
       title,
       status: "open",
+      priority: newPriority,
       xp_reward: DEFAULT_TODO_XP,
       base_xp_reward: DEFAULT_TODO_XP,
       completed_at: null,
@@ -185,6 +203,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
+    setNewPriority("normal");
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -201,6 +220,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setTodos(previousTodos);
       setNewTitle(title);
+      setNewPriority(optimisticTodo.priority);
       reportActionError(result.error);
     });
   }
@@ -319,6 +339,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       id: optimisticId,
       title: routine.title,
       status: "completed",
+      priority: "normal",
       xp_reward: routine.xp_reward,
       base_xp_reward: routine.base_xp_reward,
       completed_at: new Date().toISOString(),
@@ -540,6 +561,32 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     });
   }
 
+  function handlePriorityChange(todo: TodoListItem, priority: TodoPriority) {
+    if (todo.id.startsWith("temp-") || todo.priority === priority) {
+      return;
+    }
+
+    const previousTodos = todos;
+    setTodos((current) =>
+      current.map((item) => (item.id === todo.id ? { ...item, priority } : item))
+    );
+    setOperationMessage(null);
+
+    startTransition(async () => {
+      const result = await updateTodoPriority(todo.id, priority);
+
+      if (result.ok) {
+        setTodos((current) =>
+          current.map((item) => (item.id === todo.id ? (result.data as TodoListItem) : item))
+        );
+        return;
+      }
+
+      setTodos(previousTodos);
+      reportActionError(result.error);
+    });
+  }
+
   function handleAdjustRoutineXp(routine: RoutineListItem, direction: "down" | "up") {
     if (routine.id.startsWith("temp-")) {
       return;
@@ -685,6 +732,27 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             />
           )}
           <div className="xp-reward-row">
+            {isCompleted ? (
+              <span className={`priority-badge ${todo.priority}`}>
+                {priorityLabels[todo.priority]}
+              </span>
+            ) : (
+              <select
+                className={`priority-select ${todo.priority}`}
+                value={todo.priority}
+                onChange={(event) =>
+                  handlePriorityChange(todo, event.target.value as TodoPriority)
+                }
+                disabled={todo.id.startsWith("temp-")}
+                aria-label={`${todo.title} 우선순위`}
+              >
+                {priorityOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            )}
             <span className="subtle">
               {isCompleted ? "완료됨" : "완료 보상"} {todo.xp_reward} XP
             </span>
@@ -879,6 +947,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           value={newTitle}
           onChange={(event) => setNewTitle(event.target.value)}
         />
+        <select
+          className={`priority-select create ${newPriority}`}
+          name="priority"
+          value={newPriority}
+          onChange={(event) => setNewPriority(event.target.value as TodoPriority)}
+          aria-label="새 할 일 우선순위"
+        >
+          {priorityOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
         <button className="icon-button" type="submit" aria-label="할 일 추가">
           <Plus size={18} />
         </button>
