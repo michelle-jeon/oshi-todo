@@ -267,9 +267,16 @@ export default async function Home({
         <header className="topbar">
           <div />
           <div className="topbar-actions">
-            <div className="currency-pill" aria-label="보유 경험치">
+            <div className="currency-pill" aria-label="경험치와 사용 가능 XP">
               <Coins size={18} />
-              <span>{spendableXp.toLocaleString()} XP</span>
+              <span>
+                <small>사용 가능</small>
+                {spendableXp.toLocaleString()} XP
+              </span>
+              <span>
+                <small>누적</small>
+                {(character?.xpTotal ?? 0).toLocaleString()} XP
+              </span>
             </div>
             <Link className="topbar-link-button" href={"/plaza" as Route}>
               <DoorOpen size={18} /> 광장

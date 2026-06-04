@@ -85,12 +85,24 @@ button {
   min-height: 42px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border: 0;
   background: transparent;
   color: #5f420c;
   padding: 0 4px;
   font-weight: 800;
+}
+
+.currency-pill span {
+  display: grid;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.currency-pill small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
 }
 
 .topbar-link-button {
@@ -1195,7 +1207,7 @@ button {
 
 .shop-cart-panel {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, auto) auto;
   align-items: center;
   gap: 12px;
   border: 1px solid var(--line);
@@ -1209,11 +1221,22 @@ button {
   margin: 0;
 }
 
+.shop-cart-total {
+  display: grid;
+  gap: 2px;
+}
+
 .shop-cart-list {
   grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+}
+
+@media (max-width: 720px) {
+  .shop-cart-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 .shop-cart-chip {

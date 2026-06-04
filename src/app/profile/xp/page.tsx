@@ -22,6 +22,11 @@ type InventoryRow = {
   } | null;
 };
 
+type CharacterXpRow = {
+  xp_current: number;
+  xp_total: number;
+};
+
 type LedgerItem = {
   id: string;
   title: string;
@@ -64,7 +69,13 @@ function reasonLabel(event: XpEventRow) {
 export default async function XpHistoryPage() {
   const user = await requireUser();
   const supabase = await createClient();
-  const [{ data: xpEvents }, { data: purchases }] = await Promise.all([
+  const [{ data: character }, { data: xpEvents }, { data: purchases }] = await Promise.all([
+    supabase
+      .from("characters")
+      .select("xp_current, xp_total")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<CharacterXpRow>(),
     supabase
       .from("xp_events")
       .select("id, amount, reason, created_at, todos(title)")
@@ -104,6 +115,8 @@ export default async function XpHistoryPage() {
   );
   const gainedTotal = gainedItems.reduce((sum, item) => sum + item.amount, 0);
   const spentTotal = spentItems.reduce((sum, item) => sum + item.amount, 0);
+  const spendableXp = character?.xp_current ?? 0;
+  const lifetimeXp = character?.xp_total ?? 0;
 
   return (
     <main className="simple-shell narrow">
@@ -115,6 +128,24 @@ export default async function XpHistoryPage() {
       </header>
 
       <section className="xp-summary-grid">
+        <div className="panel xp-summary-card">
+          <span className="profile-setting-icon">
+            <Coins size={18} />
+          </span>
+          <div>
+            <p className="subtle">사용 가능 XP</p>
+            <strong>{spendableXp.toLocaleString()} XP</strong>
+          </div>
+        </div>
+        <div className="panel xp-summary-card">
+          <span className="profile-setting-icon">
+            <Coins size={18} />
+          </span>
+          <div>
+            <p className="subtle">누적 경험치</p>
+            <strong>{lifetimeXp.toLocaleString()} XP</strong>
+          </div>
+        </div>
         <div className="panel xp-summary-card">
           <span className="profile-setting-icon">
             <Plus size={18} />

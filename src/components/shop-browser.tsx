@@ -104,6 +104,7 @@ export function ShopBrowser({
   const cartItems = Object.values(cartBySlot);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.cost, 0);
   const canCheckout = cartItems.length > 0 && cartTotal <= currentXp;
+  const remainingXp = Math.max(currentXp - cartTotal, 0);
 
   function switchSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
@@ -273,8 +274,15 @@ export function ShopBrowser({
 
       <div className="shop-cart-panel">
         <div>
-          <p className="subtle">선택한 아이템</p>
-          <strong>{cartItems.length > 0 ? `${cartItems.length}개 · ${cartTotal} XP` : "아직 없어요"}</strong>
+          <p className="subtle">사용 가능 XP</p>
+          <strong>{currentXp.toLocaleString()} XP</strong>
+        </div>
+        <div className="shop-cart-total">
+          <p className="subtle">사용 예정</p>
+          <strong>{cartItems.length > 0 ? `${cartTotal.toLocaleString()} XP` : "0 XP"}</strong>
+          {cartItems.length > 0 && cartTotal <= currentXp ? (
+            <span className="subtle">구매 후 {remainingXp.toLocaleString()} XP</span>
+          ) : null}
         </div>
         {cartItems.length > 0 ? (
           <div className="shop-cart-list">

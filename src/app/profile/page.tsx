@@ -124,7 +124,7 @@ export default async function ProfilePage() {
         <section className="panel profile-panel">
           <h2>계정 작업</h2>
           <Link className="ghost-button" href={"/profile/xp" as Route}>
-            XP 기록 보기
+            XP/재화 기록 보기
           </Link>
           <form action={signOut}>
             <button className="ghost-button" type="submit">

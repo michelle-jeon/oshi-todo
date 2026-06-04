@@ -1,6 +1,6 @@
 {
   "name": "oshi-todo",
-  "version": "0.2.24",
+  "version": "0.2.25",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -H 127.0.0.1",
