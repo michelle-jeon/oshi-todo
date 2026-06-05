@@ -17,11 +17,14 @@ import {
   reorderTodos,
   toggleTodo,
   updateTodoDifficulty,
+  updateTodoPriority,
   updateTodoTitle
 } from "@/app/todo-actions";
 import {
+  DEFAULT_TODO_PRIORITY,
   DEFAULT_XP_DIFFICULTY,
   getXpRewardForDifficulty,
+  type TodoPriority,
   type XpDifficulty
 } from "@/lib/game-config";
 
@@ -30,6 +33,7 @@ export type TodoListItem = {
   title: string;
   status: "open" | "completed" | "archived";
   xp_difficulty: XpDifficulty;
+  priority: TodoPriority;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -109,6 +113,16 @@ const difficultyOptions: { value: XpDifficulty; label: string; xp: number }[] = 
   { value: "high", label: "도전", xp: getXpRewardForDifficulty("high") }
 ];
 
+const priorityOptions: { value: TodoPriority; label: string }[] = [
+  { value: "low", label: "낮음" },
+  { value: "normal", label: "보통" },
+  { value: "high", label: "높음" }
+];
+
+function getPriorityLabel(priority: TodoPriority) {
+  return priorityOptions.find((option) => option.value === priority)?.label ?? "보통";
+}
+
 function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, weekday: number) {
   return (
     routine.starts_on <= dateString &&
@@ -123,6 +137,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [routines, setRoutines] = useState(initialRoutines);
   const [newTitle, setNewTitle] = useState("");
   const [newDifficulty, setNewDifficulty] = useState<XpDifficulty>(DEFAULT_XP_DIFFICULTY);
+  const [newPriority, setNewPriority] = useState<TodoPriority>(DEFAULT_TODO_PRIORITY);
   const [routineTitle, setRoutineTitle] = useState("");
   const [routineDifficulty, setRoutineDifficulty] = useState<XpDifficulty>(DEFAULT_XP_DIFFICULTY);
   const [routineFrequency, setRoutineFrequency] = useState<"daily" | "weekly">("daily");
@@ -189,6 +204,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title,
       status: "open",
       xp_difficulty: newDifficulty,
+      priority: newPriority,
       xp_reward: getXpRewardForDifficulty(newDifficulty),
       base_xp_reward: getXpRewardForDifficulty(newDifficulty),
       completed_at: null,
@@ -201,6 +217,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
     setNewDifficulty(DEFAULT_XP_DIFFICULTY);
+    setNewPriority(DEFAULT_TODO_PRIORITY);
     setIsCreatePanelOpen(false);
     clearOperationFeedback();
 
@@ -219,6 +236,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       setTodos(previousTodos);
       setNewTitle(title);
       setNewDifficulty(optimisticTodo.xp_difficulty);
+      setNewPriority(optimisticTodo.priority);
       setIsCreatePanelOpen(true);
       reportActionError(result.error);
     });
@@ -343,6 +361,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       title: routine.title,
       status: "completed",
       xp_difficulty: routine.xp_difficulty ?? DEFAULT_XP_DIFFICULTY,
+      priority: DEFAULT_TODO_PRIORITY,
       xp_reward: routine.xp_reward,
       base_xp_reward: routine.base_xp_reward,
       completed_at: new Date().toISOString(),
@@ -361,7 +380,11 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       const result = await completeRoutine(routine.id, formData);
 
       if (result.ok && result.data) {
-        const completedTodo = result.data as TodoListItem;
+        const completedResult = result.data as Partial<TodoListItem>;
+        const completedTodo = {
+          ...completedResult,
+          priority: completedResult.priority ?? DEFAULT_TODO_PRIORITY
+        } as TodoListItem;
 
         setTodos((current) =>
           current.map((todo) =>
@@ -512,10 +535,15 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
     const title = String(formData.get("title") ?? "").trim();
     const difficultyValue = String(formData.get("xpDifficulty") ?? editingTodo.xp_difficulty);
+    const priorityValue = String(formData.get("priority") ?? editingTodo.priority);
     const xpDifficulty =
       difficultyOptions.some((option) => option.value === difficultyValue)
         ? (difficultyValue as XpDifficulty)
         : editingTodo.xp_difficulty;
+    const priority =
+      priorityOptions.some((option) => option.value === priorityValue)
+        ? (priorityValue as TodoPriority)
+        : editingTodo.priority;
     const xpReward = getXpRewardForDifficulty(xpDifficulty);
 
     if (!title || editingTodo.id.startsWith("temp-")) {
@@ -527,6 +555,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       ...editingTodo,
       title,
       xp_difficulty: xpDifficulty,
+      priority,
       xp_reward: xpReward,
       base_xp_reward: xpReward
     };
@@ -568,9 +597,30 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         latestTodo = difficultyResult.data as TodoListItem;
       }
 
+      if (priority !== editingTodo.priority) {
+        const priorityResult = await updateTodoPriority(editingTodo.id, priority);
+
+        if (!priorityResult.ok) {
+          setTodos(previousTodos);
+          setEditingTodo(editingTodo);
+          reportActionError(priorityResult.error);
+          return;
+        }
+
+        latestTodo = priorityResult.data as TodoListItem;
+      }
+
       if (latestTodo) {
         setTodos((current) =>
-          current.map((todo) => (todo.id === editingTodo.id ? latestTodo : todo))
+          current.map((todo) =>
+            todo.id === editingTodo.id
+              ? {
+                  ...todo,
+                  ...latestTodo,
+                  priority: latestTodo.priority ?? nextTodo.priority
+                }
+              : todo
+          )
         );
       }
     });
@@ -591,6 +641,26 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           >
             <strong>{option.label}</strong>
             <span>{option.xp} XP</span>
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  function renderPriorityButtons(
+    selectedPriority: TodoPriority,
+    onSelectPriority: (priority: TodoPriority) => void
+  ) {
+    return (
+      <div className="priority-options">
+        {priorityOptions.map((option) => (
+          <button
+            className={selectedPriority === option.value ? "selected" : ""}
+            key={option.value}
+            type="button"
+            onClick={() => onSelectPriority(option.value)}
+          >
+            {option.label}
           </button>
         ))}
       </div>
@@ -712,6 +782,9 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <span className="todo-xp-label">
               {isCompleted ? "완료됨 · " : ""}
               {todo.xp_reward} XP
+            </span>
+            <span className={`todo-priority-label priority-${todo.priority}`}>
+              우선순위 {getPriorityLabel(todo.priority)}
             </span>
           </div>
         </div>
@@ -895,6 +968,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           <form className="form-row" action={handleCreate}>
             <input type="hidden" name="todoDate" value={selectedDate} />
             <input type="hidden" name="xpDifficulty" value={newDifficulty} />
+            <input type="hidden" name="priority" value={newPriority} />
             <input
               name="title"
               placeholder="할 일을 입력하세요"
@@ -905,6 +979,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <fieldset className="difficulty-field create-difficulty-field">
               <legend>난이도</legend>
               {renderDifficultyButtons(newDifficulty, setNewDifficulty)}
+            </fieldset>
+            <fieldset className="priority-field create-priority-field">
+              <legend>우선순위</legend>
+              {renderPriorityButtons(newPriority, setNewPriority)}
             </fieldset>
             <button className="icon-button" type="submit" aria-label="할 일 추가">
               <Plus size={18} />
@@ -1049,20 +1127,32 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               </div>
             )}
             <input type="hidden" name="xpDifficulty" value={editingTodo.xp_difficulty} readOnly />
+            <input type="hidden" name="priority" value={editingTodo.priority} readOnly />
             {editingTodo.status === "open" ? (
-              <fieldset className="difficulty-field">
-                <legend>난이도</legend>
-                {renderDifficultyButtons(editingTodo.xp_difficulty, (difficulty) => {
-                  const xpReward = getXpRewardForDifficulty(difficulty);
+              <>
+                <fieldset className="difficulty-field">
+                  <legend>난이도</legend>
+                  {renderDifficultyButtons(editingTodo.xp_difficulty, (difficulty) => {
+                    const xpReward = getXpRewardForDifficulty(difficulty);
 
-                  setEditingTodo({
-                    ...editingTodo,
-                    xp_difficulty: difficulty,
-                    xp_reward: xpReward,
-                    base_xp_reward: xpReward
-                  });
-                })}
-              </fieldset>
+                    setEditingTodo({
+                      ...editingTodo,
+                      xp_difficulty: difficulty,
+                      xp_reward: xpReward,
+                      base_xp_reward: xpReward
+                    });
+                  })}
+                </fieldset>
+                <fieldset className="priority-field">
+                  <legend>우선순위</legend>
+                  {renderPriorityButtons(editingTodo.priority, (priority) => {
+                    setEditingTodo({
+                      ...editingTodo,
+                      priority
+                    });
+                  })}
+                </fieldset>
+              </>
             ) : (
               <p className="todo-xp-label">완료됨 · {editingTodo.xp_reward} XP</p>
             )}

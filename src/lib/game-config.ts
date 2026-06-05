@@ -3,16 +3,23 @@ import type { Character } from "@/types/domain";
 export const DEFAULT_TODO_XP = 10;
 export const DAILY_XP_CAP = 500;
 export const DEFAULT_XP_DIFFICULTY = "medium";
+export const DEFAULT_TODO_PRIORITY = "normal";
 export const XP_DIFFICULTY_REWARDS = {
   low: 5,
   medium: 20,
   high: 50
 } as const;
+export const TODO_PRIORITIES = ["low", "normal", "high"] as const;
 
 export type XpDifficulty = keyof typeof XP_DIFFICULTY_REWARDS;
+export type TodoPriority = (typeof TODO_PRIORITIES)[number];
 
 export function isXpDifficulty(value: string): value is XpDifficulty {
   return value === "low" || value === "medium" || value === "high";
+}
+
+export function isTodoPriority(value: string): value is TodoPriority {
+  return value === "low" || value === "normal" || value === "high";
 }
 
 export function getXpRewardForDifficulty(difficulty: XpDifficulty) {

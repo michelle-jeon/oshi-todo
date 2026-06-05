@@ -4,9 +4,12 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import {
+  DEFAULT_TODO_PRIORITY,
   DEFAULT_XP_DIFFICULTY,
   getXpRewardForDifficulty,
+  isTodoPriority,
   isXpDifficulty,
+  type TodoPriority,
   type XpDifficulty
 } from "@/lib/game-config";
 
@@ -19,6 +22,7 @@ type TodoData = {
   title: string;
   status: "open" | "completed" | "archived";
   xp_difficulty: XpDifficulty;
+  priority: TodoPriority;
   xp_reward: number;
   base_xp_reward: number;
   completed_at: string | null;
@@ -28,13 +32,15 @@ type TodoData = {
 };
 
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
-  "id, title, status, xp_difficulty, xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITH_BASE =
-  "id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITHOUT_BASE =
-  "id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+const TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY =
+  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 
 function cleanTitle(formData: FormData) {
   return String(formData.get("title") ?? "").trim().slice(0, 160);
@@ -58,6 +64,16 @@ function cleanDifficulty(formData: FormData): XpDifficulty {
   }
 
   return DEFAULT_XP_DIFFICULTY;
+}
+
+function cleanPriority(formData: FormData): TodoPriority {
+  const value = String(formData.get("priority") ?? DEFAULT_TODO_PRIORITY);
+
+  if (isTodoPriority(value)) {
+    return value;
+  }
+
+  return DEFAULT_TODO_PRIORITY;
 }
 
 function isUuid(value: string) {
@@ -84,11 +100,21 @@ function isMissingDifficultyError(error: unknown) {
   return message.includes("xp_difficulty");
 }
 
-function withFallbackBaseXp<T extends { xp_reward: number; xp_difficulty?: XpDifficulty }>(data: T) {
+function isMissingPriorityError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("priority");
+}
+
+function withFallbackBaseXp<T extends { xp_reward: number; xp_difficulty?: XpDifficulty; priority?: TodoPriority }>(data: T) {
   return {
     ...data,
     base_xp_reward: data.xp_reward,
-    xp_difficulty: data.xp_difficulty ?? DEFAULT_XP_DIFFICULTY
+    xp_difficulty: data.xp_difficulty ?? DEFAULT_XP_DIFFICULTY,
+    priority: data.priority ?? DEFAULT_TODO_PRIORITY
   };
 }
 
@@ -98,6 +124,7 @@ export async function createTodo(formData: FormData) {
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
   const xpDifficulty = cleanDifficulty(formData);
+  const priority = cleanPriority(formData);
   const xpReward = getXpRewardForDifficulty(xpDifficulty);
 
   if (!title) {
@@ -117,6 +144,7 @@ export async function createTodo(formData: FormData) {
     user_id: user.id,
     title,
     xp_difficulty: xpDifficulty,
+    priority,
     base_xp_reward: xpReward,
     xp_reward: xpReward,
     todo_date: todoDate,
@@ -129,12 +157,42 @@ export async function createTodo(formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .insert({
+          user_id: user.id,
+          title,
+          xp_difficulty: xpDifficulty,
+          base_xp_reward: xpReward,
+          xp_reward: xpReward,
+          todo_date: todoDate,
+          sort_order: (latestTodo?.sort_order ?? 0) + 1000
+        })
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY)
+        .single<Omit<TodoData, "priority">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: { ...fallbackData, priority: DEFAULT_TODO_PRIORITY } as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "할 일을 만들 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")
         .insert({
           user_id: user.id,
           title,
+          priority,
           base_xp_reward: xpReward,
           xp_reward: xpReward,
           todo_date: todoDate,
@@ -164,6 +222,7 @@ export async function createTodo(formData: FormData) {
           user_id: user.id,
           title,
           xp_difficulty: xpDifficulty,
+          priority,
           xp_reward: xpReward,
           todo_date: todoDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
@@ -185,6 +244,7 @@ export async function createTodo(formData: FormData) {
           .insert({
             user_id: user.id,
             title,
+            priority,
             xp_reward: xpReward,
             todo_date: todoDate,
             sort_order: (latestTodo?.sort_order ?? 0) + 1000
@@ -269,6 +329,30 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({ title })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY)
+        .single<Omit<TodoData, "priority">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: { ...fallbackData, priority: DEFAULT_TODO_PRIORITY } as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "할 일을 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")
@@ -348,6 +432,39 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
   return { ok: true, data } satisfies ActionResult<typeof data>;
 }
 
+export async function updateTodoPriority(todoId: string, priority: TodoPriority) {
+  const user = await requireUser();
+
+  if (!isUuid(todoId)) {
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ priority })
+    .eq("id", todoId)
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .select(TODO_SELECT_WITH_BASE)
+    .single<TodoData>();
+
+  if (error) {
+    if (isMissingPriorityError(error)) {
+      return {
+        ok: false,
+        error: "투두 우선순위 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/07_todo_priority.sql 내용을 실행한 뒤 새로고침해 주세요."
+      } satisfies ActionResult;
+    }
+
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
 export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDifficulty) {
   const user = await requireUser();
 
@@ -372,6 +489,34 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
     .single<TodoData>();
 
   if (error) {
+    if (isMissingPriorityError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({
+          xp_difficulty: xpDifficulty,
+          base_xp_reward: xpReward,
+          xp_reward: xpReward
+        })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY)
+        .single<Omit<TodoData, "priority">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: { ...fallbackData, priority: DEFAULT_TODO_PRIORITY } as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "난이도를 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingDifficultyError(error)) {
       const { data: legacyData, error: legacyError } = await supabase
         .from("todos")

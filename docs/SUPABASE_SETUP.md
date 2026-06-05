@@ -68,16 +68,18 @@ XP 기준값과 난이도 기능에는 아래 파일들이 필요하다.
 ```text
 supabase/migrations/20260604093000_add_base_xp_rewards.sql
 supabase/migrations/20260604123000_add_xp_difficulty.sql
+supabase/migrations/20260604111500_add_todo_priority.sql
 ```
 
 SQL Editor에서 직접 실행할 때는 아래 파일 내용을 번호 순서대로 복사해 붙여 넣는다.
 
 ```text
 supabase/sql_editor/05_base_xp_rewards.sql
+supabase/sql_editor/07_todo_priority.sql
 supabase/sql_editor/08_xp_difficulty.sql
 ```
 
-`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값 또는 난이도 DB 스키마 안내가 뜬다.
+`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `07_todo_priority.sql`은 투두에 `priority` 컬럼과 조회 인덱스를 추가한다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값, 우선순위, 난이도 DB 스키마 안내가 뜬다.
 
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 

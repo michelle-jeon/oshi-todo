@@ -527,6 +527,25 @@ button {
   font-weight: 800;
 }
 
+.todo-priority-label {
+  border-radius: 999px;
+  background: #f0eadf;
+  color: rgb(76 69 61 / 58%);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.todo-priority-label.priority-high {
+  background: #fff2ef;
+  color: #b84730;
+}
+
+.todo-priority-label.priority-low {
+  background: #f3f0e9;
+  color: #786f63;
+}
+
 .difficulty-field {
   display: grid;
   gap: 8px;
@@ -541,13 +560,29 @@ button {
   font-weight: 800;
 }
 
-.difficulty-options {
+.priority-field {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.priority-field legend {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.difficulty-options,
+.priority-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.difficulty-options button {
+.difficulty-options button,
+.priority-options button {
   min-height: 58px;
   display: grid;
   gap: 2px;
@@ -559,7 +594,8 @@ button {
   padding: 8px;
 }
 
-.difficulty-options button.selected {
+.difficulty-options button.selected,
+.priority-options button.selected {
   border-color: var(--primary);
   background: #e9f5f1;
   color: var(--primary);
@@ -575,11 +611,20 @@ button {
   flex: 0 1 270px;
 }
 
+.create-priority-field {
+  flex: 0 1 220px;
+}
+
 .create-difficulty-field legend {
   font-size: 12px;
 }
 
-.create-difficulty-field .difficulty-options button {
+.create-priority-field legend {
+  font-size: 12px;
+}
+
+.create-difficulty-field .difficulty-options button,
+.create-priority-field .priority-options button {
   min-height: 42px;
   padding: 6px 8px;
 }
