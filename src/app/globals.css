@@ -1854,6 +1854,17 @@ button {
   gap: 8px;
 }
 
+.xp-ledger-more-button {
+  justify-self: center;
+  min-width: 120px;
+  margin-top: 4px;
+}
+
+.xp-ledger-sentinel {
+  width: 100%;
+  height: 1px;
+}
+
 .xp-ledger-row {
   justify-content: space-between;
   border: 1px solid var(--line);

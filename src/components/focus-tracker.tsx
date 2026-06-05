@@ -233,13 +233,20 @@ export function FocusTracker({
     windowStatsRef.current = windowStats;
   }, [windowStats]);
 
-  function checkEligibility() {
+  const checkEligibility = useCallback(() => {
     setIsEligible(
       Boolean(streamRef.current) && document.visibilityState === "visible" && document.hasFocus()
     );
-  }
+  }, []);
 
-  function showDate(dateString: string) {
+  const stop = useCallback(() => {
+    stopCaptureStream();
+    setPreviewStream(null);
+    setIsRunning(false);
+    setIsEligible(false);
+  }, [stopCaptureStream]);
+
+  const showDate = useCallback((dateString: string) => {
     if (dateString !== todayString && isRunning) {
       stop();
     }
@@ -263,7 +270,7 @@ export function FocusTracker({
       ...current,
       ...todayLogs.map((log) => log.window_key).filter((key) => !current.includes(key))
     ]);
-  }
+  }, [focusLogs, isRunning, stop, todayString]);
 
   async function start() {
     try {
@@ -335,13 +342,6 @@ export function FocusTracker({
         throw error;
       }
     }
-  }
-
-  function stop() {
-    stopCaptureStream();
-    setPreviewStream(null);
-    setIsRunning(false);
-    setIsEligible(false);
   }
 
   function startEditingWindowName(key: string, currentName: string) {
@@ -512,7 +512,7 @@ export function FocusTracker({
       window.removeEventListener("blur", checkEligibility);
       document.removeEventListener("visibilitychange", checkEligibility);
     };
-  }, [activeWindowKey, isRunning, startTransition, todayString]);
+  }, [activeWindowKey, checkEligibility, isRunning, startTransition, todayString]);
 
   const orderedWindowEntries = [
     ...windowOrder
