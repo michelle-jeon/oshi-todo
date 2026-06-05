@@ -1967,6 +1967,10 @@ button {
   gap: 10px;
 }
 
+.archive-summary {
+  margin: -10px 0 0;
+}
+
 .archive-row {
   display: flex;
   align-items: center;
@@ -1991,6 +1995,17 @@ button {
   border-radius: 8px;
   background: #e9f5f1;
   color: var(--primary);
+}
+
+.archive-more-button {
+  justify-self: center;
+  min-width: 120px;
+  margin-top: 4px;
+}
+
+.archive-sentinel {
+  width: 100%;
+  height: 1px;
 }
 
 .friend-search-panel h2,
