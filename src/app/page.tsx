@@ -444,15 +444,11 @@ export default async function Home({
         <header className="topbar">
           <div />
           <div className="topbar-actions">
-            <div className="currency-pill" aria-label="경험치와 사용 가능 XP">
+            <div className="currency-pill" aria-label="사용 가능 XP와 오늘 획득 XP">
               <Coins size={18} />
               <span>
                 <small>사용 가능</small>
                 {spendableXp.toLocaleString()} XP
-              </span>
-              <span>
-                <small>누적</small>
-                {(character?.xpTotal ?? 0).toLocaleString()} XP
               </span>
               <span>
                 <small>오늘</small>

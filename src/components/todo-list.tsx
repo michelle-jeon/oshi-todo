@@ -1,6 +1,6 @@
 "use client";
 
-import { Archive, CalendarDays, GripVertical, Plus, Repeat2, Square, Trash2, X } from "lucide-react";
+import { Archive, CalendarDays, GripVertical, Plus, Repeat2, Square, Trash2 } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { useMemo, useState, useTransition } from "react";
@@ -478,6 +478,11 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     });
   }
 
+  function handleDeleteFromDetail(todo: TodoListItem) {
+    handleDelete(todo.id);
+    setEditingTodo(null);
+  }
+
   function handleUpdateTodoDetail(formData: FormData) {
     if (!editingTodo) {
       return;
@@ -547,6 +552,27 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         );
       }
     });
+  }
+
+  function renderDifficultyButtons(
+    selectedDifficulty: XpDifficulty,
+    onSelectDifficulty: (difficulty: XpDifficulty) => void
+  ) {
+    return (
+      <div className="difficulty-options">
+        {difficultyOptions.map((option) => (
+          <button
+            className={selectedDifficulty === option.value ? "selected" : ""}
+            key={option.value}
+            type="button"
+            onClick={() => onSelectDifficulty(option.value)}
+          >
+            <strong>{option.label}</strong>
+            <span>{option.xp} XP</span>
+          </button>
+        ))}
+      </div>
+    );
   }
 
   function moveTodo(targetId: string, shouldPersist = true) {
@@ -634,17 +660,13 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         </button>
 
         <div className="todo-main">
-          {isCompleted ? (
-            <strong>{todo.title}</strong>
-          ) : (
-            <button
-              className="todo-title-button"
-              type="button"
-              onClick={() => setEditingTodo(todo)}
-            >
-              {todo.title}
-            </button>
-          )}
+          <button
+            className="todo-title-button"
+            type="button"
+            onClick={() => setEditingTodo(todo)}
+          >
+            {todo.title}
+          </button>
           <div className="xp-reward-row">
             <span className="todo-xp-label">
               {isCompleted ? "완료됨 · " : ""}
@@ -653,14 +675,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           </div>
         </div>
 
-        <button
-          className="icon-button danger"
-          type="button"
-          onClick={() => handleDelete(todo.id)}
-          aria-label="삭제"
-        >
-          <X size={18} />
-        </button>
       </article>
     );
   }
@@ -824,6 +838,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           value={newTitle}
           onChange={(event) => setNewTitle(event.target.value)}
         />
+        <fieldset className="difficulty-field create-difficulty-field">
+          <legend>난이도</legend>
+          {renderDifficultyButtons(newDifficulty, setNewDifficulty)}
+        </fieldset>
         <button className="icon-button" type="submit" aria-label="할 일 추가">
           <Plus size={18} />
         </button>
@@ -862,6 +880,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             </button>
           </div>
           <input type="hidden" name="frequency" value={routineFrequency} />
+          <fieldset className="difficulty-field create-difficulty-field">
+            <legend>난이도</legend>
+            {renderDifficultyButtons(routineDifficulty, setRoutineDifficulty)}
+          </fieldset>
           {routineFrequency === "weekly" ? (
             <div className="weekday-picker">
               {weekdayOptions.map((day) => (
@@ -948,41 +970,51 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             onClick={(event) => event.stopPropagation()}
           >
             <h2>할 일 상세</h2>
-            <label>
-              할 일
-              <input name="title" defaultValue={editingTodo.title} />
-            </label>
-            <input type="hidden" name="xpDifficulty" value={editingTodo.xp_difficulty} readOnly />
-            <fieldset className="difficulty-field">
-              <legend>난이도</legend>
-              <div className="difficulty-options">
-                {difficultyOptions.map((option) => (
-                  <button
-                    className={editingTodo.xp_difficulty === option.value ? "selected" : ""}
-                    key={option.value}
-                    type="button"
-                    onClick={() =>
-                      setEditingTodo({
-                        ...editingTodo,
-                        xp_difficulty: option.value,
-                        xp_reward: option.xp,
-                        base_xp_reward: option.xp
-                      })
-                    }
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.xp} XP</span>
-                  </button>
-                ))}
+            {editingTodo.status === "open" ? (
+              <label>
+                할 일
+                <input name="title" defaultValue={editingTodo.title} />
+              </label>
+            ) : (
+              <div className="detail-readonly-row">
+                <span className="subtle">할 일</span>
+                <strong>{editingTodo.title}</strong>
               </div>
-            </fieldset>
+            )}
+            <input type="hidden" name="xpDifficulty" value={editingTodo.xp_difficulty} readOnly />
+            {editingTodo.status === "open" ? (
+              <fieldset className="difficulty-field">
+                <legend>난이도</legend>
+                {renderDifficultyButtons(editingTodo.xp_difficulty, (difficulty) => {
+                  const xpReward = getXpRewardForDifficulty(difficulty);
+
+                  setEditingTodo({
+                    ...editingTodo,
+                    xp_difficulty: difficulty,
+                    xp_reward: xpReward,
+                    base_xp_reward: xpReward
+                  });
+                })}
+              </fieldset>
+            ) : (
+              <p className="todo-xp-label">완료됨 · {editingTodo.xp_reward} XP</p>
+            )}
             <div className="form-actions">
+              <button
+                className="primary-button danger-button"
+                type="button"
+                onClick={() => handleDeleteFromDetail(editingTodo)}
+              >
+                <Trash2 size={16} /> 삭제
+              </button>
               <button className="ghost-button" type="button" onClick={() => setEditingTodo(null)}>
                 취소
               </button>
-              <button className="primary-button" type="submit">
-                저장
-              </button>
+              {editingTodo.status === "open" ? (
+                <button className="primary-button" type="submit">
+                  저장
+                </button>
+              ) : null}
             </div>
           </form>
         </div>
@@ -1020,26 +1052,16 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             </div>
             <fieldset className="difficulty-field">
               <legend>난이도</legend>
-              <div className="difficulty-options">
-                {difficultyOptions.map((option) => (
-                  <button
-                    className={editingRoutine.xp_difficulty === option.value ? "selected" : ""}
-                    key={option.value}
-                    type="button"
-                    onClick={() =>
-                      setEditingRoutine({
-                        ...editingRoutine,
-                        xp_difficulty: option.value,
-                        xp_reward: option.xp,
-                        base_xp_reward: option.xp
-                      })
-                    }
-                  >
-                    <strong>{option.label}</strong>
-                    <span>{option.xp} XP</span>
-                  </button>
-                ))}
-              </div>
+              {renderDifficultyButtons(editingRoutine.xp_difficulty, (difficulty) => {
+                const xpReward = getXpRewardForDifficulty(difficulty);
+
+                setEditingRoutine({
+                  ...editingRoutine,
+                  xp_difficulty: difficulty,
+                  xp_reward: xpReward,
+                  base_xp_reward: xpReward
+                });
+              })}
             </fieldset>
             {editingRoutine.frequency === "weekly" ? (
               <div className="weekday-picker">

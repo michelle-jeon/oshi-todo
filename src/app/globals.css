@@ -546,7 +546,29 @@ button {
   font-weight: 800;
 }
 
-.todo-row.completed .todo-main strong {
+.create-difficulty-field {
+  flex: 0 1 270px;
+}
+
+.create-difficulty-field legend {
+  font-size: 12px;
+}
+
+.create-difficulty-field .difficulty-options button {
+  min-height: 42px;
+  padding: 6px 8px;
+}
+
+.create-difficulty-field .difficulty-options strong {
+  font-size: 13px;
+}
+
+.routine-form .create-difficulty-field {
+  grid-column: 1 / -1;
+  max-width: 360px;
+}
+
+.todo-row.completed .todo-title-button {
   text-decoration: line-through;
   color: var(--muted);
 }
@@ -1312,6 +1334,11 @@ button {
 
 .confirm-modal strong {
   color: var(--foreground);
+}
+
+.detail-readonly-row {
+  display: grid;
+  gap: 4px;
 }
 
 .routine-edit-modal label,
