@@ -2037,6 +2037,39 @@ button {
   gap: 8px;
 }
 
+.work-reflection-panel {
+  display: grid;
+  gap: 12px;
+}
+
+.work-reflection-heading {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+}
+
+.work-reflection-heading h2,
+.work-reflection-heading p {
+  margin: 0;
+}
+
+.work-reflection-list {
+  display: grid;
+  gap: 8px;
+}
+
+.work-reflection-list p {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+  color: var(--foreground);
+  font-weight: 800;
+  line-height: 1.55;
+}
+
 .work-day-chart,
 .work-window-list {
   display: grid;

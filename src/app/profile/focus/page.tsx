@@ -1,4 +1,4 @@
-import { ArrowLeft, BarChart3, CalendarDays, Clock3, Trophy } from "lucide-react";
+import { ArrowLeft, BarChart3, CalendarDays, Clock3, Sparkles, Trophy } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import type { CSSProperties } from "react";
@@ -46,6 +46,7 @@ type WorkNameStat = {
 };
 
 const WORK_STAT_COLORS = ["#2f8f6b", "#d69a2d", "#5f6fb4", "#b95f46", "#7a8f44", "#9b6fb0"];
+const WEEKDAY_LABELS = ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"];
 const PERIOD_OPTIONS = [
   { value: "today", label: "오늘" },
   { value: "week", label: "이번 주" },
@@ -167,6 +168,21 @@ function sumXp(logs: FocusWindowLogRow[]) {
   return logs.reduce((sum, log) => sum + log.xp, 0);
 }
 
+function filterFocusLogs(
+  logs: FocusWindowLogRow[],
+  selectedCharacterId: string,
+  normalizedWorkFilter: string
+) {
+  return logs.filter((log) => {
+    const matchesCharacter = !selectedCharacterId || log.character_id === selectedCharacterId;
+    const matchesWork =
+      normalizedWorkFilter.length === 0 ||
+      `${log.display_name} ${log.full_name}`.toLocaleLowerCase().includes(normalizedWorkFilter);
+
+    return matchesCharacter && matchesWork;
+  });
+}
+
 function buildDailyStats(logs: FocusWindowLogRow[], startDate: string, days: number) {
   const stats = new Map<string, DailyStat>();
 
@@ -217,6 +233,19 @@ function buildWorkNameStats(logs: FocusWindowLogRow[]) {
   return Array.from(stats.values()).sort((a, b) => b.seconds - a.seconds);
 }
 
+function buildWeekdayStats(logs: FocusWindowLogRow[]) {
+  const stats = WEEKDAY_LABELS.map((label) => ({
+    label,
+    seconds: 0
+  }));
+
+  logs.forEach((log) => {
+    stats[parseDateString(log.work_date).getDay()].seconds += log.seconds;
+  });
+
+  return stats.sort((a, b) => b.seconds - a.seconds);
+}
+
 function buildDonutBackground(stats: WorkNameStat[], totalSeconds: number) {
   if (totalSeconds <= 0) {
     return "#efe5d4";
@@ -234,6 +263,42 @@ function buildDonutBackground(stats: WorkNameStat[], totalSeconds: number) {
   return `conic-gradient(${segments.join(", ")})`;
 }
 
+function buildReflectionItems(input: {
+  activeDays: number;
+  bestWeekday?: { label: string; seconds: number };
+  previousTotalSeconds: number;
+  topWork?: WorkNameStat;
+  totalSeconds: number;
+}) {
+  if (input.totalSeconds <= 0) {
+    return ["선택한 조건에 맞는 작업시간 기록이 아직 없어요."];
+  }
+
+  const items = [];
+
+  if (input.topWork) {
+    items.push(
+      `${input.topWork.name} 작업을 가장 많이 했어요. 총 ${formatDuration(input.topWork.seconds)} 동안 이어갔고 ${input.topWork.xp.toLocaleString()} XP를 얻었어요.`
+    );
+  }
+
+  if (input.bestWeekday && input.bestWeekday.seconds > 0) {
+    items.push(`${input.bestWeekday.label}에 가장 오래 집중했어요. 기록된 시간은 ${formatDuration(input.bestWeekday.seconds)}이에요.`);
+  }
+
+  if (input.previousTotalSeconds > 0) {
+    const diffSeconds = input.totalSeconds - input.previousTotalSeconds;
+    const diffPercent = Math.round((Math.abs(diffSeconds) / input.previousTotalSeconds) * 100);
+    const direction = diffSeconds >= 0 ? "늘었어요" : "줄었어요";
+
+    items.push(`직전 같은 길이의 기간보다 작업시간이 ${formatDuration(Math.abs(diffSeconds))} ${direction}. 변화율은 ${diffPercent}%예요.`);
+  } else {
+    items.push(`비교할 직전 기간 기록은 없지만, 이번 선택 기간에는 ${input.activeDays.toLocaleString()}일 동안 기록이 쌓였어요.`);
+  }
+
+  return items;
+}
+
 export default async function FocusHistoryPage({
   searchParams
 }: {
@@ -247,12 +312,15 @@ export default async function FocusHistoryPage({
   const workFilter = params.work?.trim() ?? "";
   const normalizedWorkFilter = workFilter.toLocaleLowerCase();
   const requestedCharacterId = params.character?.trim() ?? "";
+  const selectedDays = getDaysBetween(startDate, endDate);
+  const previousStartDate = addDays(startDate, -selectedDays);
+  const previousEndDate = addDays(startDate, -1);
   const [{ data: logs, error }, { data: characters }] = await Promise.all([
     supabase
       .from("focus_window_logs")
       .select("id, character_id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
       .eq("user_id", user.id)
-      .gte("work_date", startDate)
+      .gte("work_date", previousStartDate)
       .lte("work_date", endDate)
       .order("work_date", { ascending: false })
       .order("updated_at", { ascending: false })
@@ -269,23 +337,22 @@ export default async function FocusHistoryPage({
   const selectedCharacterId = characterOptions.some((character) => character.id === requestedCharacterId)
     ? requestedCharacterId
     : "";
-  const focusLogs = (logs ?? []).filter((log) => {
-    const matchesCharacter = !selectedCharacterId || log.character_id === selectedCharacterId;
-    const matchesWork =
-      normalizedWorkFilter.length === 0 ||
-      `${log.display_name} ${log.full_name}`.toLocaleLowerCase().includes(normalizedWorkFilter);
-
-    return matchesCharacter && matchesWork;
-  });
-  const chartDays = Math.min(getDaysBetween(startDate, endDate), 31);
-  const chartStart = getDaysBetween(startDate, endDate) > 31 ? addDays(endDate, -30) : startDate;
+  const filteredLogs = filterFocusLogs(logs ?? [], selectedCharacterId, normalizedWorkFilter);
+  const focusLogs = filteredLogs.filter((log) => log.work_date >= startDate && log.work_date <= endDate);
+  const previousFocusLogs = filteredLogs.filter(
+    (log) => log.work_date >= previousStartDate && log.work_date <= previousEndDate
+  );
+  const chartDays = Math.min(selectedDays, 31);
+  const chartStart = selectedDays > 31 ? addDays(endDate, -30) : startDate;
   const dailyStats = buildDailyStats(focusLogs, chartStart, chartDays);
   const workStats = buildWorkNameStats(focusLogs);
   const topWorkStats = workStats.slice(0, 5);
+  const weekdayStats = buildWeekdayStats(focusLogs);
   const maxDailySeconds = Math.max(...dailyStats.map((stat) => stat.seconds), 1);
   const activeDays = new Set(focusLogs.map((log) => log.work_date)).size;
   const totalSeconds = sumSeconds(focusLogs);
   const totalXp = sumXp(focusLogs);
+  const previousTotalSeconds = sumSeconds(previousFocusLogs);
   const averageSeconds = activeDays > 0 ? Math.round(totalSeconds / activeDays) : 0;
   const topWorkSeconds = topWorkStats.reduce((sum, stat) => sum + stat.seconds, 0);
   const otherWorkSeconds = Math.max(totalSeconds - topWorkSeconds, 0);
@@ -305,6 +372,13 @@ export default async function FocusHistoryPage({
   const donutStyle = {
     background: buildDonutBackground(donutStats, totalSeconds)
   } satisfies CSSProperties;
+  const reflectionItems = buildReflectionItems({
+    activeDays,
+    bestWeekday: weekdayStats[0],
+    previousTotalSeconds,
+    topWork: topWorkStats[0],
+    totalSeconds
+  });
 
   return (
     <main className="simple-shell">
@@ -414,6 +488,23 @@ export default async function FocusHistoryPage({
         </div>
       </section>
 
+      <section className="panel work-reflection-panel">
+        <div className="work-reflection-heading">
+          <span className="profile-setting-icon">
+            <Sparkles size={18} />
+          </span>
+          <div>
+            <h2>작업시간 회고</h2>
+            <p className="subtle">선택한 조건을 기준으로 요약했어요.</p>
+          </div>
+        </div>
+        <div className="work-reflection-list">
+          {reflectionItems.map((item) => (
+            <p key={item}>{item}</p>
+          ))}
+        </div>
+      </section>
+
       <section className="panel work-chart-panel">
         <h2>날짜별 기록</h2>
         <div className="work-day-chart">
@@ -485,7 +576,7 @@ export default async function FocusHistoryPage({
             </div>
           </div>
         ) : (
-          <div className="empty-state">이번 달 작업시간 기록이 아직 없어요.</div>
+          <div className="empty-state">선택 기간의 작업시간 기록이 아직 없어요.</div>
         )}
       </section>
     </main>
