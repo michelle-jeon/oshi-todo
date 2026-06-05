@@ -189,6 +189,7 @@ export default async function Home({
     const withBaseXp = await supabase
       .from("todos")
       .select("id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .eq("user_id", user.id)
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
@@ -203,6 +204,7 @@ export default async function Home({
       const fallback = await supabase
         .from("todos")
         .select("id, title, status, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+        .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })
         .order("sort_order", { ascending: true })
@@ -223,6 +225,7 @@ export default async function Home({
     const fallback = await supabase
       .from("todos")
       .select("id, title, status, xp_difficulty, xp_reward, completed_at, todo_date, sort_order, routine_id")
+      .eq("user_id", user.id)
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
       .order("sort_order", { ascending: true })
@@ -233,6 +236,7 @@ export default async function Home({
       const legacyFallback = await supabase
         .from("todos")
         .select("id, title, status, xp_reward, completed_at, todo_date, sort_order, routine_id")
+        .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })
         .order("sort_order", { ascending: true })
@@ -265,6 +269,7 @@ export default async function Home({
     const withBaseXp = await supabase
       .from("routines")
       .select("id, title, frequency, weekdays, xp_difficulty, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .returns<RoutineRowData[]>();
 
@@ -276,6 +281,7 @@ export default async function Home({
       const fallback = await supabase
         .from("routines")
         .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .returns<RoutineRowDataWithoutDifficulty[]>();
 
@@ -293,6 +299,7 @@ export default async function Home({
     const fallback = await supabase
       .from("routines")
       .select("id, title, frequency, weekdays, xp_difficulty, xp_reward, is_active, starts_on, ends_on")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .returns<RoutineRowDataWithoutBaseXp[]>();
 
@@ -300,6 +307,7 @@ export default async function Home({
       const legacyFallback = await supabase
         .from("routines")
         .select("id, title, frequency, weekdays, xp_reward, is_active, starts_on, ends_on")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false })
         .returns<RoutineRowDataWithoutBaseXpAndDifficulty[]>();
 
@@ -347,6 +355,7 @@ export default async function Home({
     supabase
       .from("characters")
       .select("id, display_name, species, level, xp_current, xp_total, customization")
+      .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle<CharacterRow>(),
     fetchTodos(),
@@ -354,12 +363,14 @@ export default async function Home({
     supabase
       .from("focus_window_logs")
       .select("id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
+      .eq("user_id", user.id)
       .order("work_date", { ascending: false })
       .order("updated_at", { ascending: false })
       .returns<FocusWindowLogRow[]>(),
     supabase
       .from("xp_events")
       .select("amount")
+      .eq("user_id", user.id)
       .gte("created_at", todayBounds.start)
       .lt("created_at", todayBounds.end)
       .returns<XpEventRow[]>(),
