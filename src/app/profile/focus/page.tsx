@@ -349,6 +349,7 @@ export default async function FocusHistoryPage({
   const topWorkStats = workStats.slice(0, 5);
   const weekdayStats = buildWeekdayStats(focusLogs);
   const maxDailySeconds = Math.max(...dailyStats.map((stat) => stat.seconds), 1);
+  const maxWeekdaySeconds = Math.max(...weekdayStats.map((stat) => stat.seconds), 1);
   const activeDays = new Set(focusLogs.map((log) => log.work_date)).size;
   const totalSeconds = sumSeconds(focusLogs);
   const totalXp = sumXp(focusLogs);
@@ -515,6 +516,24 @@ export default async function FocusHistoryPage({
                 <div
                   className="work-day-bar"
                   style={{ width: `${Math.max((stat.seconds / maxDailySeconds) * 100, stat.seconds > 0 ? 6 : 0)}%` }}
+                />
+              </div>
+              <strong>{formatDuration(stat.seconds)}</strong>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel work-chart-panel">
+        <h2>요일별 작업량</h2>
+        <div className="work-weekday-grid">
+          {weekdayStats.map((stat) => (
+            <div className="work-weekday-row" key={stat.label}>
+              <span>{stat.label}</span>
+              <div className="work-weekday-bar-track">
+                <div
+                  className="work-weekday-bar"
+                  style={{ height: `${Math.max((stat.seconds / maxWeekdaySeconds) * 100, stat.seconds > 0 ? 6 : 0)}%` }}
                 />
               </div>
               <strong>{formatDuration(stat.seconds)}</strong>

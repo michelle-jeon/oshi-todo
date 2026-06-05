@@ -2071,6 +2071,7 @@ button {
 }
 
 .work-day-chart,
+.work-weekday-grid,
 .work-window-list {
   display: grid;
   gap: 8px;
@@ -2100,6 +2101,43 @@ button {
 
 .work-day-bar {
   height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.work-weekday-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+}
+
+.work-weekday-row {
+  display: grid;
+  gap: 8px;
+  min-height: 150px;
+  align-content: end;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.work-weekday-row strong {
+  color: var(--foreground);
+  font-size: 13px;
+}
+
+.work-weekday-bar-track {
+  height: 92px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #efe5d4;
+}
+
+.work-weekday-bar {
+  width: 100%;
+  min-height: 0;
   border-radius: inherit;
   background: var(--primary);
 }
@@ -2644,6 +2682,10 @@ button {
     grid-column: 1 / -1;
   }
 
+  .work-weekday-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
   .todo-row {
     align-items: stretch;
     flex-direction: column;
@@ -2671,6 +2713,14 @@ button {
 
   .work-filter-form {
     grid-template-columns: 1fr;
+  }
+
+  .work-weekday-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .work-weekday-row {
+    min-height: 128px;
   }
 
   .work-donut {
