@@ -1,4 +1,13 @@
-import { ArrowLeft, CalendarDays, CheckCircle2, KeyRound, Mail, UserRound } from "lucide-react";
+import {
+  ArrowLeft,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Coins,
+  KeyRound,
+  Mail,
+  UserRound
+} from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { signOut } from "@/app/auth-actions";
@@ -124,7 +133,10 @@ export default async function ProfilePage() {
         <section className="panel profile-panel">
           <h2>계정 작업</h2>
           <Link className="ghost-button" href={"/profile/xp" as Route}>
-            XP/재화 기록 보기
+            <Coins size={16} /> XP/재화 기록
+          </Link>
+          <Link className="ghost-button" href={"/profile/focus" as Route}>
+            <Clock3 size={16} /> 작업시간 기록
           </Link>
           <form action={signOut}>
             <button className="ghost-button" type="submit">

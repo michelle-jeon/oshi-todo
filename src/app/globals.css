@@ -1899,6 +1899,12 @@ button {
   gap: 12px;
 }
 
+.work-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .xp-summary-card,
 .xp-ledger-row {
   display: flex;
@@ -1978,6 +1984,75 @@ button {
 
 .xp-spend {
   color: #b84730;
+}
+
+.work-chart-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.work-chart-panel h2 {
+  margin: 0;
+}
+
+.work-day-chart,
+.work-window-list {
+  display: grid;
+  gap: 8px;
+}
+
+.work-day-row {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 92px;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.work-day-row strong {
+  color: var(--foreground);
+  text-align: right;
+}
+
+.work-day-bar-track {
+  height: 10px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #efe5d4;
+}
+
+.work-day-bar {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+.work-window-row {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.work-window-row p {
+  margin: 3px 0 0;
+}
+
+.work-window-rank {
+  width: 32px;
+  height: 32px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  background: #fff8eb;
+  color: var(--primary);
+  font-weight: 900;
 }
 
 .archive-panel,
@@ -2421,6 +2496,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .work-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .todo-row {
     align-items: stretch;
     flex-direction: column;
@@ -2428,5 +2507,25 @@ button {
 
   .todo-actions {
     justify-content: flex-end;
+  }
+}
+
+@media (max-width: 560px) {
+  .xp-summary-grid,
+  .work-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .work-day-row {
+    grid-template-columns: 48px minmax(0, 1fr) 76px;
+    gap: 8px;
+  }
+
+  .work-window-row {
+    grid-template-columns: 32px minmax(0, 1fr);
+  }
+
+  .work-window-row > strong {
+    grid-column: 2;
   }
 }
