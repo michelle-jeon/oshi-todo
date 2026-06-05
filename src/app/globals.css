@@ -728,14 +728,14 @@ button {
 .add-task-toggle {
   transition:
     background 160ms ease,
-    color 160ms ease,
-    transform 160ms ease;
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
 .add-task-toggle.open {
-  background: var(--primary);
-  color: #ffffff;
-  transform: rotate(45deg);
+  border-color: var(--primary);
+  background: transparent;
+  color: var(--primary);
 }
 
 .ghost-button {
@@ -881,7 +881,6 @@ button {
   color: var(--primary-strong);
   font-size: 34px;
   font-weight: 900;
-  animation: splashPulse 1200ms ease-in-out infinite;
 }
 
 .loading-shell {
@@ -899,20 +898,6 @@ button {
   color: var(--primary-strong);
   font-size: 34px;
   font-weight: 900;
-  animation: splashPulse 1200ms ease-in-out infinite;
-}
-
-@keyframes splashPulse {
-  0%,
-  100% {
-    opacity: 0.45;
-    transform: scale(0.98);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
 }
 
 .account-menu {

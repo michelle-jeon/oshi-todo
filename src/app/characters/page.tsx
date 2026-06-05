@@ -57,7 +57,7 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
               return (
                 <Link
                   className="character-slot empty"
-                  href={"/characters/new" as Route}
+                  href={"/characters/new?from=characters" as Route}
                   key={`empty-${index}`}
                 >
                   <Plus size={28} />

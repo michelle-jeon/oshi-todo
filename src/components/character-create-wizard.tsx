@@ -33,7 +33,11 @@ const comingSoonItems = {
   accessory: ["없음"]
 };
 
-export function CharacterCreateWizard() {
+type CharacterCreateWizardProps = {
+  source?: "characters" | "onboarding";
+};
+
+export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreateWizardProps) {
   const [, startTransition] = useTransition();
   const [step, setStep] = useState<WizardStep>("species");
   const [species, setSpecies] = useState<CharacterSpecies | null>(null);
@@ -61,6 +65,7 @@ export function CharacterCreateWizard() {
     formData.set("species", species);
     formData.set("variantId", variantId);
     formData.set("displayName", displayName.trim());
+    formData.set("source", source);
     setIsSaving(true);
 
     startTransition(async () => {

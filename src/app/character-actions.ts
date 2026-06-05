@@ -28,6 +28,17 @@ type WardrobeSelection = {
   accessoryId: string;
 };
 
+function createCharacterPath(formData: FormData, message: string): Route {
+  const source = String(formData.get("source") ?? "");
+  const params = new URLSearchParams({ message });
+
+  if (source === "characters") {
+    params.set("from", "characters");
+  }
+
+  return `/characters/new?${params.toString()}` as Route;
+}
+
 function readSpecies(formData: FormData): CharacterSpecies {
   const species = String(formData.get("species") ?? "");
 
@@ -35,7 +46,7 @@ function readSpecies(formData: FormData): CharacterSpecies {
     return species;
   }
 
-  redirect("/characters/new?message=캐릭터 종류를 선택해 주세요." as Route);
+  redirect(createCharacterPath(formData, "캐릭터 종류를 선택해 주세요."));
 }
 
 function readVariant(formData: FormData) {
@@ -43,7 +54,7 @@ function readVariant(formData: FormData) {
   const variant = CHARACTER_VARIANTS.find((candidate) => candidate.id === variantId);
 
   if (!variant) {
-    redirect("/characters/new?message=색상을 선택해 주세요." as Route);
+    redirect(createCharacterPath(formData, "색상을 선택해 주세요."));
   }
 
   return variant;
@@ -53,7 +64,7 @@ function readDisplayName(formData: FormData, fallback?: string) {
   const displayName = String(formData.get("displayName") ?? "").trim().slice(0, 32);
 
   if (!displayName && !fallback) {
-    redirect("/characters/new?message=캐릭터 이름을 입력해 주세요." as Route);
+    redirect(createCharacterPath(formData, "캐릭터 이름을 입력해 주세요."));
   }
 
   return displayName || fallback || "이름 없는 캐릭터";
@@ -182,7 +193,7 @@ export async function createCharacter(formData: FormData) {
       .eq("user_id", user.id);
 
     if (error) {
-      redirect(`/characters/new?message=${encodeURIComponent(error.message)}` as Route);
+      redirect(createCharacterPath(formData, error.message));
     }
 
     revalidatePath("/");
@@ -204,7 +215,7 @@ export async function createCharacter(formData: FormData) {
   });
 
   if (error) {
-    redirect(`/characters/new?message=${encodeURIComponent(error.message)}` as Route);
+    redirect(createCharacterPath(formData, error.message));
   }
 
   revalidatePath("/");
