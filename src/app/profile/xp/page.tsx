@@ -1,4 +1,4 @@
-import { ArrowLeft, Coins, Minus, Plus } from "lucide-react";
+import { ArrowLeft, Coins } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
 import { loadXpLedgerPage } from "@/app/profile/xp/actions";
@@ -23,12 +23,6 @@ export default async function XpHistoryPage() {
       .maybeSingle<CharacterXpRow>(),
     loadXpLedgerPage()
   ]);
-  const shownGainedTotal = initialLedgerPage.items
-    .filter((item) => item.type === "gain")
-    .reduce((sum, item) => sum + item.amount, 0);
-  const shownSpentTotal = initialLedgerPage.items
-    .filter((item) => item.type === "spend")
-    .reduce((sum, item) => sum + item.amount, 0);
   const spendableXp = character?.xp_current ?? 0;
   const lifetimeXp = character?.xp_total ?? 0;
 
@@ -58,24 +52,6 @@ export default async function XpHistoryPage() {
           <div>
             <p className="subtle">누적 경험치</p>
             <strong>{lifetimeXp.toLocaleString()} XP</strong>
-          </div>
-        </div>
-        <div className="panel xp-summary-card">
-          <span className="profile-setting-icon">
-            <Plus size={18} />
-          </span>
-          <div>
-            <p className="subtle">표시된 획득</p>
-            <strong>{shownGainedTotal.toLocaleString()} XP</strong>
-          </div>
-        </div>
-        <div className="panel xp-summary-card">
-          <span className="profile-setting-icon">
-            <Minus size={18} />
-          </span>
-          <div>
-            <p className="subtle">표시된 사용</p>
-            <strong>{shownSpentTotal.toLocaleString()} XP</strong>
           </div>
         </div>
       </section>

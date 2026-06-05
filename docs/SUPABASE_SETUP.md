@@ -160,9 +160,16 @@ supabase/sql_editor_focus_demo_setup.sql
 
 ```text
 supabase/migrations/20260603090000_add_query_indexes.sql
+supabase/migrations/20260605110000_add_xp_ledger_cursor_indexes.sql
 ```
 
-이 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 실행해도 되고, Supabase CLI를 쓰면 `npx supabase db push`로 반영한다.
+`20260603090000_add_query_indexes.sql`은 기본 조회 경로용 인덱스이고, `20260605110000_add_xp_ledger_cursor_indexes.sql`은 XP/재화 기록의 커서 페이지네이션 정렬 기준에 맞춘 인덱스다. 두 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 직접 실행하려면 아래 파일도 함께 실행한다.
+
+```text
+supabase/sql_editor/10_xp_ledger_cursor_indexes.sql
+```
+
+Supabase CLI를 쓰면 `npx supabase db push`로 반영한다.
 
 루틴 종료 기능과 투두 생성 정렬 조회 인덱스는 아래 SQL Editor 파일로도 반영할 수 있다.
 

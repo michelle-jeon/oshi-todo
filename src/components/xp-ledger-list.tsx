@@ -31,6 +31,12 @@ export function XpLedgerList({ initialPage }: XpLedgerListProps) {
   const [isPending, startTransition] = useTransition();
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const isLoadingRef = useRef(false);
+  const shownGainedTotal = items
+    .filter((item) => item.type === "gain")
+    .reduce((sum, item) => sum + item.amount, 0);
+  const shownSpentTotal = items
+    .filter((item) => item.type === "spend")
+    .reduce((sum, item) => sum + item.amount, 0);
 
   const loadMore = useCallback(() => {
     if (!hasMore || isLoadingRef.current) {
@@ -80,6 +86,13 @@ export function XpLedgerList({ initialPage }: XpLedgerListProps) {
 
   return (
     <div className="xp-ledger-list">
+      <div className="xp-ledger-status" aria-live="polite">
+        <p className="subtle">
+          최근 {items.length.toLocaleString()}개 표시 · 획득 {shownGainedTotal.toLocaleString()} XP · 사용{" "}
+          {shownSpentTotal.toLocaleString()} XP
+        </p>
+      </div>
+
       {items.map((item) => (
         <article className="xp-ledger-row" key={item.id}>
           <span className={`xp-ledger-icon ${item.type}`}>
@@ -100,6 +113,13 @@ export function XpLedgerList({ initialPage }: XpLedgerListProps) {
       {items.length === 0 ? <div className="empty-state">XP 기록이 아직 없어요.</div> : null}
       {errorMessage ? <p className="notice compact-notice">{errorMessage}</p> : null}
       <div className="xp-ledger-sentinel" ref={sentinelRef} aria-hidden="true" />
+      {isLoading || isPending ? (
+        <div className="xp-ledger-loading" role="status">
+          <span />
+          <span />
+          <span />
+        </div>
+      ) : null}
       {hasMore ? (
         <button
           className="ghost-button xp-ledger-more-button"

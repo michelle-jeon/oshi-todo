@@ -771,6 +771,16 @@ button {
   }
 }
 
+@keyframes shimmer {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
+}
+
 .auth-shell {
   min-height: 100vh;
   display: grid;
@@ -1980,6 +1990,16 @@ button {
   gap: 8px;
 }
 
+.xp-ledger-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.xp-ledger-status p {
+  margin: 0;
+}
+
 .xp-ledger-more-button {
   justify-self: center;
   min-width: 120px;
@@ -1991,12 +2011,28 @@ button {
   height: 1px;
 }
 
+.xp-ledger-loading {
+  display: grid;
+  gap: 8px;
+}
+
+.xp-ledger-loading span {
+  display: block;
+  min-height: 58px;
+  border-radius: 8px;
+  background: linear-gradient(90deg, #f2f4f3 0%, #ffffff 48%, #f2f4f3 100%);
+  background-size: 220% 100%;
+  animation: shimmer 1.2s ease-in-out infinite;
+}
+
 .xp-ledger-row {
   justify-content: space-between;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #ffffff;
   padding: 12px;
+  content-visibility: auto;
+  contain-intrinsic-size: 76px;
 }
 
 .xp-ledger-row > div {
