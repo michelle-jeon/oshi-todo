@@ -130,6 +130,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [selectedDate, setSelectedDate] = useState(initialSelectedDate);
   const [visibleMonth, setVisibleMonth] = useState(parseDate(initialSelectedDate));
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isCreatePanelOpen, setIsCreatePanelOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [editingRoutine, setEditingRoutine] = useState<RoutineListItem | null>(null);
   const [editingTodo, setEditingTodo] = useState<TodoListItem | null>(null);
@@ -193,6 +194,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     setTodos((current) => [optimisticTodo, ...current]);
     setNewTitle("");
     setNewDifficulty(DEFAULT_XP_DIFFICULTY);
+    setIsCreatePanelOpen(false);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -210,6 +212,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       setTodos(previousTodos);
       setNewTitle(title);
       setNewDifficulty(optimisticTodo.xp_difficulty);
+      setIsCreatePanelOpen(true);
       reportActionError(result.error);
     });
   }
@@ -239,6 +242,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     setRoutines((current) => [optimisticRoutine, ...current]);
     setRoutineTitle("");
     setRoutineDifficulty(DEFAULT_XP_DIFFICULTY);
+    setIsCreatePanelOpen(false);
     setOperationMessage(null);
 
     startTransition(async () => {
@@ -255,6 +259,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
       setRoutines(previousRoutines);
       setRoutineTitle(title);
+      setIsCreatePanelOpen(true);
       reportActionError(result.error);
     });
   }
@@ -693,9 +698,21 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           </button>
           <h2>오늘의 퀘스트</h2>
         </div>
-        <Link className="ghost-button compact-button" href={"/todos/archive" as Route}>
-          <Archive size={16} /> 아카이브
-        </Link>
+        <div className="todo-section-actions">
+          <Link className="ghost-button compact-button" href={"/todos/archive" as Route}>
+            <Archive size={16} /> 아카이브
+          </Link>
+          <button
+            className={`icon-button secondary add-task-toggle ${isCreatePanelOpen ? "open" : ""}`}
+            type="button"
+            aria-label={isCreatePanelOpen ? "추가 패널 닫기" : "할 일 또는 루틴 추가"}
+            aria-expanded={isCreatePanelOpen}
+            onClick={() => setIsCreatePanelOpen((current) => !current)}
+            title={isCreatePanelOpen ? "추가 패널 닫기" : "할 일 또는 루틴 추가"}
+          >
+            <Plus size={18} />
+          </button>
+        </div>
       </div>
 
       {operationMessage ? <p className="notice compact-notice">{operationMessage}</p> : null}
@@ -828,24 +845,83 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         </div>
       </div>
 
-      <form className="form-row" action={handleCreate}>
-        <input type="hidden" name="todoDate" value={selectedDate} />
-        <input type="hidden" name="xpDifficulty" value={newDifficulty} />
-        <input
-          name="title"
-          placeholder="할 일을 입력하세요"
-          aria-label="새 할 일"
-          value={newTitle}
-          onChange={(event) => setNewTitle(event.target.value)}
-        />
-        <fieldset className="difficulty-field create-difficulty-field">
-          <legend>난이도</legend>
-          {renderDifficultyButtons(newDifficulty, setNewDifficulty)}
-        </fieldset>
-        <button className="icon-button" type="submit" aria-label="할 일 추가">
-          <Plus size={18} />
-        </button>
-      </form>
+      {isCreatePanelOpen ? (
+        <section className="create-quest-panel" aria-label="할 일과 루틴 추가">
+          <form className="form-row" action={handleCreate}>
+            <input type="hidden" name="todoDate" value={selectedDate} />
+            <input type="hidden" name="xpDifficulty" value={newDifficulty} />
+            <input
+              name="title"
+              placeholder="할 일을 입력하세요"
+              aria-label="새 할 일"
+              value={newTitle}
+              onChange={(event) => setNewTitle(event.target.value)}
+            />
+            <fieldset className="difficulty-field create-difficulty-field">
+              <legend>난이도</legend>
+              {renderDifficultyButtons(newDifficulty, setNewDifficulty)}
+            </fieldset>
+            <button className="icon-button" type="submit" aria-label="할 일 추가">
+              <Plus size={18} />
+            </button>
+          </form>
+
+          <form className="routine-form" action={handleCreateRoutine}>
+            <input type="hidden" name="todoDate" value={selectedDate} />
+            <input type="hidden" name="xpDifficulty" value={routineDifficulty} />
+            <input
+              name="title"
+              placeholder="반복할 일을 입력하세요"
+              aria-label="새 루틴"
+              value={routineTitle}
+              onChange={(event) => setRoutineTitle(event.target.value)}
+            />
+            <div className="segmented-control compact">
+              <button
+                className={routineFrequency === "daily" ? "selected" : ""}
+                type="button"
+                onClick={() => setRoutineFrequency("daily")}
+              >
+                매일
+              </button>
+              <button
+                className={routineFrequency === "weekly" ? "selected" : ""}
+                type="button"
+                onClick={() => setRoutineFrequency("weekly")}
+              >
+                요일 선택
+              </button>
+            </div>
+            <input type="hidden" name="frequency" value={routineFrequency} />
+            <fieldset className="difficulty-field create-difficulty-field">
+              <legend>난이도</legend>
+              {renderDifficultyButtons(routineDifficulty, setRoutineDifficulty)}
+            </fieldset>
+            {routineFrequency === "weekly" ? (
+              <div className="weekday-picker">
+                {weekdayOptions.map((day) => (
+                  <label
+                    className={routineWeekdays.includes(day.value) ? "selected" : ""}
+                    key={day.value}
+                  >
+                    <input
+                      type="checkbox"
+                      name="weekdays"
+                      value={day.value}
+                      checked={routineWeekdays.includes(day.value)}
+                      onChange={() => toggleRoutineWeekday(day.value)}
+                    />
+                    {day.label}
+                  </label>
+                ))}
+              </div>
+            ) : null}
+            <button className="ghost-button" type="submit">
+              <Plus size={16} /> 루틴 추가
+            </button>
+          </form>
+        </section>
+      ) : null}
 
       <section className="routine-panel">
         <div className="routine-panel-header">
@@ -853,60 +929,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <Repeat2 size={17} /> 루틴
           </h3>
         </div>
-        <form className="routine-form" action={handleCreateRoutine}>
-          <input type="hidden" name="todoDate" value={selectedDate} />
-          <input type="hidden" name="xpDifficulty" value={routineDifficulty} />
-          <input
-            name="title"
-            placeholder="반복할 일을 입력하세요"
-            aria-label="새 루틴"
-            value={routineTitle}
-            onChange={(event) => setRoutineTitle(event.target.value)}
-          />
-          <div className="segmented-control compact">
-            <button
-              className={routineFrequency === "daily" ? "selected" : ""}
-              type="button"
-              onClick={() => setRoutineFrequency("daily")}
-            >
-              매일
-            </button>
-            <button
-              className={routineFrequency === "weekly" ? "selected" : ""}
-              type="button"
-              onClick={() => setRoutineFrequency("weekly")}
-            >
-              요일 선택
-            </button>
-          </div>
-          <input type="hidden" name="frequency" value={routineFrequency} />
-          <fieldset className="difficulty-field create-difficulty-field">
-            <legend>난이도</legend>
-            {renderDifficultyButtons(routineDifficulty, setRoutineDifficulty)}
-          </fieldset>
-          {routineFrequency === "weekly" ? (
-            <div className="weekday-picker">
-              {weekdayOptions.map((day) => (
-                <label
-                  className={routineWeekdays.includes(day.value) ? "selected" : ""}
-                  key={day.value}
-                >
-                  <input
-                    type="checkbox"
-                    name="weekdays"
-                    value={day.value}
-                    checked={routineWeekdays.includes(day.value)}
-                    onChange={() => toggleRoutineWeekday(day.value)}
-                  />
-                  {day.label}
-                </label>
-              ))}
-            </div>
-          ) : null}
-          <button className="ghost-button" type="submit">
-            <Plus size={16} /> 루틴 추가
-          </button>
-        </form>
 
         {selectedRoutines.length > 0 ? (
           <div className="routine-list">

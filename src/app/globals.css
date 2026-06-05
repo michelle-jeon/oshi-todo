@@ -240,6 +240,12 @@ button {
   margin: 0;
 }
 
+.todo-section-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .compact-button {
   min-height: 34px;
   padding: 0 10px;
@@ -568,6 +574,25 @@ button {
   max-width: 360px;
 }
 
+.create-quest-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #faf7f1;
+  padding: 12px;
+}
+
+.create-quest-panel .form-row {
+  margin-bottom: 0;
+}
+
+.create-quest-panel .routine-form {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
 .todo-row.completed .todo-title-button {
   text-decoration: line-through;
   color: var(--muted);
@@ -634,6 +659,19 @@ button {
 .icon-button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.add-task-toggle {
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.add-task-toggle.open {
+  background: var(--primary);
+  color: #ffffff;
+  transform: rotate(45deg);
 }
 
 .ghost-button {
