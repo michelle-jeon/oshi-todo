@@ -5,7 +5,16 @@ import type { CSSProperties } from "react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
+type FocusSearchParams = {
+  character?: string;
+  from?: string;
+  period?: string;
+  to?: string;
+  work?: string;
+};
+
 type FocusWindowLogRow = {
+  character_id: string | null;
   id: string;
   work_date: string;
   window_key: string;
@@ -14,6 +23,12 @@ type FocusWindowLogRow = {
   seconds: number;
   xp: number;
   updated_at: string;
+};
+
+type CharacterFilterRow = {
+  id: string;
+  display_name: string;
+  is_active: boolean;
 };
 
 type DailyStat = {
@@ -31,6 +46,20 @@ type WorkNameStat = {
 };
 
 const WORK_STAT_COLORS = ["#2f8f6b", "#d69a2d", "#5f6fb4", "#b95f46", "#7a8f44", "#9b6fb0"];
+const PERIOD_OPTIONS = [
+  { value: "today", label: "오늘" },
+  { value: "week", label: "이번 주" },
+  { value: "month", label: "이번 달" },
+  { value: "custom", label: "직접 지정" }
+] as const;
+
+type PeriodOption = (typeof PERIOD_OPTIONS)[number]["value"];
+
+type FocusPeriodRange = {
+  endDate: string;
+  period: PeriodOption;
+  startDate: string;
+};
 
 function parseDateString(dateString: string) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -50,6 +79,13 @@ function addDays(dateString: string, amount: number) {
   return toDateString(date);
 }
 
+function getDaysBetween(startDate: string, endDate: string) {
+  const start = parseDateString(startDate).getTime();
+  const end = parseDateString(endDate).getTime();
+
+  return Math.max(Math.round((end - start) / 86_400_000) + 1, 1);
+}
+
 function getTodayString() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -65,6 +101,44 @@ function getWeekStart(dateString: string) {
   const mondayOffset = day === 0 ? -6 : 1 - day;
   date.setDate(date.getDate() + mondayOffset);
   return toDateString(date);
+}
+
+function isDateString(value?: string): value is string {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  return toDateString(parseDateString(value)) === value;
+}
+
+function isPeriodOption(value?: string): value is PeriodOption {
+  return PERIOD_OPTIONS.some((option) => option.value === value);
+}
+
+function getPeriodRange(params: FocusSearchParams, todayString: string): FocusPeriodRange {
+  const monthStart = `${todayString.slice(0, 7)}-01`;
+  const period = isPeriodOption(params.period) ? params.period : "month";
+
+  if (period === "today") {
+    return { endDate: todayString, period, startDate: todayString };
+  }
+
+  if (period === "week") {
+    return { endDate: todayString, period, startDate: getWeekStart(todayString) };
+  }
+
+  if (period === "custom") {
+    const from = isDateString(params.from) ? params.from : monthStart;
+    const to = isDateString(params.to) ? params.to : todayString;
+
+    if (from > to) {
+      return { endDate: from, period, startDate: to };
+    }
+
+    return { endDate: to, period, startDate: from };
+  }
+
+  return { endDate: todayString, period: "month", startDate: monthStart };
 }
 
 function formatDuration(seconds: number) {
@@ -160,37 +234,61 @@ function buildDonutBackground(stats: WorkNameStat[], totalSeconds: number) {
   return `conic-gradient(${segments.join(", ")})`;
 }
 
-export default async function FocusHistoryPage() {
+export default async function FocusHistoryPage({
+  searchParams
+}: {
+  searchParams: Promise<FocusSearchParams>;
+}) {
   const user = await requireUser();
   const supabase = await createClient();
+  const params = await searchParams;
   const todayString = getTodayString();
-  const weekStart = getWeekStart(todayString);
-  const monthStart = `${todayString.slice(0, 7)}-01`;
-  const lookbackStart = addDays(todayString, -89);
-  const chartStart = addDays(todayString, -13);
+  const { endDate, period, startDate } = getPeriodRange(params, todayString);
+  const workFilter = params.work?.trim() ?? "";
+  const normalizedWorkFilter = workFilter.toLocaleLowerCase();
+  const requestedCharacterId = params.character?.trim() ?? "";
+  const [{ data: logs, error }, { data: characters }] = await Promise.all([
+    supabase
+      .from("focus_window_logs")
+      .select("id, character_id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
+      .eq("user_id", user.id)
+      .gte("work_date", startDate)
+      .lte("work_date", endDate)
+      .order("work_date", { ascending: false })
+      .order("updated_at", { ascending: false })
+      .returns<FocusWindowLogRow[]>(),
+    supabase
+      .from("characters")
+      .select("id, display_name, is_active")
+      .eq("user_id", user.id)
+      .order("is_active", { ascending: false })
+      .order("created_at", { ascending: true })
+      .returns<CharacterFilterRow[]>()
+  ]);
+  const characterOptions = characters ?? [];
+  const selectedCharacterId = characterOptions.some((character) => character.id === requestedCharacterId)
+    ? requestedCharacterId
+    : "";
+  const focusLogs = (logs ?? []).filter((log) => {
+    const matchesCharacter = !selectedCharacterId || log.character_id === selectedCharacterId;
+    const matchesWork =
+      normalizedWorkFilter.length === 0 ||
+      `${log.display_name} ${log.full_name}`.toLocaleLowerCase().includes(normalizedWorkFilter);
 
-  const { data: logs, error } = await supabase
-    .from("focus_window_logs")
-    .select("id, work_date, window_key, display_name, full_name, seconds, xp, updated_at")
-    .eq("user_id", user.id)
-    .gte("work_date", lookbackStart)
-    .order("work_date", { ascending: false })
-    .order("updated_at", { ascending: false })
-    .returns<FocusWindowLogRow[]>();
-
-  const focusLogs = logs ?? [];
-  const todayLogs = focusLogs.filter((log) => log.work_date === todayString);
-  const weekLogs = focusLogs.filter((log) => log.work_date >= weekStart);
-  const monthLogs = focusLogs.filter((log) => log.work_date >= monthStart);
-  const dailyStats = buildDailyStats(focusLogs, chartStart, 14);
-  const monthWorkStats = buildWorkNameStats(monthLogs);
-  const topWorkStats = monthWorkStats.slice(0, 5);
+    return matchesCharacter && matchesWork;
+  });
+  const chartDays = Math.min(getDaysBetween(startDate, endDate), 31);
+  const chartStart = getDaysBetween(startDate, endDate) > 31 ? addDays(endDate, -30) : startDate;
+  const dailyStats = buildDailyStats(focusLogs, chartStart, chartDays);
+  const workStats = buildWorkNameStats(focusLogs);
+  const topWorkStats = workStats.slice(0, 5);
   const maxDailySeconds = Math.max(...dailyStats.map((stat) => stat.seconds), 1);
-  const activeMonthDays = new Set(monthLogs.map((log) => log.work_date)).size;
-  const averageMonthSeconds = activeMonthDays > 0 ? Math.round(sumSeconds(monthLogs) / activeMonthDays) : 0;
-  const monthTotalSeconds = sumSeconds(monthLogs);
+  const activeDays = new Set(focusLogs.map((log) => log.work_date)).size;
+  const totalSeconds = sumSeconds(focusLogs);
+  const totalXp = sumXp(focusLogs);
+  const averageSeconds = activeDays > 0 ? Math.round(totalSeconds / activeDays) : 0;
   const topWorkSeconds = topWorkStats.reduce((sum, stat) => sum + stat.seconds, 0);
-  const otherWorkSeconds = Math.max(monthTotalSeconds - topWorkSeconds, 0);
+  const otherWorkSeconds = Math.max(totalSeconds - topWorkSeconds, 0);
   const donutStats =
     otherWorkSeconds > 0
       ? [
@@ -205,7 +303,7 @@ export default async function FocusHistoryPage() {
         ]
       : topWorkStats;
   const donutStyle = {
-    background: buildDonutBackground(donutStats, monthTotalSeconds)
+    background: buildDonutBackground(donutStats, totalSeconds)
   } satisfies CSSProperties;
 
   return (
@@ -224,15 +322,64 @@ export default async function FocusHistoryPage() {
         </p>
       ) : null}
 
+      <section className="panel work-filter-panel">
+        <form className="work-filter-form" action="/profile/focus">
+          <label>
+            <span>기간</span>
+            <select name="period" defaultValue={period}>
+              {PERIOD_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>시작일</span>
+            <input name="from" type="date" defaultValue={startDate} />
+          </label>
+          <label>
+            <span>종료일</span>
+            <input name="to" type="date" defaultValue={endDate} />
+          </label>
+          <label>
+            <span>작업 이름</span>
+            <input name="work" type="search" defaultValue={workFilter} placeholder="예: 디자인" />
+          </label>
+          <label>
+            <span>캐릭터</span>
+            <select name="character" defaultValue={selectedCharacterId}>
+              <option value="">전체 캐릭터</option>
+              {characterOptions.map((character) => (
+                <option key={character.id} value={character.id}>
+                  {character.display_name}
+                  {character.is_active ? " · 활성" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="work-filter-actions">
+            <button className="primary-button" type="submit">
+              적용
+            </button>
+            <Link className="ghost-button" href={"/profile/focus" as Route}>
+              초기화
+            </Link>
+          </div>
+        </form>
+      </section>
+
       <section className="work-summary-grid">
         <div className="panel xp-summary-card">
           <span className="profile-setting-icon">
             <Clock3 size={18} />
           </span>
           <div>
-            <p className="subtle">오늘</p>
-            <strong>{formatDuration(sumSeconds(todayLogs))}</strong>
-            <span className="subtle">{sumXp(todayLogs).toLocaleString()} XP</span>
+            <p className="subtle">선택 기간</p>
+            <strong>{formatDuration(totalSeconds)}</strong>
+            <span className="subtle">
+              {formatShortDate(startDate)} - {formatShortDate(endDate)}
+            </span>
           </div>
         </div>
         <div className="panel xp-summary-card">
@@ -240,9 +387,9 @@ export default async function FocusHistoryPage() {
             <CalendarDays size={18} />
           </span>
           <div>
-            <p className="subtle">이번 주</p>
-            <strong>{formatDuration(sumSeconds(weekLogs))}</strong>
-            <span className="subtle">{sumXp(weekLogs).toLocaleString()} XP</span>
+            <p className="subtle">기록일</p>
+            <strong>{activeDays.toLocaleString()}일</strong>
+            <span className="subtle">작업 기록 기준</span>
           </div>
         </div>
         <div className="panel xp-summary-card">
@@ -250,9 +397,9 @@ export default async function FocusHistoryPage() {
             <BarChart3 size={18} />
           </span>
           <div>
-            <p className="subtle">이번 달</p>
-            <strong>{formatDuration(sumSeconds(monthLogs))}</strong>
-            <span className="subtle">{activeMonthDays.toLocaleString()}일 기록</span>
+            <p className="subtle">획득 XP</p>
+            <strong>{totalXp.toLocaleString()} XP</strong>
+            <span className="subtle">작업창 기록</span>
           </div>
         </div>
         <div className="panel xp-summary-card">
@@ -261,14 +408,14 @@ export default async function FocusHistoryPage() {
           </span>
           <div>
             <p className="subtle">기록일 평균</p>
-            <strong>{formatDuration(averageMonthSeconds)}</strong>
-            <span className="subtle">이번 달 기준</span>
+            <strong>{formatDuration(averageSeconds)}</strong>
+            <span className="subtle">선택 기간 기준</span>
           </div>
         </div>
       </section>
 
       <section className="panel work-chart-panel">
-        <h2>최근 14일</h2>
+        <h2>날짜별 기록</h2>
         <div className="work-day-chart">
           {dailyStats.map((stat) => (
             <div className="work-day-row" key={stat.date}>
@@ -292,14 +439,14 @@ export default async function FocusHistoryPage() {
             <div className="work-donut-wrap">
               <div className="work-donut" style={donutStyle}>
                 <div>
-                  <span>이번 달</span>
-                  <strong>{formatDuration(monthTotalSeconds)}</strong>
+                  <span>선택 기간</span>
+                  <strong>{formatDuration(totalSeconds)}</strong>
                 </div>
               </div>
             </div>
             <div className="work-window-list">
               {topWorkStats.map((stat, index) => {
-                const percent = monthTotalSeconds > 0 ? Math.round((stat.seconds / monthTotalSeconds) * 100) : 0;
+                const percent = totalSeconds > 0 ? Math.round((stat.seconds / totalSeconds) * 100) : 0;
 
                 return (
                   <article className="work-window-row" key={stat.key}>
