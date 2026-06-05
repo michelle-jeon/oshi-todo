@@ -20,6 +20,7 @@ type ActionResult<T = null> =
 type TodoData = {
   id: string;
   title: string;
+  notes: string | null;
   status: "open" | "completed" | "archived";
   xp_difficulty: XpDifficulty;
   priority: TodoPriority;
@@ -33,20 +34,26 @@ type TodoData = {
 };
 
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+  "id, title, notes, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
-  "id, title, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+  "id, title, notes, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITH_BASE =
-  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+  "id, title, notes, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITHOUT_BASE =
-  "id, title, status, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+  "id, title, notes, status, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY =
-  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+  "id, title, notes, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE =
-  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, notes, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 
 function cleanTitle(formData: FormData) {
   return String(formData.get("title") ?? "").trim().slice(0, 160);
+}
+
+function cleanNotes(formData: FormData) {
+  const value = String(formData.get("notes") ?? "").trim().slice(0, 1000);
+
+  return value.length > 0 ? value : null;
 }
 
 function cleanTodoDate(formData: FormData) {
@@ -155,6 +162,7 @@ export async function createTodo(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const title = cleanTitle(formData);
+  const notes = cleanNotes(formData);
   const todoDate = cleanTodoDate(formData);
   const dueDate = cleanDueDate(formData);
   const xpDifficulty = cleanDifficulty(formData);
@@ -177,6 +185,7 @@ export async function createTodo(formData: FormData) {
   const insertPayload = {
     user_id: user.id,
     title,
+    notes,
     xp_difficulty: xpDifficulty,
     priority,
     base_xp_reward: xpReward,
@@ -198,6 +207,7 @@ export async function createTodo(formData: FormData) {
         .insert({
           user_id: user.id,
           title,
+          notes,
           xp_difficulty: xpDifficulty,
           priority,
           base_xp_reward: xpReward,
@@ -228,6 +238,7 @@ export async function createTodo(formData: FormData) {
         .insert({
           user_id: user.id,
           title,
+          notes,
           xp_difficulty: xpDifficulty,
           base_xp_reward: xpReward,
           xp_reward: xpReward,
@@ -258,6 +269,7 @@ export async function createTodo(formData: FormData) {
         .insert({
           user_id: user.id,
           title,
+          notes,
           priority,
           base_xp_reward: xpReward,
           xp_reward: xpReward,
@@ -288,6 +300,7 @@ export async function createTodo(formData: FormData) {
         .insert({
           user_id: user.id,
           title,
+          notes,
           xp_difficulty: xpDifficulty,
           priority,
           xp_reward: xpReward,
@@ -312,6 +325,7 @@ export async function createTodo(formData: FormData) {
           .insert({
             user_id: user.id,
             title,
+            notes,
             priority,
             xp_reward: xpReward,
             todo_date: todoDate,
@@ -515,6 +529,56 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
       return {
         ok: false,
         error: fallbackError?.message ?? "할 일을 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
+export async function updateTodoNotes(todoId: string, notes: string | null) {
+  const user = await requireUser();
+
+  if (!isUuid(todoId)) {
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
+  }
+
+  const cleanValue = notes?.trim().slice(0, 1000) || null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ notes: cleanValue })
+    .eq("id", todoId)
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .select(TODO_SELECT_WITH_BASE)
+    .single<TodoData>();
+
+  if (error) {
+    if (isMissingDueDateError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({ notes: cleanValue })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE)
+        .single<Omit<TodoData, "due_date">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackDueDate(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "메모를 수정할 수 없어요."
       } satisfies ActionResult;
     }
 

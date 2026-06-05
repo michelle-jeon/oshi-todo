@@ -36,6 +36,7 @@ type CharacterRow = {
 type TodoRowData = {
   id: string;
   title: string;
+  notes: string | null;
   status: "open" | "completed" | "archived";
   xp_difficulty: XpDifficulty;
   priority: TodoPriority;
@@ -228,7 +229,7 @@ export default async function Home({
   const fetchTodos = async () => {
     const withBaseXp = await supabase
       .from("todos")
-      .select("id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
+      .select("id, title, notes, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
       .eq("user_id", user.id)
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
@@ -248,7 +249,7 @@ export default async function Home({
     if (isMissingDueDateError(withBaseXp.error)) {
       const fallback = await supabase
         .from("todos")
-        .select("id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
+        .select("id, title, notes, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id")
         .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })
@@ -270,7 +271,7 @@ export default async function Home({
     if (isMissingPriorityError(withBaseXp.error)) {
       const fallback = await supabase
         .from("todos")
-        .select("id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
+        .select("id, title, notes, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
         .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })
@@ -292,7 +293,7 @@ export default async function Home({
     if (isMissingDifficultyError(withBaseXp.error) && !isMissingBaseXpError(withBaseXp.error)) {
       const fallback = await supabase
         .from("todos")
-        .select("id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
+        .select("id, title, notes, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
         .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })
@@ -314,7 +315,7 @@ export default async function Home({
 
     const fallback = await supabase
       .from("todos")
-      .select("id, title, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
+      .select("id, title, notes, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
       .eq("user_id", user.id)
       .order("todo_date", { ascending: false })
       .order("status", { ascending: false })
@@ -325,7 +326,7 @@ export default async function Home({
     if (isMissingDifficultyError(fallback.error)) {
       const legacyFallback = await supabase
         .from("todos")
-        .select("id, title, status, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
+        .select("id, title, notes, status, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id")
         .eq("user_id", user.id)
         .order("todo_date", { ascending: false })
         .order("status", { ascending: false })

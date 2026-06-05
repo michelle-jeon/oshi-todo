@@ -18,6 +18,7 @@ import {
   toggleTodo,
   updateTodoDueDate,
   updateTodoDifficulty,
+  updateTodoNotes,
   updateTodoPriority,
   updateTodoTitle
 } from "@/app/todo-actions";
@@ -32,6 +33,7 @@ import {
 export type TodoListItem = {
   id: string;
   title: string;
+  notes: string | null;
   status: "open" | "completed" | "archived";
   xp_difficulty: XpDifficulty;
   priority: TodoPriority;
@@ -249,6 +251,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
       title,
+      notes: String(formData.get("notes") ?? "").trim() || null,
       status: "open",
       xp_difficulty: newDifficulty,
       priority: newPriority,
@@ -407,6 +410,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
       title: routine.title,
+      notes: null,
       status: "completed",
       xp_difficulty: routine.xp_difficulty ?? DEFAULT_XP_DIFFICULTY,
       priority: DEFAULT_TODO_PRIORITY,
@@ -432,6 +436,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         const completedResult = result.data as Partial<TodoListItem>;
         const completedTodo = {
           ...completedResult,
+          notes: completedResult.notes ?? null,
           priority: completedResult.priority ?? DEFAULT_TODO_PRIORITY,
           due_date: completedResult.due_date ?? selectedDate
         } as TodoListItem;
@@ -584,6 +589,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     }
 
     const title = String(formData.get("title") ?? "").trim();
+    const notes = String(formData.get("notes") ?? "").trim().slice(0, 1000) || null;
     const difficultyValue = String(formData.get("xpDifficulty") ?? editingTodo.xp_difficulty);
     const priorityValue = String(formData.get("priority") ?? editingTodo.priority);
     const dueDateValue = String(formData.get("dueDate") ?? "").trim();
@@ -606,6 +612,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const nextTodo: TodoListItem = {
       ...editingTodo,
       title,
+      notes,
       xp_difficulty: xpDifficulty,
       priority,
       xp_reward: xpReward,
@@ -635,6 +642,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         }
 
         latestTodo = titleResult.data as TodoListItem;
+      }
+
+      if (notes !== editingTodo.notes) {
+        const notesResult = await updateTodoNotes(editingTodo.id, notes);
+
+        if (!notesResult.ok) {
+          setTodos(previousTodos);
+          setEditingTodo(editingTodo);
+          reportActionError(notesResult.error);
+          return;
+        }
+
+        latestTodo = notesResult.data as TodoListItem;
       }
 
       if (xpDifficulty !== editingTodo.xp_difficulty) {
@@ -848,6 +868,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           >
             {todo.title}
           </button>
+          {todo.notes ? <p className="todo-note-preview">{todo.notes}</p> : null}
           <div className="xp-reward-row">
             <span className="todo-xp-label">
               {isCompleted ? "완료됨 · " : ""}
@@ -1051,6 +1072,13 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               value={newTitle}
               onChange={(event) => setNewTitle(event.target.value)}
             />
+            <textarea
+              className="create-notes-input"
+              name="notes"
+              placeholder="메모를 추가해도 좋아요"
+              aria-label="새 할 일 메모"
+              rows={2}
+            />
             <fieldset className="difficulty-field create-difficulty-field">
               <legend>난이도</legend>
               {renderDifficultyButtons(newDifficulty, setNewDifficulty)}
@@ -1195,16 +1223,28 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           >
             <h2>할 일 상세</h2>
             {editingTodo.status === "open" ? (
-              <label>
-                할 일
-                <input name="title" defaultValue={editingTodo.title} />
-              </label>
+              <>
+                <label>
+                  할 일
+                  <input name="title" defaultValue={editingTodo.title} />
+                </label>
+                <label>
+                  메모
+                  <textarea name="notes" defaultValue={editingTodo.notes ?? ""} rows={4} />
+                </label>
+              </>
             ) : (
               <div className="detail-readonly-row">
                 <span className="subtle">할 일</span>
                 <strong>{editingTodo.title}</strong>
               </div>
             )}
+            {editingTodo.status !== "open" && editingTodo.notes ? (
+              <div className="detail-readonly-row">
+                <span className="subtle">메모</span>
+                <p>{editingTodo.notes}</p>
+              </div>
+            ) : null}
             <input type="hidden" name="xpDifficulty" value={editingTodo.xp_difficulty} readOnly />
             <input type="hidden" name="priority" value={editingTodo.priority} readOnly />
             {editingTodo.status === "open" ? (
