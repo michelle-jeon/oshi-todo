@@ -20,6 +20,7 @@ npm run verify
 
 ## Supabase 확인
 
+- 개발/운영 환경 분리 기준은 `docs/ENVIRONMENTS.md`를 기준으로 확인한다.
 - `docs/SUPABASE_SETUP.md`의 SQL Editor 실행 순서를 최신 상태로 적용했는지 확인한다.
 - 새 DB 변경이 있으면 `supabase/migrations`와 `supabase/sql_editor` 중 어디에 반영되어야 하는지 확인한다.
 - 운영 데이터가 있는 테이블에는 `drop`, `truncate`, 무조건 대량 `update`를 실행하지 않는다.

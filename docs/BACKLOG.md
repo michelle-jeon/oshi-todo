@@ -212,8 +212,12 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 - ✅ 상점 아이템 seed 스크립트 추가.
   - `npm run seed:shop-items`와 SQL Editor용 `supabase/sql_editor/09_shop_items_seed.sql`로 상점 아이템 upsert 흐름을 정리.
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
-- staging/production Supabase 프로젝트 분리.
-- 개발 브랜치와 운영 브랜치 분리. (토요일 작업 후보)
+- ✅ staging/production Supabase 프로젝트 분리 기준 문서화.
+  - `docs/ENVIRONMENTS.md`에 staging/production Supabase 프로젝트, 환경변수 매핑, migration 적용 순서를 정리.
+  - 실제 Supabase 프로젝트 생성과 배포 플랫폼 환경변수 입력은 수동 작업으로 남김.
+- ✅ 개발 브랜치와 운영 브랜치 분리 기준 문서화.
+  - `docs/ENVIRONMENTS.md`에 `main`, `develop`, `codex/*`, `codex/hotfix-*` 운영 흐름을 정리.
+  - 실제 브랜치 생성과 보호 규칙 설정은 토요일 배포 준비 때 진행.
   - `main` 또는 `production`: 실제 배포용 안정 브랜치.
   - `develop`: 기능 통합과 QA용 개발 브랜치.
   - 기능 작업은 `codex/*` 브랜치에서 진행한 뒤 `develop`으로 합치고, 검증 후 운영 브랜치로 승격.
