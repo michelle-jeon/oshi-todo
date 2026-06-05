@@ -194,6 +194,25 @@ button {
   padding: 12px 14px;
 }
 
+.operation-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.inline-action-button {
+  min-height: 30px;
+  border: 1px solid rgb(95 66 12 / 24%);
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5f420c;
+  padding: 0 10px;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.65fr);

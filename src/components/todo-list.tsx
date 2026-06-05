@@ -136,6 +136,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const [editingTodo, setEditingTodo] = useState<TodoListItem | null>(null);
   const [endingRoutine, setEndingRoutine] = useState<RoutineListItem | null>(null);
   const [operationMessage, setOperationMessage] = useState<string | null>(null);
+  const [undoCompletedTodoId, setUndoCompletedTodoId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
   const selectedTodos = useMemo(
@@ -164,7 +165,13 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   const visibleMonthIndex = visibleMonth.getMonth();
   const yearOptions = Array.from({ length: 9 }, (_, index) => visibleYear - 4 + index);
 
+  function clearOperationFeedback() {
+    setOperationMessage(null);
+    setUndoCompletedTodoId(null);
+  }
+
   function reportActionError(message: string) {
+    setUndoCompletedTodoId(null);
     setOperationMessage(message);
   }
 
@@ -195,7 +202,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     setNewTitle("");
     setNewDifficulty(DEFAULT_XP_DIFFICULTY);
     setIsCreatePanelOpen(false);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       const result = await createTodo(formData);
@@ -243,7 +250,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     setRoutineTitle("");
     setRoutineDifficulty(DEFAULT_XP_DIFFICULTY);
     setIsCreatePanelOpen(false);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       const result = await createRoutine(formData);
@@ -267,7 +274,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   function handleDeleteRoutine(routineId: string) {
     const previousRoutines = routines;
     setRoutines((current) => current.filter((routine) => routine.id !== routineId));
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     if (routineId.startsWith("temp-")) {
       return;
@@ -305,7 +312,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       )
     );
     setEndingRoutine(null);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     if (routineToEnd.id.startsWith("temp-")) {
       return;
@@ -348,17 +355,21 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
 
     const previousTodos = todos;
     setTodos((current) => [optimisticTodo, ...current]);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       const result = await completeRoutine(routine.id, formData);
 
       if (result.ok && result.data) {
+        const completedTodo = result.data as TodoListItem;
+
         setTodos((current) =>
           current.map((todo) =>
-            todo.id === optimisticId ? (result.data as TodoListItem) : todo
+            todo.id === optimisticId ? completedTodo : todo
           )
         );
+        setUndoCompletedTodoId(completedTodo.id);
+        setOperationMessage("루틴을 완료했어요.");
         return;
       }
 
@@ -405,7 +416,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       current.map((routine) => (routine.id === editingRoutine.id ? nextRoutine : routine))
     );
     setEditingRoutine(null);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       const result = await updateRoutine(nextRoutine.id, formData);
@@ -452,7 +463,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           : item
         )
     );
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       const result = await toggleTodo(todo.id, nextStatus);
@@ -460,6 +471,12 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       if (!result.ok) {
         setTodos(previousTodos);
         reportActionError(result.error);
+        return;
+      }
+
+      if (nextStatus === "completed") {
+        setUndoCompletedTodoId(todo.id);
+        setOperationMessage("완료했어요.");
       }
     });
   }
@@ -467,7 +484,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   function handleDelete(todoId: string) {
     const previousTodos = todos;
     setTodos((current) => current.filter((item) => item.id !== todoId));
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     if (todoId.startsWith("temp-")) {
       return;
@@ -518,7 +535,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       current.map((todo) => (todo.id === editingTodo.id ? nextTodo : todo))
     );
     setEditingTodo(null);
-    setOperationMessage(null);
+    clearOperationFeedback();
 
     startTransition(async () => {
       let latestTodo: TodoListItem | null = null;
@@ -638,6 +655,25 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     });
   }
 
+  function handleUndoCompletedTodo() {
+    if (!undoCompletedTodoId) {
+      return;
+    }
+
+    const completedTodo = todos.find(
+      (todo) => todo.id === undoCompletedTodoId && todo.status === "completed"
+    );
+
+    setUndoCompletedTodoId(null);
+
+    if (!completedTodo) {
+      setOperationMessage(null);
+      return;
+    }
+
+    handleToggle(completedTodo);
+  }
+
   function renderTodo(todo: TodoListItem, isCompleted: boolean) {
     return (
       <article
@@ -715,7 +751,16 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         </div>
       </div>
 
-      {operationMessage ? <p className="notice compact-notice">{operationMessage}</p> : null}
+      {operationMessage ? (
+        <div className="notice compact-notice operation-notice">
+          <span>{operationMessage}</span>
+          {undoCompletedTodoId ? (
+            <button className="inline-action-button" type="button" onClick={handleUndoCompletedTodo}>
+              되돌리기
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className={`calendar-drawer ${isCalendarOpen ? "open" : ""}`}>
         <div className="calendar-card">
