@@ -246,7 +246,7 @@ export async function toggleTodo(todoId: string, nextStatus: "open" | "completed
 }
 
 export async function updateTodoTitle(todoId: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
 
   if (!isUuid(todoId)) {
     return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
@@ -263,6 +263,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     .from("todos")
     .update({ title })
     .eq("id", todoId)
+    .eq("user_id", user.id)
     .eq("status", "open")
     .select(TODO_SELECT_WITH_BASE)
     .single();
@@ -273,6 +274,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
         .from("todos")
         .update({ title })
         .eq("id", todoId)
+        .eq("user_id", user.id)
         .eq("status", "open")
         .select(TODO_SELECT_LEGACY_WITH_BASE)
         .single<Omit<TodoData, "xp_difficulty">>();
@@ -296,6 +298,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
         .from("todos")
         .update({ title })
         .eq("id", todoId)
+        .eq("user_id", user.id)
         .eq("status", "open")
         .select(TODO_SELECT_WITHOUT_BASE)
         .single<Omit<TodoData, "base_xp_reward">>();
@@ -313,6 +316,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
           .from("todos")
           .update({ title })
           .eq("id", todoId)
+          .eq("user_id", user.id)
           .eq("status", "open")
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
           .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
@@ -345,7 +349,7 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
 }
 
 export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDifficulty) {
-  await requireUser();
+  const user = await requireUser();
 
   if (!isUuid(todoId)) {
     return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
@@ -362,6 +366,7 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
       xp_reward: xpReward
     })
     .eq("id", todoId)
+    .eq("user_id", user.id)
     .eq("status", "open")
     .select(TODO_SELECT_WITH_BASE)
     .single<TodoData>();
@@ -375,6 +380,7 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
           xp_reward: xpReward
         })
         .eq("id", todoId)
+        .eq("user_id", user.id)
         .eq("status", "open")
         .select(TODO_SELECT_LEGACY_WITH_BASE)
         .single<Omit<TodoData, "xp_difficulty">>();
@@ -402,6 +408,7 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
           xp_reward: xpReward
         })
         .eq("id", todoId)
+        .eq("user_id", user.id)
         .eq("status", "open")
         .select(TODO_SELECT_WITHOUT_BASE)
         .single<Omit<TodoData, "base_xp_reward">>();
@@ -419,6 +426,7 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
           .from("todos")
           .update({ xp_reward: xpReward })
           .eq("id", todoId)
+          .eq("user_id", user.id)
           .eq("status", "open")
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
           .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
@@ -451,7 +459,7 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
 }
 
 export async function deleteTodo(todoId: string) {
-  await requireUser();
+  const user = await requireUser();
 
   if (!isUuid(todoId)) {
     return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
@@ -459,7 +467,7 @@ export async function deleteTodo(todoId: string) {
 
   const supabase = await createClient();
 
-  const { error } = await supabase.from("todos").delete().eq("id", todoId);
+  const { error } = await supabase.from("todos").delete().eq("id", todoId).eq("user_id", user.id);
 
   if (error) {
     return { ok: false, error: error.message } satisfies ActionResult;
@@ -470,7 +478,7 @@ export async function deleteTodo(todoId: string) {
 }
 
 export async function reorderTodos(todoIds: string[]) {
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
   const persistedTodoIds = todoIds.filter(isUuid);
 
@@ -480,6 +488,7 @@ export async function reorderTodos(todoIds: string[]) {
         .from("todos")
         .update({ sort_order: (index + 1) * 1000 })
         .eq("id", todoId)
+        .eq("user_id", user.id)
         .eq("status", "open")
     )
   );

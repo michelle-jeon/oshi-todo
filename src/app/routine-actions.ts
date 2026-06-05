@@ -229,7 +229,7 @@ export async function createRoutine(formData: FormData) {
 }
 
 export async function updateRoutine(routineId: string, formData: FormData) {
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
   const { title, frequency, weekdays, xpDifficulty } = cleanRoutineInput(formData);
   const xpReward = getXpRewardForDifficulty(xpDifficulty);
@@ -242,6 +242,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
     .from("routines")
     .select("title, xp_reward, base_xp_reward")
     .eq("id", routineId)
+    .eq("user_id", user.id)
     .single<{ title: string; xp_reward: number; base_xp_reward: number }>();
 
   if (currentError && isMissingBaseXpError(currentError)) {
@@ -249,6 +250,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
       .from("routines")
       .select("title, xp_reward")
       .eq("id", routineId)
+      .eq("user_id", user.id)
       .single<{ title: string; xp_reward: number }>();
 
     if (fallbackCurrentError || !fallbackCurrentRoutine) {
@@ -268,6 +270,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
         xp_reward: xpReward
       })
       .eq("id", routineId)
+      .eq("user_id", user.id)
       .select(ROUTINE_SELECT_WITHOUT_BASE)
       .single<Omit<RoutineData, "base_xp_reward">>();
 
@@ -301,6 +304,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
       xp_reward: xpReward
     })
     .eq("id", routineId)
+    .eq("user_id", user.id)
     .select(ROUTINE_SELECT_WITH_BASE)
     .single<RoutineData>();
 
@@ -316,6 +320,7 @@ export async function updateRoutine(routineId: string, formData: FormData) {
           xp_reward: xpReward
         })
         .eq("id", routineId)
+        .eq("user_id", user.id)
         .select("id, title, frequency, weekdays, xp_reward, base_xp_reward, is_active, starts_on, ends_on")
         .single<Omit<RoutineData, "xp_difficulty">>();
 
@@ -527,6 +532,7 @@ async function completeRoutineWithData({
         .from("todos")
         .select(TODO_SELECT_WITHOUT_BASE)
         .eq("id", fallbackTodo.id)
+        .eq("user_id", userId)
         .single<Omit<TodoData, "base_xp_reward">>();
 
       if (fallbackCompletedTodoError && isMissingDifficultyError(fallbackCompletedTodoError)) {
@@ -534,6 +540,7 @@ async function completeRoutineWithData({
           .from("todos")
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
           .eq("id", fallbackTodo.id)
+          .eq("user_id", userId)
           .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
 
         if (legacyCompletedTodoError || !legacyCompletedTodo) {
@@ -582,6 +589,7 @@ async function completeRoutineWithData({
     .from("todos")
     .select(TODO_SELECT_WITH_BASE)
     .eq("id", todo.id)
+    .eq("user_id", userId)
     .single<TodoData>();
 
   if (completedTodoError && isMissingDifficultyError(completedTodoError)) {
@@ -589,6 +597,7 @@ async function completeRoutineWithData({
       .from("todos")
       .select(TODO_SELECT_LEGACY_WITH_BASE)
       .eq("id", todo.id)
+      .eq("user_id", userId)
       .single<Omit<TodoData, "xp_difficulty">>();
 
     if (legacyCompletedTodoError || !legacyCompletedTodo) {
@@ -617,6 +626,7 @@ async function completeRoutineWithData({
       .from("todos")
       .select(TODO_SELECT_WITHOUT_BASE)
       .eq("id", todo.id)
+      .eq("user_id", userId)
       .single<Omit<TodoData, "base_xp_reward">>();
 
     if (fallbackCompletedTodoError && isMissingDifficultyError(fallbackCompletedTodoError)) {
@@ -624,6 +634,7 @@ async function completeRoutineWithData({
         .from("todos")
         .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
         .eq("id", todo.id)
+        .eq("user_id", userId)
         .single<Omit<TodoData, "base_xp_reward" | "xp_difficulty">>();
 
       if (legacyCompletedTodoError || !legacyCompletedTodo) {
@@ -659,9 +670,13 @@ async function completeRoutineWithData({
 }
 
 export async function deleteRoutine(routineId: string) {
-  await requireUser();
+  const user = await requireUser();
   const supabase = await createClient();
-  const { error } = await supabase.from("routines").delete().eq("id", routineId);
+  const { error } = await supabase
+    .from("routines")
+    .delete()
+    .eq("id", routineId)
+    .eq("user_id", user.id);
 
   if (error) {
     return { ok: false, error: error.message } satisfies ActionResult;

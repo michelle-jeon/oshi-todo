@@ -203,6 +203,7 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
   - Turbopack 개발 서버 패닉을 피하기 위해 `npm run dev`를 webpack 모드로 고정.
   - 세션 쿠키가 없는 보호 페이지 요청은 Supabase 인증 API 호출 전에 로그인 화면으로 이동.
   - 홈 화면 주요 데이터 조회에도 로그인 사용자 필터를 명시해 RLS와 앱 쿼리의 데이터 경계를 함께 보강.
+  - 투두/루틴 수정, 삭제, 정렬 저장 같은 서버 액션에도 로그인 사용자 필터를 명시해 조작 범위를 보강.
 - ✅ 상점 아이템 seed 스크립트 추가.
   - `npm run seed:shop-items`와 SQL Editor용 `supabase/sql_editor/09_shop_items_seed.sql`로 상점 아이템 upsert 흐름을 정리.
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
