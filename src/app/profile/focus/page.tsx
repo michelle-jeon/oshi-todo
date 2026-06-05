@@ -1,6 +1,7 @@
 import { ArrowLeft, BarChart3, CalendarDays, Clock3, Trophy } from "lucide-react";
 import Link from "next/link";
 import type { Route } from "next";
+import type { CSSProperties } from "react";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,13 +22,15 @@ type DailyStat = {
   xp: number;
 };
 
-type WindowStat = {
+type WorkNameStat = {
   key: string;
   name: string;
   seconds: number;
   xp: number;
   days: Set<string>;
 };
+
+const WORK_STAT_COLORS = ["#2f8f6b", "#d69a2d", "#5f6fb4", "#b95f46", "#7a8f44", "#9b6fb0"];
 
 function parseDateString(dateString: string) {
   const [year, month, day] = dateString.split("-").map(Number);
@@ -111,20 +114,25 @@ function buildDailyStats(logs: FocusWindowLogRow[], startDate: string, days: num
   return Array.from(stats.values());
 }
 
-function buildWindowStats(logs: FocusWindowLogRow[]) {
-  const stats = new Map<string, WindowStat>();
+function getWorkName(log: FocusWindowLogRow) {
+  return log.display_name || log.full_name || "이름 없는 작업";
+}
+
+function buildWorkNameStats(logs: FocusWindowLogRow[]) {
+  const stats = new Map<string, WorkNameStat>();
 
   logs.forEach((log) => {
-    const key = log.window_key || log.full_name || log.display_name || log.id;
+    const name = getWorkName(log);
+    const key = name.trim().toLocaleLowerCase();
     const current =
       stats.get(key) ??
       ({
         key,
-        name: log.display_name || log.full_name || "이름 없는 작업",
+        name,
         seconds: 0,
         xp: 0,
         days: new Set<string>()
-      } satisfies WindowStat);
+      } satisfies WorkNameStat);
 
     current.seconds += log.seconds;
     current.xp += log.xp;
@@ -133,6 +141,23 @@ function buildWindowStats(logs: FocusWindowLogRow[]) {
   });
 
   return Array.from(stats.values()).sort((a, b) => b.seconds - a.seconds);
+}
+
+function buildDonutBackground(stats: WorkNameStat[], totalSeconds: number) {
+  if (totalSeconds <= 0) {
+    return "#efe5d4";
+  }
+
+  let cursor = 0;
+  const segments = stats.map((stat, index) => {
+    const start = cursor;
+    const end = cursor + (stat.seconds / totalSeconds) * 100;
+    cursor = end;
+
+    return `${WORK_STAT_COLORS[index % WORK_STAT_COLORS.length]} ${start}% ${end}%`;
+  });
+
+  return `conic-gradient(${segments.join(", ")})`;
 }
 
 export default async function FocusHistoryPage() {
@@ -158,10 +183,30 @@ export default async function FocusHistoryPage() {
   const weekLogs = focusLogs.filter((log) => log.work_date >= weekStart);
   const monthLogs = focusLogs.filter((log) => log.work_date >= monthStart);
   const dailyStats = buildDailyStats(focusLogs, chartStart, 14);
-  const topWindows = buildWindowStats(monthLogs).slice(0, 5);
+  const monthWorkStats = buildWorkNameStats(monthLogs);
+  const topWorkStats = monthWorkStats.slice(0, 5);
   const maxDailySeconds = Math.max(...dailyStats.map((stat) => stat.seconds), 1);
   const activeMonthDays = new Set(monthLogs.map((log) => log.work_date)).size;
   const averageMonthSeconds = activeMonthDays > 0 ? Math.round(sumSeconds(monthLogs) / activeMonthDays) : 0;
+  const monthTotalSeconds = sumSeconds(monthLogs);
+  const topWorkSeconds = topWorkStats.reduce((sum, stat) => sum + stat.seconds, 0);
+  const otherWorkSeconds = Math.max(monthTotalSeconds - topWorkSeconds, 0);
+  const donutStats =
+    otherWorkSeconds > 0
+      ? [
+          ...topWorkStats,
+          {
+            key: "other",
+            name: "기타",
+            seconds: otherWorkSeconds,
+            xp: 0,
+            days: new Set<string>()
+          }
+        ]
+      : topWorkStats;
+  const donutStyle = {
+    background: buildDonutBackground(donutStats, monthTotalSeconds)
+  } satisfies CSSProperties;
 
   return (
     <main className="simple-shell">
@@ -241,21 +286,56 @@ export default async function FocusHistoryPage() {
       </section>
 
       <section className="panel work-chart-panel">
-        <h2>이번 달 많이 한 작업</h2>
-        {topWindows.length > 0 ? (
-          <div className="work-window-list">
-            {topWindows.map((stat, index) => (
-              <article className="work-window-row" key={stat.key}>
-                <span className="work-window-rank">{index + 1}</span>
+        <h2>작업 이름별 통계</h2>
+        {topWorkStats.length > 0 ? (
+          <div className="work-share-layout">
+            <div className="work-donut-wrap">
+              <div className="work-donut" style={donutStyle}>
                 <div>
-                  <strong>{stat.name}</strong>
-                  <p className="subtle">
-                    {stat.days.size.toLocaleString()}일 · {stat.xp.toLocaleString()} XP
-                  </p>
+                  <span>이번 달</span>
+                  <strong>{formatDuration(monthTotalSeconds)}</strong>
                 </div>
-                <strong>{formatDuration(stat.seconds)}</strong>
-              </article>
-            ))}
+              </div>
+            </div>
+            <div className="work-window-list">
+              {topWorkStats.map((stat, index) => {
+                const percent = monthTotalSeconds > 0 ? Math.round((stat.seconds / monthTotalSeconds) * 100) : 0;
+
+                return (
+                  <article className="work-window-row" key={stat.key}>
+                    <span
+                      className="work-window-rank"
+                      style={{
+                        background: WORK_STAT_COLORS[index % WORK_STAT_COLORS.length],
+                        color: "#ffffff"
+                      }}
+                    >
+                      {index + 1}
+                    </span>
+                    <div>
+                      <strong>{stat.name}</strong>
+                      <p className="subtle">
+                        {stat.days.size.toLocaleString()}일 · {stat.xp.toLocaleString()} XP · {percent}%
+                      </p>
+                      <div className="work-window-meter">
+                        <div style={{ width: `${Math.max(percent, 4)}%` }} />
+                      </div>
+                    </div>
+                    <strong>{formatDuration(stat.seconds)}</strong>
+                  </article>
+                );
+              })}
+              {otherWorkSeconds > 0 ? (
+                <article className="work-window-row muted-work-row">
+                  <span className="work-window-rank">+</span>
+                  <div>
+                    <strong>기타</strong>
+                    <p className="subtle">상위 5개 밖의 작업</p>
+                  </div>
+                  <strong>{formatDuration(otherWorkSeconds)}</strong>
+                </article>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div className="empty-state">이번 달 작업시간 기록이 아직 없어요.</div>
