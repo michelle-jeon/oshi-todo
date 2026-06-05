@@ -16,6 +16,7 @@ import {
   deleteTodo,
   reorderTodos,
   toggleTodo,
+  updateTodoDueDate,
   updateTodoDifficulty,
   updateTodoPriority,
   updateTodoTitle
@@ -38,6 +39,7 @@ export type TodoListItem = {
   base_xp_reward: number;
   completed_at: string | null;
   todo_date: string;
+  due_date: string | null;
   sort_order: number;
   routine_id: string | null;
 };
@@ -123,6 +125,48 @@ function getPriorityLabel(priority: TodoPriority) {
   return priorityOptions.find((option) => option.value === priority)?.label ?? "보통";
 }
 
+function formatDueDate(value: string) {
+  return new Intl.DateTimeFormat("ko-KR", {
+    month: "long",
+    day: "numeric",
+    weekday: "short"
+  }).format(parseDate(value));
+}
+
+function getDueDateState(dueDate: string | null, selectedDate: string) {
+  if (!dueDate) {
+    return null;
+  }
+
+  if (dueDate < selectedDate) {
+    return "overdue";
+  }
+
+  if (dueDate === selectedDate) {
+    return "today";
+  }
+
+  return "upcoming";
+}
+
+function getDueDateLabel(dueDate: string | null, selectedDate: string) {
+  const state = getDueDateState(dueDate, selectedDate);
+
+  if (!dueDate || !state) {
+    return null;
+  }
+
+  if (state === "overdue") {
+    return `마감 지남 · ${formatDueDate(dueDate)}`;
+  }
+
+  if (state === "today") {
+    return "오늘 마감";
+  }
+
+  return `마감 ${formatDueDate(dueDate)}`;
+}
+
 function isRoutineAvailableOnDate(routine: RoutineListItem, dateString: string, weekday: number) {
   return (
     routine.starts_on <= dateString &&
@@ -198,6 +242,9 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     }
 
     formData.set("todoDate", selectedDate);
+    if (!formData.get("dueDate")) {
+      formData.set("dueDate", selectedDate);
+    }
     const optimisticId = `temp-${crypto.randomUUID()}`;
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
@@ -209,6 +256,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       base_xp_reward: getXpRewardForDifficulty(newDifficulty),
       completed_at: null,
       todo_date: selectedDate,
+      due_date: String(formData.get("dueDate") ?? selectedDate),
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
       routine_id: null
     };
@@ -366,6 +414,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       base_xp_reward: routine.base_xp_reward,
       completed_at: new Date().toISOString(),
       todo_date: selectedDate,
+      due_date: selectedDate,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
       routine_id: routine.id
     };
@@ -383,7 +432,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         const completedResult = result.data as Partial<TodoListItem>;
         const completedTodo = {
           ...completedResult,
-          priority: completedResult.priority ?? DEFAULT_TODO_PRIORITY
+          priority: completedResult.priority ?? DEFAULT_TODO_PRIORITY,
+          due_date: completedResult.due_date ?? selectedDate
         } as TodoListItem;
 
         setTodos((current) =>
@@ -536,6 +586,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     const title = String(formData.get("title") ?? "").trim();
     const difficultyValue = String(formData.get("xpDifficulty") ?? editingTodo.xp_difficulty);
     const priorityValue = String(formData.get("priority") ?? editingTodo.priority);
+    const dueDateValue = String(formData.get("dueDate") ?? "").trim();
+    const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(dueDateValue) ? dueDateValue : null;
     const xpDifficulty =
       difficultyOptions.some((option) => option.value === difficultyValue)
         ? (difficultyValue as XpDifficulty)
@@ -557,7 +609,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       xp_difficulty: xpDifficulty,
       priority,
       xp_reward: xpReward,
-      base_xp_reward: xpReward
+      base_xp_reward: xpReward,
+      due_date: dueDate
     };
 
     setTodos((current) =>
@@ -610,6 +663,19 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
         latestTodo = priorityResult.data as TodoListItem;
       }
 
+      if (dueDate !== editingTodo.due_date) {
+        const dueDateResult = await updateTodoDueDate(editingTodo.id, dueDate);
+
+        if (!dueDateResult.ok) {
+          setTodos(previousTodos);
+          setEditingTodo(editingTodo);
+          reportActionError(dueDateResult.error);
+          return;
+        }
+
+        latestTodo = dueDateResult.data as TodoListItem;
+      }
+
       if (latestTodo) {
         setTodos((current) =>
           current.map((todo) =>
@@ -617,7 +683,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               ? {
                   ...todo,
                   ...latestTodo,
-                  priority: latestTodo.priority ?? nextTodo.priority
+                  priority: latestTodo.priority ?? nextTodo.priority,
+                  due_date: latestTodo.due_date
                 }
               : todo
           )
@@ -745,6 +812,9 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
   }
 
   function renderTodo(todo: TodoListItem, isCompleted: boolean) {
+    const dueDateLabel = getDueDateLabel(todo.due_date, selectedDate);
+    const dueDateState = getDueDateState(todo.due_date, selectedDate);
+
     return (
       <article
         className={`todo-row ${isCompleted ? "completed" : ""}`}
@@ -786,6 +856,11 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <span className={`todo-priority-label priority-${todo.priority}`}>
               우선순위 {getPriorityLabel(todo.priority)}
             </span>
+            {dueDateLabel ? (
+              <span className={`todo-due-label due-${dueDateState}`}>
+                {dueDateLabel}
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -984,6 +1059,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               <legend>우선순위</legend>
               {renderPriorityButtons(newPriority, setNewPriority)}
             </fieldset>
+            <label className="due-date-field create-due-date-field">
+              <span>마감일</span>
+              <input name="dueDate" type="date" defaultValue={selectedDate} />
+            </label>
             <button className="icon-button" type="submit" aria-label="할 일 추가">
               <Plus size={18} />
             </button>
@@ -1130,6 +1209,10 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             <input type="hidden" name="priority" value={editingTodo.priority} readOnly />
             {editingTodo.status === "open" ? (
               <>
+                <label>
+                  마감일
+                  <input name="dueDate" type="date" defaultValue={editingTodo.due_date ?? editingTodo.todo_date} />
+                </label>
                 <fieldset className="difficulty-field">
                   <legend>난이도</legend>
                   {renderDifficultyButtons(editingTodo.xp_difficulty, (difficulty) => {

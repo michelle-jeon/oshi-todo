@@ -546,6 +546,25 @@ button {
   color: #786f63;
 }
 
+.todo-due-label {
+  border-radius: 999px;
+  background: #eef3ef;
+  color: rgb(76 69 61 / 64%);
+  padding: 3px 8px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.todo-due-label.due-today {
+  background: #e9f5f1;
+  color: var(--primary);
+}
+
+.todo-due-label.due-overdue {
+  background: #fff2ef;
+  color: #b84730;
+}
+
 .difficulty-field {
   display: grid;
   gap: 8px;
@@ -572,6 +591,25 @@ button {
   color: var(--muted);
   font-size: 14px;
   font-weight: 800;
+}
+
+.due-date-field {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.due-date-field input {
+  min-height: 42px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 14px;
 }
 
 .difficulty-options,
@@ -613,6 +651,10 @@ button {
 
 .create-priority-field {
   flex: 0 1 220px;
+}
+
+.create-due-date-field {
+  flex: 0 1 170px;
 }
 
 .create-difficulty-field legend {

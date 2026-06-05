@@ -27,20 +27,23 @@ type TodoData = {
   base_xp_reward: number;
   completed_at: string | null;
   todo_date: string;
+  due_date: string | null;
   sort_order: number;
   routine_id: string | null;
 };
 
 const TODO_SELECT_WITH_BASE =
-  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_WITHOUT_BASE =
-  "id, title, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITH_BASE =
-  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_LEGACY_WITHOUT_BASE =
-  "id, title, status, priority, xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, priority, xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
 const TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY =
-  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
+  "id, title, status, xp_difficulty, xp_reward, base_xp_reward, completed_at, todo_date, due_date, sort_order, routine_id";
+const TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE =
+  "id, title, status, xp_difficulty, priority, xp_reward, base_xp_reward, completed_at, todo_date, sort_order, routine_id";
 
 function cleanTitle(formData: FormData) {
   return String(formData.get("title") ?? "").trim().slice(0, 160);
@@ -54,6 +57,20 @@ function cleanTodoDate(formData: FormData) {
   }
 
   return new Date().toISOString().slice(0, 10);
+}
+
+function cleanDueDate(formData: FormData) {
+  const value = String(formData.get("dueDate") ?? "").trim();
+
+  if (!value) {
+    return null;
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+
+  return null;
 }
 
 function cleanDifficulty(formData: FormData): XpDifficulty {
@@ -109,6 +126,15 @@ function isMissingPriorityError(error: unknown) {
   return message.includes("priority");
 }
 
+function isMissingDueDateError(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("due_date");
+}
+
 function withFallbackBaseXp<T extends { xp_reward: number; xp_difficulty?: XpDifficulty; priority?: TodoPriority }>(data: T) {
   return {
     ...data,
@@ -118,11 +144,19 @@ function withFallbackBaseXp<T extends { xp_reward: number; xp_difficulty?: XpDif
   };
 }
 
+function withFallbackDueDate<T>(data: T) {
+  return {
+    ...data,
+    due_date: null
+  };
+}
+
 export async function createTodo(formData: FormData) {
   const user = await requireUser();
   const supabase = await createClient();
   const title = cleanTitle(formData);
   const todoDate = cleanTodoDate(formData);
+  const dueDate = cleanDueDate(formData);
   const xpDifficulty = cleanDifficulty(formData);
   const priority = cleanPriority(formData);
   const xpReward = getXpRewardForDifficulty(xpDifficulty);
@@ -148,6 +182,7 @@ export async function createTodo(formData: FormData) {
     base_xp_reward: xpReward,
     xp_reward: xpReward,
     todo_date: todoDate,
+    due_date: dueDate,
     sort_order: (latestTodo?.sort_order ?? 0) + 1000
   };
   const { data, error } = await supabase
@@ -157,6 +192,36 @@ export async function createTodo(formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingDueDateError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .insert({
+          user_id: user.id,
+          title,
+          xp_difficulty: xpDifficulty,
+          priority,
+          base_xp_reward: xpReward,
+          xp_reward: xpReward,
+          todo_date: todoDate,
+          sort_order: (latestTodo?.sort_order ?? 0) + 1000
+        })
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE)
+        .single<Omit<TodoData, "due_date">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackDueDate(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "할 일을 만들 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingPriorityError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
@@ -167,6 +232,7 @@ export async function createTodo(formData: FormData) {
           base_xp_reward: xpReward,
           xp_reward: xpReward,
           todo_date: todoDate,
+          due_date: dueDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
         })
         .select(TODO_SELECT_WITH_BASE_WITHOUT_PRIORITY)
@@ -196,6 +262,7 @@ export async function createTodo(formData: FormData) {
           base_xp_reward: xpReward,
           xp_reward: xpReward,
           todo_date: todoDate,
+          due_date: dueDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
         })
         .select(TODO_SELECT_LEGACY_WITH_BASE)
@@ -225,6 +292,7 @@ export async function createTodo(formData: FormData) {
           priority,
           xp_reward: xpReward,
           todo_date: todoDate,
+          due_date: dueDate,
           sort_order: (latestTodo?.sort_order ?? 0) + 1000
         })
         .select(TODO_SELECT_WITHOUT_BASE)
@@ -247,6 +315,7 @@ export async function createTodo(formData: FormData) {
             priority,
             xp_reward: xpReward,
             todo_date: todoDate,
+            due_date: dueDate,
             sort_order: (latestTodo?.sort_order ?? 0) + 1000
           })
           .select(TODO_SELECT_LEGACY_WITHOUT_BASE)
@@ -329,6 +398,30 @@ export async function updateTodoTitle(todoId: string, formData: FormData) {
     .single();
 
   if (error) {
+    if (isMissingDueDateError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({ title })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE)
+        .single<Omit<TodoData, "due_date">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackDueDate(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "할 일을 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingPriorityError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
@@ -451,6 +544,30 @@ export async function updateTodoPriority(todoId: string, priority: TodoPriority)
     .single<TodoData>();
 
   if (error) {
+    if (isMissingDueDateError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({ priority })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE)
+        .single<Omit<TodoData, "due_date">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackDueDate(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "우선순위를 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingPriorityError(error)) {
       return {
         ok: false,
@@ -489,6 +606,34 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
     .single<TodoData>();
 
   if (error) {
+    if (isMissingDueDateError(error)) {
+      const { data: fallbackData, error: fallbackError } = await supabase
+        .from("todos")
+        .update({
+          xp_difficulty: xpDifficulty,
+          base_xp_reward: xpReward,
+          xp_reward: xpReward
+        })
+        .eq("id", todoId)
+        .eq("user_id", user.id)
+        .eq("status", "open")
+        .select(TODO_SELECT_WITH_BASE_WITHOUT_DUE_DATE)
+        .single<Omit<TodoData, "due_date">>();
+
+      if (!fallbackError && fallbackData) {
+        revalidatePath("/");
+        return {
+          ok: true,
+          data: withFallbackDueDate(fallbackData) as TodoData
+        } satisfies ActionResult<TodoData>;
+      }
+
+      return {
+        ok: false,
+        error: fallbackError?.message ?? "난이도를 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
     if (isMissingPriorityError(error)) {
       const { data: fallbackData, error: fallbackError } = await supabase
         .from("todos")
@@ -593,6 +738,42 @@ export async function updateTodoDifficulty(todoId: string, xpDifficulty: XpDiffi
       return {
         ok: false,
         error: fallbackError?.message ?? "난이도를 수정할 수 없어요."
+      } satisfies ActionResult;
+    }
+
+    return { ok: false, error: error.message } satisfies ActionResult;
+  }
+
+  revalidatePath("/");
+  return { ok: true, data } satisfies ActionResult<typeof data>;
+}
+
+export async function updateTodoDueDate(todoId: string, dueDate: string | null) {
+  const user = await requireUser();
+
+  if (!isUuid(todoId)) {
+    return { ok: false, error: "잘못된 할 일이에요." } satisfies ActionResult;
+  }
+
+  if (dueDate && !/^\d{4}-\d{2}-\d{2}$/.test(dueDate)) {
+    return { ok: false, error: "마감일 형식이 올바르지 않아요." } satisfies ActionResult;
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ due_date: dueDate })
+    .eq("id", todoId)
+    .eq("user_id", user.id)
+    .eq("status", "open")
+    .select(TODO_SELECT_WITH_BASE)
+    .single<TodoData>();
+
+  if (error) {
+    if (isMissingDueDateError(error)) {
+      return {
+        ok: false,
+        error: "투두 마감일 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/11_todo_due_dates.sql 내용을 실행한 뒤 새로고침해 주세요."
       } satisfies ActionResult;
     }
 

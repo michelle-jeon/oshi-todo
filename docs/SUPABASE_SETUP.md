@@ -63,12 +63,13 @@ supabase/migrations/20260531212355_add_focus_window_logs.sql
 
 Supabase Dashboard의 SQL Editor에서 위 파일 내용을 실행하면 작업시간 로그 테이블과 저장 함수가 준비된다. 이 파일은 `create table if not exists`와 `create or replace function`을 쓰므로 같은 프로젝트에서 다시 실행해도 비교적 안전하다. 단, 정책이나 트리거가 이미 있으면 Supabase가 중복 이름 오류를 낼 수 있으니, 오류가 나면 어떤 줄에서 났는지 확인한 뒤 이미 만들어진 항목은 건너뛴다.
 
-XP 기준값과 난이도 기능에는 아래 파일들이 필요하다.
+투두 보상, 우선순위, 마감일 기능에는 아래 파일들이 필요하다.
 
 ```text
 supabase/migrations/20260604093000_add_base_xp_rewards.sql
-supabase/migrations/20260604123000_add_xp_difficulty.sql
 supabase/migrations/20260604111500_add_todo_priority.sql
+supabase/migrations/20260604123000_add_xp_difficulty.sql
+supabase/migrations/20260605113000_add_todo_due_dates.sql
 ```
 
 SQL Editor에서 직접 실행할 때는 아래 파일 내용을 번호 순서대로 복사해 붙여 넣는다.
@@ -77,9 +78,10 @@ SQL Editor에서 직접 실행할 때는 아래 파일 내용을 번호 순서�
 supabase/sql_editor/05_base_xp_rewards.sql
 supabase/sql_editor/07_todo_priority.sql
 supabase/sql_editor/08_xp_difficulty.sql
+supabase/sql_editor/11_todo_due_dates.sql
 ```
 
-`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `07_todo_priority.sql`은 투두에 `priority` 컬럼과 조회 인덱스를 추가한다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값, 우선순위, 난이도 DB 스키마 안내가 뜬다.
+`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `07_todo_priority.sql`은 투두에 `priority` 컬럼과 조회 인덱스를 추가한다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. `11_todo_due_dates.sql`은 투두에 `due_date` 컬럼과 마감일 조회 인덱스를 추가한다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값, 우선순위, 난이도, 마감일 DB 스키마 안내가 뜰 수 있다.
 
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 
