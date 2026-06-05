@@ -6,6 +6,12 @@
 
 - 아직 없음.
 
+## 0.2.40 - 2026-06-05
+
+- `typecheck`, `lint`, `build`를 한 번에 실행하는 `npm run verify` 스크립트를 추가했다.
+- 배포 전 환경변수, Supabase, Google OAuth, 로컬 검증, 배포 후 smoke test를 모은 `docs/RELEASE_CHECKLIST.md`를 추가했다.
+- Supabase 설정 문서에서 릴리스 체크리스트를 참조하도록 연결했다.
+
 ## 0.2.39 - 2026-06-05
 
 - 투두 제목 수정, 난이도 수정, 삭제, 정렬 저장 서버 액션에 로그인 사용자 필터를 명시했다.

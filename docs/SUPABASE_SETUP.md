@@ -45,6 +45,8 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID
 - Supabase Auth URL Configuration에 운영 Site URL과 redirect URL 추가.
 - `.env.local` 값과 Vercel 환경변수를 서로 복사할 때 Client Secret을 `NEXT_PUBLIC_` 이름으로 넣지 않았는지 확인.
 
+배포 직전 검증 순서와 배포 후 smoke test는 `docs/RELEASE_CHECKLIST.md`를 기준으로 확인한다.
+
 ## 마이그레이션
 
 마이그레이션은 DB 구조 변경 내역을 파일로 남기는 것이다. 예를 들어 테이블 생성, 컬럼 추가, RLS 정책 추가, RPC 함수 수정 같은 작업이 마이그레이션에 들어간다.
