@@ -111,10 +111,10 @@ const weekdayOptions = [
   { label: "일", value: 0 }
 ];
 
-const difficultyOptions: { value: XpDifficulty; label: string; xp: number }[] = [
-  { value: "low", label: "가벼움", xp: getXpRewardForDifficulty("low") },
-  { value: "medium", label: "보통", xp: getXpRewardForDifficulty("medium") },
-  { value: "high", label: "도전", xp: getXpRewardForDifficulty("high") }
+const difficultyOptions: { value: XpDifficulty; label: string }[] = [
+  { value: "low", label: "가벼움" },
+  { value: "medium", label: "보통" },
+  { value: "high", label: "도전" }
 ];
 
 const priorityOptions: { value: TodoPriority; label: string }[] = [
@@ -244,9 +244,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
     }
 
     formData.set("todoDate", selectedDate);
-    if (!formData.get("dueDate")) {
-      formData.set("dueDate", selectedDate);
-    }
+    const dueDateValue = String(formData.get("dueDate") ?? "").trim();
+    const dueDate = /^\d{4}-\d{2}-\d{2}$/.test(dueDateValue) ? dueDateValue : null;
     const optimisticId = `temp-${crypto.randomUUID()}`;
     const optimisticTodo: TodoListItem = {
       id: optimisticId,
@@ -259,7 +258,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       base_xp_reward: getXpRewardForDifficulty(newDifficulty),
       completed_at: null,
       todo_date: selectedDate,
-      due_date: String(formData.get("dueDate") ?? selectedDate),
+      due_date: dueDate,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
       routine_id: null
     };
@@ -418,7 +417,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
       base_xp_reward: routine.base_xp_reward,
       completed_at: new Date().toISOString(),
       todo_date: selectedDate,
-      due_date: selectedDate,
+      due_date: null,
       sort_order: (openTodos.at(-1)?.sort_order ?? 0) + 1000,
       routine_id: routine.id
     };
@@ -438,7 +437,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
           ...completedResult,
           notes: completedResult.notes ?? null,
           priority: completedResult.priority ?? DEFAULT_TODO_PRIORITY,
-          due_date: completedResult.due_date ?? selectedDate
+          due_date: completedResult.due_date ?? null
         } as TodoListItem;
 
         setTodos((current) =>
@@ -726,8 +725,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             type="button"
             onClick={() => onSelectDifficulty(option.value)}
           >
-            <strong>{option.label}</strong>
-            <span>{option.xp} XP</span>
+            {option.label}
           </button>
         ))}
       </div>
@@ -869,11 +867,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             {todo.title}
           </button>
           {todo.notes ? <p className="todo-note-preview">{todo.notes}</p> : null}
-          <div className="xp-reward-row">
-            <span className="todo-xp-label">
-              {isCompleted ? "완료됨 · " : ""}
-              {todo.xp_reward} XP
-            </span>
+          <div className="todo-meta-row">
             <span className={`todo-priority-label priority-${todo.priority}`}>
               우선순위 {getPriorityLabel(todo.priority)}
             </span>
@@ -1088,8 +1082,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
               {renderPriorityButtons(newPriority, setNewPriority)}
             </fieldset>
             <label className="due-date-field create-due-date-field">
-              <span>마감일</span>
-              <input name="dueDate" type="date" defaultValue={selectedDate} />
+              <span>마감일 (선택)</span>
+              <input name="dueDate" type="date" />
             </label>
             <button className="icon-button" type="submit" aria-label="할 일 추가">
               <Plus size={18} />
@@ -1176,7 +1170,6 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
                     onClick={() => setEditingRoutine(routine)}
                   >
                     <strong>{routine.title}</strong>
-                    <span className="todo-xp-label">{routine.xp_reward} XP</span>
                   </button>
                   <button
                     className="icon-button secondary"
@@ -1250,8 +1243,8 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
             {editingTodo.status === "open" ? (
               <>
                 <label>
-                  마감일
-                  <input name="dueDate" type="date" defaultValue={editingTodo.due_date ?? editingTodo.todo_date} />
+                  마감일 (선택)
+                  <input name="dueDate" type="date" defaultValue={editingTodo.due_date ?? ""} />
                 </label>
                 <fieldset className="difficulty-field">
                   <legend>난이도</legend>
@@ -1276,9 +1269,7 @@ export function TodoList({ initialTodos, initialRoutines, initialSelectedDate }:
                   })}
                 </fieldset>
               </>
-            ) : (
-              <p className="todo-xp-label">완료됨 · {editingTodo.xp_reward} XP</p>
-            )}
+            ) : null}
             <div className="form-actions">
               <button
                 className="primary-button danger-button"
