@@ -242,7 +242,8 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 - ✅ 개발 브랜치와 운영 브랜치 분리 기준 문서화.
   - `docs/ENVIRONMENTS.md`에 `main`, `develop`, `codex/*`, `codex/hotfix-*` 운영 흐름을 정리.
   - ✅ 로컬 `main` 운영 브랜치와 `develop` 개발 브랜치를 실제로 분리.
-  - 원격 `develop` 푸시와 GitHub 보호 규칙 설정은 운영 저장소 연결 후 진행.
+  - ✅ 원격 `origin/develop` 브랜치를 생성하고 로컬 `develop` 추적을 연결.
+  - GitHub의 `main`, `develop` 보호 규칙 설정은 후속으로 진행.
   - `main` 또는 `production`: 실제 배포용 안정 브랜치.
   - `develop`: 기능 통합과 QA용 개발 브랜치.
   - 기능 작업은 `codex/*` 브랜치에서 진행한 뒤 `develop`으로 합치고, 검증 후 운영 브랜치로 승격.

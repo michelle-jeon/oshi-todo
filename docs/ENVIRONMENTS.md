@@ -12,7 +12,7 @@ develop     기능 통합과 QA용 개발 브랜치
 codex/*     개별 기능과 버그 수정 작업 브랜치
 ```
 
-현재 로컬 저장소에는 `main`과 `develop` 브랜치가 실제로 생성되어 있다. 평상시 개발과 QA는 `develop`에서 진행하고, 운영 배포가 가능한 커밋만 `main`으로 승격한다.
+현재 로컬 저장소와 원격 저장소에는 `main`과 `develop` 브랜치가 실제로 생성되어 있다. 평상시 개발과 QA는 `develop`에서 진행하고, 운영 배포가 가능한 커밋만 `main`으로 승격한다.
 
 작업 흐름은 아래 순서로 맞춘다.
 
@@ -79,7 +79,7 @@ npm run verify
 
 ## 아직 수동으로 해야 하는 일
 
-- 원격 저장소에 로컬 `develop` 브랜치를 푸시하고 `main`, `develop` 보호 규칙을 정한다.
+- GitHub에서 `main`, `develop` 보호 규칙을 정한다.
 - Vercel Preview 환경이 staging Supabase를 바라보도록 환경변수를 넣는다.
 - Vercel Production 환경이 production Supabase를 바라보도록 환경변수를 넣는다.
 - Google OAuth Authorized origins와 Supabase redirect URL을 staging/production 도메인별로 등록한다.
