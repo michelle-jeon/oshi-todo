@@ -202,23 +202,31 @@ Authentication > Providers > Google
 로컬 개발 주소:
 
 ```text
+http://127.0.0.1:3000
+http://127.0.0.1:3000/auth/callback
 http://localhost:3000
 http://localhost:3000/auth/callback
+http://127.0.0.1:32145
+http://127.0.0.1:32145/auth/callback
 ```
 
-배포 주소 예시:
+운영 주소:
 
 ```text
-https://your-domain.com
-https://your-domain.com/auth/callback
+https://oshi-todo-one.vercel.app
+https://oshi-todo-one.vercel.app/auth/callback
 ```
 
 Google Cloud Console에서는 OAuth Client를 만들 때 Web application으로 만들고, Authorized JavaScript origins에는 앱의 origin만 넣는다.
 
 ```text
+http://127.0.0.1:3000
 http://localhost:3000
-https://your-domain.com
+http://127.0.0.1:32145
+https://oshi-todo-one.vercel.app
 ```
+
+현재 Google 로그인 버튼은 JavaScript 콜백으로 ID 토큰을 받아 Supabase에 전달하므로 Google 승인된 리디렉션 URI는 사용하지 않는다. 전체 설정과 배포 절차는 `docs/DEPLOYMENT_AND_OAUTH.md`를 따른다.
 
 `.env.local`의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`에는 Google Cloud Console에서 발급된 Client ID를 넣는다. `OshiTodo` 같은 앱 이름을 넣는 칸이 아니다.
 

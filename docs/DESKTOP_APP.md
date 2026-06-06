@@ -34,6 +34,8 @@ http://127.0.0.1:32145
 
 Supabase Auth URL Configuration에도 같은 주소에서 시작한 인증 흐름이 허용되는지 확인한다.
 
+Google OAuth, 웹 운영 배포, 로컬 실행을 함께 설정하는 절차는 `docs/DEPLOYMENT_AND_OAUTH.md`를 따른다.
+
 ## 작업창 권한
 
 macOS에서는 작업창 목록과 활성 창 확인을 위해 시스템 설정에서 OshiTodo에 아래 권한을 허용해야 한다.
