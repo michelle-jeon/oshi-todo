@@ -5,10 +5,11 @@ import { getCharacterAsset, type CharacterSpecies } from "@/lib/character-assets
 type CharacterShowcaseProps = {
   species: CharacterSpecies;
   variantId?: string;
+  customization?: Record<string, string>;
 };
 
-export function CharacterShowcase({ species, variantId }: CharacterShowcaseProps) {
-  const asset = getCharacterAsset(species, variantId);
+export function CharacterShowcase({ species, variantId, customization }: CharacterShowcaseProps) {
+  const asset = getCharacterAsset(species, customization ?? variantId);
 
   return (
     <div className="avatar-stage" aria-label="캐릭터 미리보기">

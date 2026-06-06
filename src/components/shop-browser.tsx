@@ -2,14 +2,17 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Eye, Gem, Palette, Scissors, Shirt } from "lucide-react";
+import { Eye, Gem, Palette } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { purchaseShopItems } from "@/app/shop-actions";
+import { CharacterCategoryIcon } from "@/components/character-category-icon";
 import {
-  CHARACTER_VARIANTS,
+  HUMAN_LAYER_CATEGORIES,
   getCharacterAsset,
+  getHumanCustomization,
+  type HumanLayerCategory,
   type CharacterSpecies
 } from "@/lib/character-assets";
 
@@ -35,40 +38,31 @@ type ShopBrowserProps = {
   ownedIds: string[];
 };
 
-type ShopTab = "hair" | "eyes" | "outfit" | "pattern" | "accessory";
+type ShopTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory";
 
 const speciesTabs = [
   { id: "human", label: "인간" },
   { id: "cat", label: "고양이" }
 ] as const;
 
-const humanTabs = [
-  { id: "hair", label: "헤어", icon: Scissors, slot: "human_hair" },
-  { id: "eyes", label: "눈", icon: Eye, slot: "human_eyes" },
-  { id: "outfit", label: "옷", icon: Shirt, slot: "human_outfit" },
-  { id: "accessory", label: "악세서리", icon: Gem, slot: "accessory" }
-] as const;
-
 const catTabs = [
-  { id: "eyes", label: "눈", icon: Eye, slot: "cat_eyes" },
-  { id: "pattern", label: "무늬", icon: Palette, slot: "cat_pattern" },
-  { id: "accessory", label: "악세서리", icon: Gem, slot: "accessory" }
+  { id: "cat-eyes", label: "눈", slot: "cat_eyes" },
+  { id: "pattern", label: "무늬", slot: "cat_pattern" },
+  { id: "cat-accessory", label: "악세서리", slot: "accessory" }
 ] as const;
 
-function inferVariantId(item: ShopBrowserItem) {
-  const directVariant = item.payload.variantId;
-
-  if (CHARACTER_VARIANTS.some((variant) => variant.id === directVariant)) {
-    return directVariant;
-  }
-
-  const searchableText = `${item.code} ${item.name}`.toLowerCase();
-  const matchingVariant = CHARACTER_VARIANTS.find(
-    (variant) =>
-      searchableText.includes(variant.id) || searchableText.includes(variant.label.toLowerCase())
-  );
-
-  return matchingVariant?.id;
+function applyPayloadToPreview<T extends Record<string, string>>(
+  current: T,
+  payload: Record<string, string>
+) {
+  return {
+    ...current,
+    ...payload,
+    hairId: payload.hairId ?? payload.hairStyle ?? current.hairId,
+    variantId: payload.variantId ?? current.variantId,
+    accessoryId: payload.accessoryId ?? current.accessoryId,
+    eyeId: payload.eyeId ?? current.eyeId
+  } as T;
 }
 
 export function ShopBrowser({
@@ -81,7 +75,7 @@ export function ShopBrowser({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [species, setSpecies] = useState<CharacterSpecies>(activeSpecies);
-  const [activeTab, setActiveTab] = useState<ShopTab>(activeSpecies === "human" ? "hair" : "eyes");
+  const [activeTab, setActiveTab] = useState<ShopTab>(activeSpecies === "human" ? "body" : "cat-eyes");
   const [cartBySlot, setCartBySlot] = useState<Record<string, ShopBrowserItem>>({});
   const initialPreview = useMemo(
     () => ({
@@ -89,18 +83,19 @@ export function ShopBrowser({
       variantId: character.customization.variantId ?? "blue",
       accessoryId: character.customization.accessoryId ?? "none",
       hairId: character.customization.hairId ?? "basic",
-      eyeId: character.customization.eyeId ?? "basic"
+      eyeId: character.customization.eyeId ?? "basic",
+      ...(character.species === "human" ? getHumanCustomization(character.customization) : {})
     }),
-    [character.customization, character.displayName]
+    [character.customization, character.displayName, character.species]
   );
   const [preview, setPreview] = useState(initialPreview);
   const ownedSet = useMemo(() => new Set(ownedIds), [ownedIds]);
-  const tabs = species === "human" ? humanTabs : catTabs;
+  const tabs = species === "human" ? HUMAN_LAYER_CATEGORIES : catTabs;
   const selectedTab = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const visibleItems = items.filter(
     (item) => item.species === species && item.slot === selectedTab.slot
   );
-  const asset = getCharacterAsset(character.species, preview.variantId);
+  const asset = getCharacterAsset(character.species, preview);
   const cartItems = Object.values(cartBySlot);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.cost, 0);
   const canCheckout = cartItems.length > 0 && cartTotal <= currentXp;
@@ -108,7 +103,7 @@ export function ShopBrowser({
 
   function switchSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
-    setActiveTab(nextSpecies === "human" ? "hair" : "eyes");
+    setActiveTab(nextSpecies === "human" ? "body" : "cat-eyes");
   }
 
   function previewItem(item: ShopBrowserItem) {
@@ -116,23 +111,10 @@ export function ShopBrowser({
       return;
     }
 
-    const variantId = inferVariantId(item);
-
     setPreview((current) => {
-      const nextPreview = {
-        ...current,
-        variantId: variantId ?? current.variantId,
-        accessoryId: item.payload.accessoryId ?? current.accessoryId,
-        hairId: item.payload.hairId ?? item.payload.hairStyle ?? current.hairId,
-        eyeId: item.payload.eyeId ?? current.eyeId
-      };
+      const nextPreview = applyPayloadToPreview(current, item.payload);
 
-      if (
-        nextPreview.variantId === current.variantId &&
-        nextPreview.accessoryId === current.accessoryId &&
-        nextPreview.hairId === current.hairId &&
-        nextPreview.eyeId === current.eyeId
-      ) {
+      if (JSON.stringify(nextPreview) === JSON.stringify(current)) {
         return current;
       }
 
@@ -216,7 +198,6 @@ export function ShopBrowser({
 
       <div className="wardrobe-tabs" aria-label="상점 탭">
         {tabs.map((tab) => {
-          const Icon = tab.icon;
           return (
             <button
               className={activeTab === tab.id ? "selected" : ""}
@@ -226,7 +207,15 @@ export function ShopBrowser({
               aria-label={tab.label}
               title={tab.label}
             >
-              <Icon size={20} />
+              {species === "human" ? (
+                <CharacterCategoryIcon category={tab.id as HumanLayerCategory} />
+              ) : tab.id === "pattern" ? (
+                <Palette size={20} />
+              ) : tab.id === "cat-eyes" ? (
+                <Eye size={20} />
+              ) : (
+                <Gem size={20} />
+              )}
             </button>
           );
         })}

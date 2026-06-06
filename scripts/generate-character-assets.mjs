@@ -12,24 +12,6 @@ const variants = [
   { id: "violet", label: "바이올렛", outfit: "#7b5cd6", accent: "#ddd3ff" }
 ];
 
-function humanSvg({ outfit, accent }) {
-  return `
-  <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-    <g fill="none" stroke="#201c18" stroke-width="11" stroke-linecap="round" stroke-linejoin="round">
-      <path fill="${outfit}" d="M148 478c3-112 38-176 108-176s105 64 108 176H148z"/>
-      <path fill="${accent}" d="M206 328l50 44 50-44v61l-50 36-50-36z"/>
-      <path fill="#f4c7a1" d="M150 178c0-64 43-114 106-114s106 50 106 114c0 72-42 124-106 124s-106-52-106-124z"/>
-      <path fill="#6d4432" d="M145 170c8-74 54-119 118-119 56 0 99 35 108 91-34-21-79-30-132-24-35 4-65 22-94 52z"/>
-      <path fill="#6d4432" d="M169 167c13-38 44-63 90-63 52 0 86 23 103 62-67-26-129-26-193 1z"/>
-      <path d="M217 188h.1M295 188h.1"/>
-      <path d="M235 238c12 11 30 11 42 0"/>
-      <path fill="#ffdfd6" d="M180 221c0 11 9 20 20 20s20-9 20-20-9-20-20-20-20 9-20 20z" opacity=".75" stroke="none"/>
-      <path fill="#ffdfd6" d="M292 221c0 11 9 20 20 20s20-9 20-20-9-20-20-20-20 9-20 20z" opacity=".75" stroke="none"/>
-      <path fill="${accent}" d="M238 316c0-10 8-18 18-18s18 8 18 18-8 18-18 18-18-8-18-18z"/>
-    </g>
-  </svg>`;
-}
-
 function catSvg({ outfit, accent }) {
   return `
   <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
@@ -55,25 +37,7 @@ function catSvg({ outfit, accent }) {
 await fs.mkdir(outDir, { recursive: true });
 
 for (const variant of variants) {
-  await sharp(Buffer.from(humanSvg(variant)))
-    .png()
-    .toFile(path.join(outDir, `human-outfit-${variant.id}.png`));
-
   await sharp(Buffer.from(catSvg(variant)))
     .png()
     .toFile(path.join(outDir, `cat-pattern-${variant.id}.png`));
 }
-
-await fs.writeFile(
-  path.join(outDir, "manifest.json"),
-  JSON.stringify(
-    variants.map((variant) => ({
-      id: variant.id,
-      label: variant.label,
-      human: `/assets/characters/human-outfit-${variant.id}.png`,
-      cat: `/assets/characters/cat-pattern-${variant.id}.png`
-    })),
-    null,
-    2
-  )
-);

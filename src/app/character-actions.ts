@@ -7,7 +7,15 @@ import {
   isLegacyStarterCharacter,
   MAX_CHARACTER_SLOTS
 } from "@/lib/character-onboarding";
-import { CHARACTER_VARIANTS, type CharacterSpecies } from "@/lib/character-assets";
+import {
+  CHARACTER_VARIANTS,
+  HUMAN_LAYER_CATEGORIES,
+  HUMAN_LAYER_ITEMS,
+  getDefaultHumanCustomization,
+  getHumanCustomization,
+  type CharacterSpecies,
+  type HumanCustomizationKey
+} from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
@@ -21,11 +29,8 @@ type InventoryRow = {
   shop_items: InventoryShopItem | InventoryShopItem[] | null;
 };
 
-type WardrobeSelection = {
+type WardrobeSelection = Record<HumanCustomizationKey, string> & {
   variantId: string;
-  hairId: string;
-  eyeId: string;
-  accessoryId: string;
 };
 
 function createCharacterPath(formData: FormData, message: string): Route {
@@ -71,12 +76,17 @@ function readDisplayName(formData: FormData, fallback?: string) {
 }
 
 function readWardrobeSelection(formData: FormData): WardrobeSelection {
+  const defaults = getDefaultHumanCustomization();
+
   return {
     variantId: String(formData.get("variantId") ?? "blue"),
-    hairId: String(formData.get("hairId") ?? "basic"),
-    eyeId: String(formData.get("eyeId") ?? "basic"),
-    accessoryId: String(formData.get("accessoryId") ?? "none")
-  };
+    ...Object.fromEntries(
+      HUMAN_LAYER_CATEGORIES.map((category) => [
+        category.customizationKey,
+        String(formData.get(category.customizationKey) ?? defaults[category.customizationKey])
+      ])
+    )
+  } as WardrobeSelection;
 }
 
 function getOwnedSlotValues(
@@ -113,17 +123,30 @@ function isWardrobeSelectionAllowed(
     return false;
   }
 
+  if (species === "human") {
+    return HUMAN_LAYER_CATEGORIES.every((category) => {
+      const selectedId = selection[category.customizationKey];
+      const basicAllowed = HUMAN_LAYER_ITEMS.some(
+        (item) => item.category === category.id && item.id === selectedId && item.isBasic
+      );
+      const ownedValues = getOwnedSlotValues(inventoryItems, species, category.slot, [
+        category.customizationKey
+      ]);
+
+      return basicAllowed || ownedValues.has(selectedId);
+    });
+  }
+
   const hairValues = getOwnedSlotValues(inventoryItems, species, "human_hair", ["hairId", "hairStyle"]);
   const eyeValues = getOwnedSlotValues(
     inventoryItems,
     species,
-    species === "human" ? "human_eyes" : "cat_eyes",
+    "cat_eyes",
     ["eyeId"]
   );
   const accessoryValues = getOwnedSlotValues(inventoryItems, species, "accessory", ["accessoryId"]);
 
-  const hairAllowed =
-    species === "cat" || selection.hairId === "basic" || hairValues.has(selection.hairId);
+  const hairAllowed = selection.hairId === "basic" || hairValues.has(selection.hairId);
   const eyeAllowed = selection.eyeId === "basic" || eyeValues.has(selection.eyeId);
   const accessoryAllowed =
     selection.accessoryId === "none" || accessoryValues.has(selection.accessoryId);
@@ -137,6 +160,7 @@ export async function createCharacter(formData: FormData) {
   const species = readSpecies(formData);
   const variant = readVariant(formData);
   const displayName = readDisplayName(formData);
+  const selection = readWardrobeSelection(formData);
 
   const [{ count }, { data: activeCharacter }] = await Promise.all([
     supabase
@@ -163,12 +187,10 @@ export async function createCharacter(formData: FormData) {
     species === "human"
       ? {
           species,
-          variantId: variant.id,
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
-          hairId: "basic",
-          eyeId: "basic",
-          accessoryId: "none"
+          ...selection,
+          variantId: variant.id
         }
       : {
           species,
@@ -293,9 +315,7 @@ export async function updateWardrobe(formData: FormData) {
           variantId: variant.id,
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
-          hairId: selection.hairId,
-          eyeId: selection.eyeId,
-          accessoryId: selection.accessoryId
+          ...getHumanCustomization(selection)
         }
       : {
           species: activeCharacter.species,

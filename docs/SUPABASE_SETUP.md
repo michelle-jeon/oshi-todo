@@ -79,9 +79,10 @@ supabase/sql_editor/05_base_xp_rewards.sql
 supabase/sql_editor/07_todo_priority.sql
 supabase/sql_editor/08_xp_difficulty.sql
 supabase/sql_editor/11_todo_due_dates.sql
+supabase/sql_editor/12_human_character_slots.sql
 ```
 
-`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `07_todo_priority.sql`은 투두에 `priority` 컬럼과 조회 인덱스를 추가한다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. `11_todo_due_dates.sql`은 투두에 `due_date` 컬럼과 마감일 조회 인덱스를 추가한다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값, 우선순위, 난이도, 마감일 DB 스키마 안내가 뜰 수 있다.
+`05_base_xp_rewards.sql`은 투두와 루틴에 `base_xp_reward` 컬럼을 추가하고, 기존 데이터의 기준 XP를 현재 `xp_reward`로 채운다. `07_todo_priority.sql`은 투두에 `priority` 컬럼과 조회 인덱스를 추가한다. `08_xp_difficulty.sql`은 투두와 루틴에 `xp_difficulty` 컬럼을 추가하고 `가벼움/보통/도전` 난이도를 각각 5/20/50 XP로 맞춘다. `11_todo_due_dates.sql`은 투두에 `due_date` 컬럼과 마감일 조회 인덱스를 추가한다. `12_human_character_slots.sql`은 인간 캐릭터의 바디, 신발, 하의, 상의, 입 상점 슬롯을 추가한다. 이 컬럼들이 없으면 홈 화면에서 XP 기준값, 우선순위, 난이도, 마감일 DB 스키마 안내가 뜰 수 있다.
 
 새 마이그레이션 파일 이름은 아래 형식을 쓴다.
 

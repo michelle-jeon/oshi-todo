@@ -66,7 +66,7 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
               );
             }
 
-            const asset = getCharacterAsset(character.species, character.customization.variantId);
+            const asset = getCharacterAsset(character.species, character.customization);
             const needsSetup = !isCharacterOnboardingComplete(character);
 
             return (

@@ -2,36 +2,28 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Cat, Check, Eye, Gem, Scissors, Shirt, UserRound } from "lucide-react";
+import { Cat, Check, Palette, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
+import { CharacterCategoryIcon } from "@/components/character-category-icon";
 import {
   CHARACTER_VARIANTS,
+  HUMAN_LAYER_CATEGORIES,
+  getDefaultHumanCustomization,
   getCharacterAsset,
+  getHumanCategoryItems,
+  type HumanLayerCategory,
   type CharacterVariantId,
   type CharacterSpecies
 } from "@/lib/character-assets";
 
 type WizardStep = "species" | "customize" | "name";
-type CustomizeTab = "outfit" | "hair" | "eyes" | "accessory";
+type CustomizeTab = HumanLayerCategory | "pattern";
 
 const speciesOptions = [
   { id: "human", label: "인간", icon: UserRound },
   { id: "cat", label: "고양이", icon: Cat }
 ] as const;
-
-const tabs = [
-  { id: "outfit", label: "옷", icon: Shirt },
-  { id: "hair", label: "헤어", icon: Scissors },
-  { id: "eyes", label: "눈", icon: Eye },
-  { id: "accessory", label: "악세서리", icon: Gem }
-] as const;
-
-const comingSoonItems = {
-  hair: ["기본 헤어"],
-  eyes: ["기본 눈"],
-  accessory: ["없음"]
-};
 
 type CharacterCreateWizardProps = {
   source?: "characters" | "onboarding";
@@ -42,17 +34,19 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
   const [step, setStep] = useState<WizardStep>("species");
   const [species, setSpecies] = useState<CharacterSpecies | null>(null);
   const [variantId, setVariantId] = useState<CharacterVariantId>(CHARACTER_VARIANTS[0].id);
-  const [activeTab, setActiveTab] = useState<CustomizeTab>("outfit");
+  const [humanCustomization, setHumanCustomization] = useState(getDefaultHumanCustomization);
+  const [activeTab, setActiveTab] = useState<CustomizeTab>("body");
   const [displayName, setDisplayName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const asset = useMemo(
-    () => (species ? getCharacterAsset(species, variantId) : null),
-    [species, variantId]
+    () => (species ? getCharacterAsset(species, species === "human" ? humanCustomization : variantId) : null),
+    [humanCustomization, species, variantId]
   );
+  const tabs = species === "human" ? HUMAN_LAYER_CATEGORIES : [{ id: "pattern", label: "무늬" } as const];
 
   function chooseSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
-    setActiveTab(nextSpecies === "cat" ? "outfit" : "outfit");
+    setActiveTab(nextSpecies === "cat" ? "pattern" : "body");
     setStep("customize");
   }
 
@@ -64,6 +58,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
     const formData = new FormData();
     formData.set("species", species);
     formData.set("variantId", variantId);
+    Object.entries(humanCustomization).forEach(([key, value]) => formData.set(key, value));
     formData.set("displayName", displayName.trim());
     formData.set("source", source);
     setIsSaving(true);
@@ -102,7 +97,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
         {asset?.layers ? (
           <div
             className="avatar-layer-stack wizard-avatar-stack"
-            aria-label={`인간 캐릭터 ${asset.label} 옷`}
+            aria-label={`인간 캐릭터 ${asset.label}`}
           >
             {asset.layers.map((layer) => (
               <img
@@ -126,7 +121,6 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
         <section className="wizard-customize-pane">
           <div className="wardrobe-tabs" aria-label="커스터마이징 탭">
             {tabs.map((tab) => {
-              const Icon = tab.icon;
               return (
                 <button
                   className={activeTab === tab.id ? "selected" : ""}
@@ -136,13 +130,17 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
                   title={tab.label}
                   aria-label={tab.label}
                 >
-                  <Icon size={20} />
+                  {tab.id === "pattern" ? (
+                    <Palette size={20} />
+                  ) : (
+                    <CharacterCategoryIcon category={tab.id} />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {activeTab === "outfit" ? (
+          {species === "cat" ? (
             <div className="wardrobe-grid">
               {CHARACTER_VARIANTS.map((variant) => (
                 <button
@@ -152,18 +150,38 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
                   onClick={() => setVariantId(variant.id)}
                 >
                   <span className="swatch" style={{ background: variant.color }} />
-                  <span>{species === "cat" ? `${variant.label} 무늬` : `${variant.label} 옷`}</span>
+                  <span>{variant.label} 무늬</span>
                 </button>
               ))}
             </div>
           ) : (
             <div className="wardrobe-grid">
-              {comingSoonItems[activeTab].map((item) => (
-                <button className="wardrobe-item selected" key={item} type="button">
-                  <Check size={18} />
-                  <span>{item}</span>
-                </button>
-              ))}
+              {getHumanCategoryItems(activeTab as HumanLayerCategory).map((item) => {
+                const category = HUMAN_LAYER_CATEGORIES.find((candidate) => candidate.id === item.category);
+                const selected = category
+                  ? humanCustomization[category.customizationKey] === item.id
+                  : false;
+
+                return (
+                  <button
+                    className={`wardrobe-item ${selected ? "selected" : ""}`}
+                    key={item.id}
+                    type="button"
+                    onClick={() =>
+                      category
+                        ? setHumanCustomization((current) => ({
+                            ...current,
+                            [category.customizationKey]: item.id
+                          }))
+                        : undefined
+                    }
+                  >
+                    {item.color ? <span className="swatch" style={{ background: item.color }} /> : <Check size={18} />}
+                    <span>{item.label}</span>
+                    {item.colorLabel ? <small>{item.colorLabel}</small> : null}
+                  </button>
+                );
+              })}
             </div>
           )}
 

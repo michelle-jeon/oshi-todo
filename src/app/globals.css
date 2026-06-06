@@ -1148,11 +1148,13 @@ button {
 .wardrobe-tabs {
   display: flex;
   gap: 8px;
+  overflow-x: auto;
   border-bottom: 1px solid var(--line);
   padding-bottom: 10px;
 }
 
 .wardrobe-tabs button {
+  flex: 0 0 42px;
   width: 42px;
   height: 42px;
   display: inline-grid;

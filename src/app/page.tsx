@@ -515,9 +515,6 @@ export default async function Home({
     .filter((log) => log.work_date === todayString)
     .reduce((sum, log) => sum + log.xp, 0);
   const todayEarnedXp = (todayXpEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
-  const variantId =
-    character && "variantId" in character.customization ? character.customization.variantId : undefined;
-
   return (
     <main className="app-shell">
       <aside className="character-panel">
@@ -528,7 +525,7 @@ export default async function Home({
 
         <CharacterShowcase
           species={character?.species ?? "human"}
-          variantId={variantId}
+          customization={character?.customization}
         />
 
         <h2>{character?.displayName}</h2>

@@ -23,8 +23,6 @@ export default async function RoomPage() {
     .eq("is_active", true)
     .maybeSingle<CharacterRow>();
   const currentCharacter = character ?? STARTER_CHARACTER;
-  const variantId =
-    "variantId" in currentCharacter.customization ? currentCharacter.customization.variantId : undefined;
   const displayName =
     "display_name" in currentCharacter ? currentCharacter.display_name : currentCharacter.displayName;
 
@@ -41,7 +39,10 @@ export default async function RoomPage() {
         <div className="room-rug" />
         <div className="room-desk" />
         <div className="room-avatar">
-          <CharacterShowcase species={currentCharacter.species} variantId={variantId} />
+          <CharacterShowcase
+            species={currentCharacter.species}
+            customization={currentCharacter.customization}
+          />
           <h2>{displayName}</h2>
         </div>
       </section>

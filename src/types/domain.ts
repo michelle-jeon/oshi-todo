@@ -10,6 +10,14 @@ export type HumanCustomization = {
   species: "human";
   hairColor: string;
   outfitColor: string;
+  bodyId?: string;
+  shoesId?: string;
+  bottomId?: string;
+  topId?: string;
+  hairId?: string;
+  mouthId?: string;
+  eyeId?: string;
+  accessoryId?: string;
 };
 
 export type CatCustomization = {
@@ -39,7 +47,13 @@ export type Todo = {
 };
 
 export type ShopItemSlot =
+  | "human_body"
+  | "human_shoes"
+  | "human_bottom"
+  | "human_top"
   | "human_hair"
+  | "human_mouth"
+  | "human_eyes"
   | "human_outfit"
   | "cat_pattern"
   | "accessory"
