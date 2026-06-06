@@ -9,9 +9,10 @@ import { useRouter } from "next/navigation";
 import { purchaseShopItems } from "@/app/shop-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
 import {
-  HUMAN_LAYER_CATEGORIES,
   getCharacterAsset,
+  getHumanDisplayCategories,
   getHumanCustomization,
+  getHumanItemFromPayload,
   type HumanLayerCategory,
   type CharacterSpecies
 } from "@/lib/character-assets";
@@ -90,11 +91,39 @@ export function ShopBrowser({
   );
   const [preview, setPreview] = useState(initialPreview);
   const ownedSet = useMemo(() => new Set(ownedIds), [ownedIds]);
-  const tabs = species === "human" ? HUMAN_LAYER_CATEGORIES : catTabs;
+  const tabs = species === "human" ? getHumanDisplayCategories() : catTabs;
   const selectedTab = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const visibleItems = items.filter(
     (item) => item.species === species && item.slot === selectedTab.slot
   );
+  const groupedVisibleItems = Array.from(
+    visibleItems.reduce((groups, item) => {
+      const catalogItem = getHumanItemFromPayload(item.payload);
+      const shouldGroupColors =
+        species === "human" && (selectedTab.id === "hair" || selectedTab.id === "eyes");
+      const key = shouldGroupColors && catalogItem ? catalogItem.label : item.id;
+      const group = groups.get(key) ?? [];
+      group.push(item);
+      groups.set(key, group);
+      return groups;
+    }, new Map<string, ShopBrowserItem[]>())
+  );
+  const displayItems = groupedVisibleItems.map(([, group]) => {
+    const selectedInGroup = group.find((item) => {
+      const catalogItem = getHumanItemFromPayload(item.payload);
+      const category = catalogItem
+        ? getHumanDisplayCategories().find((candidate) => candidate.id === catalogItem.category)
+        : undefined;
+
+      return category ? preview[category.customizationKey] === catalogItem?.id : false;
+    });
+
+    return selectedInGroup ?? group[0];
+  });
+  const shopColorItems =
+    species === "human" && (selectedTab.id === "hair" || selectedTab.id === "eyes")
+      ? groupedVisibleItems.flatMap(([, group]) => (group.length > 1 ? group : []))
+      : [];
   const asset = getCharacterAsset(character.species, preview);
   const cartItems = Object.values(cartBySlot);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.cost, 0);
@@ -221,12 +250,40 @@ export function ShopBrowser({
         })}
       </div>
 
+      {shopColorItems.length > 0 ? (
+        <div className="character-color-options" aria-label={`${selectedTab.label} 색상`}>
+          {shopColorItems.map((item) => {
+            const catalogItem = getHumanItemFromPayload(item.payload);
+            const selected = catalogItem
+              ? preview[
+                  getHumanDisplayCategories().find(
+                    (category) => category.id === catalogItem.category
+                  )?.customizationKey ?? "hairId"
+                ] === catalogItem.id
+              : false;
+
+            return (
+              <button
+                className={selected ? "selected" : ""}
+                key={item.id}
+                type="button"
+                onClick={() => tryOnItem(item)}
+                aria-label={`${item.name} 색상 선택`}
+              >
+                <span style={{ background: catalogItem?.color ?? "#d9d4cb" }} />
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       <div className="wardrobe-grid">
-        {visibleItems.map((item) => {
+        {displayItems.map((item) => {
           const owned = ownedSet.has(item.id);
           const selected = cartBySlot[item.slot]?.id === item.id;
           const wrongSpecies = item.species !== activeSpecies;
           const tooExpensive = !selected && cartTotal + item.cost > currentXp;
+          const catalogItem = getHumanItemFromPayload(item.payload);
 
           return (
             <article
@@ -248,6 +305,9 @@ export function ShopBrowser({
               role="button"
               tabIndex={wrongSpecies ? -1 : 0}
             >
+              <span className="character-item-image">
+                <img src={catalogItem?.src ?? asset.src} alt="" />
+              </span>
               <span>{item.name}</span>
               <strong className="price-label">{item.cost} XP</strong>
               {owned ? (
@@ -258,7 +318,7 @@ export function ShopBrowser({
             </article>
           );
         })}
-        {visibleItems.length === 0 ? <div className="empty-state">아직 아이템이 없어요.</div> : null}
+        {displayItems.length === 0 ? <div className="empty-state">아직 아이템이 없어요.</div> : null}
       </div>
 
       <div className="shop-cart-panel">

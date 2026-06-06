@@ -7,12 +7,15 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateWardrobe } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
+import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
-  HUMAN_LAYER_CATEGORIES,
   HUMAN_LAYER_ITEMS,
   getCharacterAsset,
+  getHumanCategory,
+  getHumanDisplayCategories,
   getHumanCustomization,
+  getHumanItemFromPayload,
   getHumanItemPayload,
   type CharacterSpecies,
   type HumanLayerCategory
@@ -86,7 +89,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
   const asset = getCharacterAsset(character.species, draft);
   const humanCategory =
     character.species === "human"
-      ? HUMAN_LAYER_CATEGORIES.find((category) => category.id === activeTab)
+      ? getHumanCategory(activeTab as HumanLayerCategory)
       : undefined;
   const selectedSlot =
     humanCategory?.slot ?? catTabs.find((tab) => tab.id === activeTab)?.slot ?? "cat_eyes";
@@ -122,6 +125,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: item.colorLabel,
         payload: getHumanItemPayload(item),
         swatch: item.color,
+        imageSrc: item.src,
         source: "기본"
       }));
     }
@@ -133,6 +137,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { variantId: variant.id },
         swatch: variant.color,
+        imageSrc: variant.cat,
         source: "기본"
       }));
     }
@@ -145,6 +150,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           colorLabel: undefined,
           payload: { eyeId: "basic" },
           swatch: undefined,
+          imageSrc: asset.src,
           source: "기본"
         }
       ];
@@ -157,6 +163,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { accessoryId: "none" },
         swatch: undefined,
+        imageSrc: asset.src,
         source: "기본"
       }
     ];
@@ -170,6 +177,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       colorLabel: undefined,
       payload: item.payload,
       swatch: item.payload.color,
+      imageSrc: getHumanItemFromPayload(item.payload)?.src ?? asset.src,
       source: "보유"
     }))
   ];
@@ -204,7 +212,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
 
       <div className="wardrobe-tabs" aria-label="옷장 탭">
         {character.species === "human"
-          ? HUMAN_LAYER_CATEGORIES.map((category) => (
+          ? getHumanDisplayCategories().map((category) => (
               <button
                 className={activeTab === category.id ? "selected" : ""}
                 key={category.id}
@@ -230,21 +238,44 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
             ))}
       </div>
 
-      <div className="wardrobe-grid">
-        {items.map((item) => (
-          <button
-            className={`wardrobe-item ${isItemSelected(draft, item.payload) ? "selected" : ""}`}
-            key={item.id}
-            type="button"
-            onClick={() => setDraft((current) => applyPayloadToDraft(current, item.payload))}
-          >
-            {item.swatch ? <span className="swatch" style={{ background: item.swatch }} /> : null}
-            <span>{item.label}</span>
-            {item.colorLabel ? <small>{item.colorLabel}</small> : null}
-            <small>{item.source}</small>
-          </button>
-        ))}
-      </div>
+      {character.species === "human" && humanCategory ? (
+        <HumanItemPicker
+          category={humanCategory.id}
+          items={[
+            ...HUMAN_LAYER_ITEMS.filter(
+              (item) => item.category === humanCategory.id && item.isBasic
+            ),
+            ...ownedItems.flatMap((item) => {
+              const catalogItem = getHumanItemFromPayload(item.payload);
+              return catalogItem ? [catalogItem] : [];
+            })
+          ].filter(
+            (item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index
+          )}
+          selectedItemId={draft[humanCategory.customizationKey]}
+          onSelect={(item) =>
+            setDraft((current) => applyPayloadToDraft(current, getHumanItemPayload(item)))
+          }
+          sourceLabel="기본/보유"
+        />
+      ) : (
+        <div className="wardrobe-grid character-item-grid">
+          {items.map((item) => (
+            <button
+              className={`wardrobe-item character-item-card ${isItemSelected(draft, item.payload) ? "selected" : ""}`}
+              key={item.id}
+              type="button"
+              onClick={() => setDraft((current) => applyPayloadToDraft(current, item.payload))}
+            >
+              <span className="character-item-image">
+                <img src={item.imageSrc} alt="" />
+              </span>
+              <span>{item.label}</span>
+              <small>{item.source}</small>
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="form-actions">
         <button className="ghost-button" type="button" onClick={leave}>

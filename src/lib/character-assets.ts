@@ -164,6 +164,17 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
   }
 ];
 
+export const HUMAN_CATEGORY_DISPLAY_ORDER: HumanLayerCategory[] = [
+  "body",
+  "hair",
+  "eyes",
+  "mouth",
+  "top",
+  "bottom",
+  "shoes",
+  "accessory"
+];
+
 export const HUMAN_LAYER_ITEMS: HumanLayerItem[] = [
   {
     id: "basic-17",
@@ -337,6 +348,32 @@ export function getHumanCategory(category: HumanLayerCategory) {
 
 export function getHumanCategoryItems(category: HumanLayerCategory) {
   return HUMAN_LAYER_ITEMS.filter((item) => item.category === category);
+}
+
+export function getHumanDisplayCategories() {
+  return HUMAN_CATEGORY_DISPLAY_ORDER.flatMap((categoryId) => {
+    const category = getHumanCategory(categoryId);
+
+    return category ? [category] : [];
+  });
+}
+
+export function getHumanItem(category: HumanLayerCategory, itemId: string) {
+  return HUMAN_LAYER_ITEMS.find(
+    (item) => item.category === category && item.id === itemId
+  );
+}
+
+export function getHumanItemFromPayload(payload: Record<string, string>) {
+  return HUMAN_LAYER_CATEGORIES.flatMap((category) => {
+    const itemId = payload[category.customizationKey];
+
+    return itemId ? [getHumanItem(category.id, itemId)] : [];
+  }).find((item): item is HumanLayerItem => Boolean(item));
+}
+
+export function getHumanItemStyleKey(item: HumanLayerItem) {
+  return item.label;
 }
 
 export function getDefaultHumanCustomization() {

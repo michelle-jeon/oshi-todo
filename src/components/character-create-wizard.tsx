@@ -2,16 +2,18 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Cat, Check, Palette, UserRound } from "lucide-react";
+import { Cat, Palette, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
+import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
-  HUMAN_LAYER_CATEGORIES,
   getDefaultHumanCustomization,
   getCharacterAsset,
+  getHumanCategory,
   getHumanCategoryItems,
+  getHumanDisplayCategories,
   type HumanLayerCategory,
   type CharacterVariantId,
   type CharacterSpecies
@@ -42,7 +44,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
     () => (species ? getCharacterAsset(species, species === "human" ? humanCustomization : variantId) : null),
     [humanCustomization, species, variantId]
   );
-  const tabs = species === "human" ? HUMAN_LAYER_CATEGORIES : [{ id: "pattern", label: "무늬" } as const];
+  const tabs = species === "human" ? getHumanDisplayCategories() : [{ id: "pattern", label: "무늬" } as const];
 
   function chooseSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
@@ -144,45 +146,38 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
             <div className="wardrobe-grid">
               {CHARACTER_VARIANTS.map((variant) => (
                 <button
-                  className={`wardrobe-item ${variantId === variant.id ? "selected" : ""}`}
+                  className={`wardrobe-item character-item-card ${variantId === variant.id ? "selected" : ""}`}
                   key={variant.id}
                   type="button"
                   onClick={() => setVariantId(variant.id)}
                 >
-                  <span className="swatch" style={{ background: variant.color }} />
+                  <span className="character-item-image">
+                    <img src={variant.cat} alt="" />
+                  </span>
                   <span>{variant.label} 무늬</span>
                 </button>
               ))}
             </div>
           ) : (
-            <div className="wardrobe-grid">
-              {getHumanCategoryItems(activeTab as HumanLayerCategory).map((item) => {
-                const category = HUMAN_LAYER_CATEGORIES.find((candidate) => candidate.id === item.category);
-                const selected = category
-                  ? humanCustomization[category.customizationKey] === item.id
-                  : false;
+            <HumanItemPicker
+              category={activeTab as HumanLayerCategory}
+              items={getHumanCategoryItems(activeTab as HumanLayerCategory)}
+              selectedItemId={
+                humanCustomization[
+                  getHumanCategory(activeTab as HumanLayerCategory)?.customizationKey ?? "bodyId"
+                ]
+              }
+              onSelect={(item) => {
+                const category = getHumanCategory(item.category);
 
-                return (
-                  <button
-                    className={`wardrobe-item ${selected ? "selected" : ""}`}
-                    key={item.id}
-                    type="button"
-                    onClick={() =>
-                      category
-                        ? setHumanCustomization((current) => ({
-                            ...current,
-                            [category.customizationKey]: item.id
-                          }))
-                        : undefined
-                    }
-                  >
-                    {item.color ? <span className="swatch" style={{ background: item.color }} /> : <Check size={18} />}
-                    <span>{item.label}</span>
-                    {item.colorLabel ? <small>{item.colorLabel}</small> : null}
-                  </button>
-                );
-              })}
-            </div>
+                if (category) {
+                  setHumanCustomization((current) => ({
+                    ...current,
+                    [category.customizationKey]: item.id
+                  }));
+                }
+              }}
+            />
           )}
 
           <div className="form-actions">
