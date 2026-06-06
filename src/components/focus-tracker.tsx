@@ -39,6 +39,48 @@ type CaptureHandleMediaStreamTrack = MediaStreamTrack & {
 
 const FOCUS_WINDOW_NAME_STORAGE_KEY = "oshiTodo.focusWindowNames";
 
+function getDesktopBridge() {
+  return typeof window === "undefined" ? undefined : window.oshiTodoDesktop;
+}
+
+function getDesktopWindowKey(windowInfo: OshiTodoDesktopWindow) {
+  return `desktop:${windowInfo.ownerBundleId ?? windowInfo.ownerName}:${windowInfo.id}`;
+}
+
+function getDesktopWindowName(windowInfo: OshiTodoDesktopWindow) {
+  return {
+    displayName: windowInfo.title || windowInfo.ownerName,
+    fullName: [windowInfo.ownerName, windowInfo.title].filter(Boolean).join(" · "),
+    needsName: false
+  };
+}
+
+function isSameDesktopWindow(
+  activeWindow: OshiTodoDesktopWindow | null,
+  selectedWindow: OshiTodoDesktopWindow | null
+) {
+  if (!activeWindow || !selectedWindow) {
+    return false;
+  }
+
+  if (activeWindow.id === selectedWindow.id) {
+    return true;
+  }
+
+  const sameOwner =
+    activeWindow.ownerBundleId && selectedWindow.ownerBundleId
+      ? activeWindow.ownerBundleId === selectedWindow.ownerBundleId
+      : Boolean(selectedWindow.ownerName) && activeWindow.ownerName === selectedWindow.ownerName;
+  const activeTitle = activeWindow.title.trim().toLocaleLowerCase();
+  const selectedTitle = selectedWindow.title.trim().toLocaleLowerCase();
+  const sameTitle =
+    activeTitle &&
+    selectedTitle &&
+    (activeTitle.includes(selectedTitle) || selectedTitle.includes(activeTitle));
+
+  return Boolean(sameTitle && (!selectedWindow.ownerName || sameOwner));
+}
+
 function formatSeconds(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
@@ -196,6 +238,8 @@ export function FocusTracker({
   initialTodayXp
 }: FocusTrackerProps) {
   const streamRef = useRef<MediaStream | null>(null);
+  const desktopTargetRef = useRef<OshiTodoDesktopWindow | null>(null);
+  const eligibilityCheckInFlightRef = useRef(false);
   const rewardTickRef = useRef(0);
   const todayString = getTodayString();
   const [isRunning, setIsRunning] = useState(false);
@@ -222,6 +266,9 @@ export function FocusTracker({
     useState<Record<string, string>>(loadCustomWindowNames);
   const [editingWindowKey, setEditingWindowKey] = useState<string | null>(null);
   const [draftWindowName, setDraftWindowName] = useState("");
+  const [desktopWindowOptions, setDesktopWindowOptions] = useState<OshiTodoDesktopWindow[]>([]);
+  const [isDesktopPickerOpen, setIsDesktopPickerOpen] = useState(false);
+  const [desktopErrorMessage, setDesktopErrorMessage] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const stopCaptureStream = useCallback(() => {
@@ -233,14 +280,70 @@ export function FocusTracker({
     windowStatsRef.current = windowStats;
   }, [windowStats]);
 
-  const checkEligibility = useCallback(() => {
-    setIsEligible(
-      Boolean(streamRef.current) && document.visibilityState === "visible" && document.hasFocus()
-    );
+  const readEligibility = useCallback(async () => {
+    const desktopBridge = getDesktopBridge();
+
+    if (desktopBridge && desktopTargetRef.current) {
+      try {
+        const activeWindow = await desktopBridge.getActiveWindow();
+        return isSameDesktopWindow(activeWindow, desktopTargetRef.current);
+      } catch {
+        return false;
+      }
+    }
+
+    return Boolean(streamRef.current) && document.visibilityState === "visible" && document.hasFocus();
   }, []);
+
+  const checkEligibility = useCallback(async () => {
+    setIsEligible(await readEligibility());
+  }, [readEligibility]);
+
+  async function beginTrackingDesktopWindow(windowInfo: OshiTodoDesktopWindow) {
+    const sourceKey = getDesktopWindowKey(windowInfo);
+    const windowName = getDesktopWindowName(windowInfo);
+    const savedWindowName = customWindowNames[sourceKey];
+    const resolvedWindowName = savedWindowName
+      ? {
+          displayName: savedWindowName,
+          fullName: `${savedWindowName} · ${windowName.fullName}`,
+          needsName: false
+        }
+      : windowName;
+    const statsKey = savedWindowName
+      ? getNamedWindowKey(savedWindowName)
+      : getSourceWindowKey(windowName.fullName);
+
+    stopCaptureStream();
+    desktopTargetRef.current = windowInfo;
+    rewardTickRef.current = 0;
+    setPreviewStream(null);
+    setActiveWindowKey(statsKey);
+    setWindowOrder((current) => [statsKey, ...current.filter((key) => key !== statsKey)]);
+    setWindowStats((current) => ({
+      ...current,
+      [statsKey]: current[statsKey] ?? {
+        ...resolvedWindowName,
+        sourceKey,
+        seconds: 0,
+        xp: 0
+      }
+    }));
+    setDesktopErrorMessage(null);
+    setIsDesktopPickerOpen(false);
+    setIsRunning(true);
+    try {
+      const activeWindow = (await getDesktopBridge()?.getActiveWindow()) ?? null;
+      setIsEligible(isSameDesktopWindow(activeWindow, windowInfo));
+    } catch {
+      setDesktopErrorMessage("활성 작업창 확인 권한이 필요해요.");
+      setIsEligible(false);
+    }
+  }
 
   const stop = useCallback(() => {
     stopCaptureStream();
+    desktopTargetRef.current = null;
     setPreviewStream(null);
     setIsRunning(false);
     setIsEligible(false);
@@ -273,6 +376,24 @@ export function FocusTracker({
   }, [focusLogs, isRunning, stop, todayString]);
 
   async function start() {
+    const desktopBridge = getDesktopBridge();
+
+    if (desktopBridge) {
+      try {
+        const openWindows = await desktopBridge.getOpenWindows();
+
+        setDesktopWindowOptions(openWindows);
+        setDesktopErrorMessage(
+          openWindows.length > 0 ? null : "선택할 수 있는 외부 작업창을 찾지 못했어요."
+        );
+        setIsDesktopPickerOpen(true);
+      } catch {
+        setDesktopErrorMessage("운영체제의 작업창 정보를 읽지 못했어요. 접근 권한을 확인해 주세요.");
+      }
+
+      return;
+    }
+
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
@@ -441,68 +562,79 @@ export function FocusTracker({
       return;
     }
 
-    checkEligibility();
     window.addEventListener("focus", checkEligibility);
     window.addEventListener("blur", checkEligibility);
     document.addEventListener("visibilitychange", checkEligibility);
 
-    const interval = window.setInterval(() => {
-      if (document.visibilityState !== "visible" || !document.hasFocus()) {
-        setIsEligible(false);
+    const interval = window.setInterval(async () => {
+      if (eligibilityCheckInFlightRef.current) {
         return;
       }
 
-      rewardTickRef.current += 1;
-      const shouldAwardXp = rewardTickRef.current >= 10;
+      eligibilityCheckInFlightRef.current = true;
 
-      if (shouldAwardXp) {
-        rewardTickRef.current = 0;
-      }
+      try {
+        const eligible = await readEligibility();
 
-      setIsEligible(true);
-      setActiveSeconds((current) => current + 1);
-      setWindowStats((current) => ({
-        ...current,
-        [activeWindowKey]: {
-          displayName: current[activeWindowKey]?.displayName ?? activeWindowKey,
-          fullName: current[activeWindowKey]?.fullName ?? activeWindowKey,
-          needsName: current[activeWindowKey]?.needsName ?? false,
-          sourceKey: current[activeWindowKey]?.sourceKey ?? activeWindowKey,
-          seconds: (current[activeWindowKey]?.seconds ?? 0) + 1,
-          xp: (current[activeWindowKey]?.xp ?? 0) + (shouldAwardXp ? 1 : 0)
+        if (!eligible) {
+          setIsEligible(false);
+          return;
         }
-      }));
 
-      if (shouldAwardXp) {
-        const activeStats = windowStatsRef.current[activeWindowKey];
-        setTodayXp((current) => current + 1);
-        setFocusLogs((current) => {
-          const existingLog = current.find(
-            (log) => log.work_date === todayString && log.window_key === activeWindowKey
-          );
-          const nextLog: FocusWindowLogItem = {
-            id: existingLog?.id ?? `temp-${activeWindowKey}`,
-            work_date: todayString,
-            window_key: activeWindowKey,
-            display_name: activeStats?.displayName ?? activeWindowKey,
-            full_name: activeStats?.fullName ?? activeWindowKey,
-            seconds: (existingLog?.seconds ?? 0) + 10,
-            xp: (existingLog?.xp ?? 0) + 1,
-            updated_at: new Date().toISOString()
-          };
+        rewardTickRef.current += 1;
+        const shouldAwardXp = rewardTickRef.current >= 10;
 
-          return [nextLog, ...current.filter((log) => log.id !== nextLog.id)];
-        });
-        startTransition(async () => {
-          await recordFocusProgress({
-            windowKey: activeWindowKey,
-            displayName: activeStats?.displayName ?? activeWindowKey,
-            fullName: activeStats?.fullName ?? activeWindowKey,
-            secondsDelta: 10,
-            xpDelta: 1,
-            workDate: todayString
+        if (shouldAwardXp) {
+          rewardTickRef.current = 0;
+        }
+
+        setIsEligible(true);
+        setActiveSeconds((current) => current + 1);
+        setWindowStats((current) => ({
+          ...current,
+          [activeWindowKey]: {
+            displayName: current[activeWindowKey]?.displayName ?? activeWindowKey,
+            fullName: current[activeWindowKey]?.fullName ?? activeWindowKey,
+            needsName: current[activeWindowKey]?.needsName ?? false,
+            sourceKey: current[activeWindowKey]?.sourceKey ?? activeWindowKey,
+            seconds: (current[activeWindowKey]?.seconds ?? 0) + 1,
+            xp: (current[activeWindowKey]?.xp ?? 0) + (shouldAwardXp ? 1 : 0)
+          }
+        }));
+
+        if (shouldAwardXp) {
+          const activeStats = windowStatsRef.current[activeWindowKey];
+          setTodayXp((current) => current + 1);
+          setFocusLogs((current) => {
+            const existingLog = current.find(
+              (log) => log.work_date === todayString && log.window_key === activeWindowKey
+            );
+            const nextLog: FocusWindowLogItem = {
+              id: existingLog?.id ?? `temp-${activeWindowKey}`,
+              work_date: todayString,
+              window_key: activeWindowKey,
+              display_name: activeStats?.displayName ?? activeWindowKey,
+              full_name: activeStats?.fullName ?? activeWindowKey,
+              seconds: (existingLog?.seconds ?? 0) + 10,
+              xp: (existingLog?.xp ?? 0) + 1,
+              updated_at: new Date().toISOString()
+            };
+
+            return [nextLog, ...current.filter((log) => log.id !== nextLog.id)];
           });
-        });
+          startTransition(async () => {
+            await recordFocusProgress({
+              windowKey: activeWindowKey,
+              displayName: activeStats?.displayName ?? activeWindowKey,
+              fullName: activeStats?.fullName ?? activeWindowKey,
+              secondsDelta: 10,
+              xpDelta: 1,
+              workDate: todayString
+            });
+          });
+        }
+      } finally {
+        eligibilityCheckInFlightRef.current = false;
       }
     }, 1000);
 
@@ -512,7 +644,7 @@ export function FocusTracker({
       window.removeEventListener("blur", checkEligibility);
       document.removeEventListener("visibilitychange", checkEligibility);
     };
-  }, [activeWindowKey, checkEligibility, isRunning, startTransition, todayString]);
+  }, [activeWindowKey, checkEligibility, isRunning, readEligibility, startTransition, todayString]);
 
   const orderedWindowEntries = [
     ...windowOrder
@@ -699,7 +831,9 @@ export function FocusTracker({
       </div>
       {isViewingToday ? (
         <div className="focus-panel-actions">
-          <span className="subtle">{isRunning && !isEligible ? "일시정지" : ""}</span>
+          <span className="subtle">
+            {desktopErrorMessage ?? (isRunning && !isEligible ? "일시정지" : "")}
+          </span>
           {isRunning ? (
             <button className="ghost-button" type="button" onClick={stop}>
               <Square size={16} /> 중지
@@ -709,6 +843,36 @@ export function FocusTracker({
               <MonitorPlay size={16} /> 작업창 선택
             </button>
           )}
+        </div>
+      ) : null}
+      {isDesktopPickerOpen ? (
+        <div className="modal-backdrop" onClick={() => setIsDesktopPickerOpen(false)}>
+          <div
+            className="confirm-modal desktop-window-picker"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <h2>작업창 선택</h2>
+            <div className="desktop-window-list">
+              {desktopWindowOptions.map((windowInfo) => (
+                <button
+                  key={`${windowInfo.ownerName}:${windowInfo.id}`}
+                  type="button"
+                  onClick={() => void beginTrackingDesktopWindow(windowInfo)}
+                >
+                  <strong>{windowInfo.title}</strong>
+                  <span>{windowInfo.ownerName || "데스크톱 창"}</span>
+                </button>
+              ))}
+              {desktopWindowOptions.length === 0 ? (
+                <div className="empty-state">선택할 수 있는 외부 작업창이 없어요.</div>
+              ) : null}
+            </div>
+            <div className="form-actions">
+              <button className="ghost-button" type="button" onClick={() => setIsDesktopPickerOpen(false)}>
+                취소
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </section>

@@ -1,11 +1,18 @@
 {
   "name": "oshi-todo",
-  "version": "0.2.52",
+  "version": "0.4.0",
+  "description": "투두와 캐릭터 성장을 결합한 집중 관리 앱",
+  "author": "OshiTodo",
   "private": true,
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "next dev --webpack -H 127.0.0.1",
     "build": "next build",
     "start": "next start",
+    "desktop:dev": "concurrently -k -s first \"npm run dev\" \"wait-on http://127.0.0.1:3000/login && cross-env OSHITODO_DESKTOP_URL=http://127.0.0.1:3000 electron .\"",
+    "desktop:build:web": "next build && node scripts/prepare-desktop-bundle.mjs",
+    "desktop:package": "npm run desktop:build:web && electron-builder --dir",
+    "desktop:dist": "npm run desktop:build:web && electron-builder",
     "lint": "eslint .",
     "seed:shop-items": "node scripts/seed-shop-items.mjs",
     "typecheck": "tsc --noEmit",
@@ -24,11 +31,56 @@
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
+    "concurrently": "^10.0.3",
+    "cross-env": "^10.1.0",
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.0",
     "eslint": "^9.17.0",
     "eslint-config-next": "latest",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "wait-on": "^9.0.10"
   },
   "overrides": {
     "postcss": "^8.5.10"
+  },
+  "build": {
+    "appId": "com.oshitodo.desktop",
+    "productName": "OshiTodo",
+    "asar": true,
+    "files": [
+      "desktop/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": ".desktop/standalone",
+        "to": "standalone"
+      }
+    ],
+    "directories": {
+      "output": "dist/desktop"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "extendInfo": {
+        "NSAppleEventsUsageDescription": "선택한 작업창이 활성 상태인지 확인해 작업 시간을 기록합니다.",
+        "NSScreenCaptureUsageDescription": "기록할 작업창 목록을 표시하기 위해 화면 기록 권한을 사용합니다."
+      },
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Utility"
+    }
   }
 }

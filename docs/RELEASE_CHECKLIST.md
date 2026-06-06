@@ -61,3 +61,11 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID
 8. 브라우저 콘솔에 반복 오류가 없는지 확인한다.
 
 문제가 있으면 `CHANGELOG.md`의 다음 릴리스 준비 중에 임시 기록한 뒤, 수정 커밋에서 버전과 백로그를 함께 갱신한다.
+
+## PC 앱 확인
+
+- `npm run desktop:package`로 현재 운영체제용 앱 폴더가 생성되는지 확인한다.
+- 패키지 앱을 실행하고 로그인 화면과 홈이 열리는지 확인한다.
+- macOS에서는 화면 기록과 손쉬운 사용 권한을 허용한 뒤 작업창 목록과 활성 창 감지를 확인한다.
+- Google OAuth Authorized JavaScript origins에 PC 앱 내장 주소 `http://127.0.0.1:32145`를 등록한다.
+- 외부 배포 전에는 앱 아이콘, 코드 서명, macOS 공증, Windows 설치 파일을 별도로 검증한다.

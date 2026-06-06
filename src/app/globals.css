@@ -1515,6 +1515,42 @@ button {
   gap: 4px;
 }
 
+.desktop-window-picker {
+  width: min(560px, 100%);
+  max-height: min(720px, calc(100vh - 40px));
+}
+
+.desktop-window-list {
+  display: grid;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.desktop-window-list button {
+  min-height: 58px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  color: var(--foreground);
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.desktop-window-list button:hover,
+.desktop-window-list button:focus-visible {
+  border-color: var(--primary);
+  background: #f4faf7;
+  outline: 0;
+}
+
+.desktop-window-list span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .routine-edit-modal label,
 .todo-detail-modal label {
   display: grid;
