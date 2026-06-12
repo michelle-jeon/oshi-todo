@@ -126,8 +126,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: item.colorLabel,
         payload: getHumanItemPayload(item),
         swatch: item.color,
-        thumbnailUrl: item.thumbnailSrc,
-        source: "기본"
+        thumbnailUrl: item.thumbnailSrc
       }));
     }
 
@@ -138,8 +137,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { variantId: variant.id },
         swatch: variant.color,
-        thumbnailUrl: undefined,
-        source: "기본"
+        thumbnailUrl: undefined
       }));
     }
 
@@ -151,8 +149,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           colorLabel: undefined,
           payload: { eyeId: "basic" },
           swatch: undefined,
-          thumbnailUrl: undefined,
-          source: "기본"
+          thumbnailUrl: undefined
         }
       ];
     }
@@ -164,8 +161,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { accessoryId: "none" },
         swatch: undefined,
-        thumbnailUrl: undefined,
-        source: "기본"
+        thumbnailUrl: undefined
       }
     ];
   }
@@ -178,8 +174,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       colorLabel: undefined,
       payload: item.payload,
       swatch: item.payload.color,
-      thumbnailUrl: item.thumbnailUrl,
-      source: "보유"
+      thumbnailUrl: item.thumbnailUrl
     }))
   ];
 
@@ -279,7 +274,6 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           onSelect={(item) =>
             setDraft((current) => applyPayloadToDraft(current, getHumanItemPayload(item)))
           }
-          sourceLabel="기본/보유"
         />
       ) : (
         <div className="wardrobe-grid character-item-grid">
@@ -297,8 +291,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
                   <span className="character-item-placeholder">상품 이미지 준비 중</span>
                 )}
               </span>
-              <span>{item.label}</span>
-              <small>{item.source}</small>
+              <span>{item.label}{item.colorLabel ? ` · ${item.colorLabel}` : ""}</span>
             </button>
           ))}
         </div>

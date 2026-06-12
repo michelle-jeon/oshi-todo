@@ -4,6 +4,7 @@
 
 import {
   getHumanCategory,
+  getHumanItemCardLabel,
   getHumanItemThumbnail,
   getHumanItemStyleKey,
   shouldGroupHumanItemColors,
@@ -16,15 +17,13 @@ type HumanItemPickerProps = {
   items: HumanLayerItem[];
   selectedItemId: string;
   onSelect: (item: HumanLayerItem) => void;
-  sourceLabel?: string;
 };
 
 export function HumanItemPicker({
   category,
   items,
   selectedItemId,
-  onSelect,
-  sourceLabel
+  onSelect
 }: HumanItemPickerProps) {
   const categoryDefinition = getHumanCategory(category);
   const groupsColors = shouldGroupHumanItemColors(category);
@@ -87,8 +86,7 @@ export function HumanItemPicker({
                   <span className="character-item-placeholder">상품 이미지 준비 중</span>
                 )}
               </span>
-              <span>{displayItem.label}</span>
-              {sourceLabel ? <small>{sourceLabel}</small> : null}
+              <span>{getHumanItemCardLabel(displayItem)}</span>
             </button>
           );
         })}

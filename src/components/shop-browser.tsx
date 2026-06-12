@@ -12,6 +12,7 @@ import {
   getCharacterAsset,
   getHumanDisplayCategories,
   getHumanCustomization,
+  getHumanItemCardLabel,
   getHumanItemFromPayload,
   shouldGroupHumanItemColors,
   type HumanLayerCategory,
@@ -287,6 +288,7 @@ export function ShopBrowser({
           const selected = cartBySlot[item.slot]?.id === item.id;
           const wrongSpecies = item.species !== activeSpecies;
           const tooExpensive = !selected && cartTotal + item.cost > currentXp;
+          const catalogItem = getHumanItemFromPayload(item.payload);
 
           return (
             <article
@@ -315,7 +317,7 @@ export function ShopBrowser({
                   <span className="character-item-placeholder">상품 이미지 준비 중</span>
                 )}
               </span>
-              <span>{item.name}</span>
+              <span>{catalogItem ? getHumanItemCardLabel(catalogItem) : item.name}</span>
               <strong className="price-label">{item.cost} 젬</strong>
               {owned ? (
                 <span className="owned-label">보유중</span>
