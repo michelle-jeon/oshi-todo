@@ -226,6 +226,7 @@ export default async function Home({
   const { message } = await searchParams;
   const todayString = getTodayString();
   const todayBounds = getKstDayBounds(todayString);
+  await supabase.rpc("record_daily_attendance", { attended_on_input: todayString });
   const fetchTodos = async () => {
     const withBaseXp = await supabase
       .from("todos")

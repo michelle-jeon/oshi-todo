@@ -8,9 +8,15 @@ function isMissingSessionError(error: unknown) {
     return false;
   }
 
-  const { message, name } = error as { message?: string; name?: string };
+  const { code, message, name } = error as { code?: string; message?: string; name?: string };
 
-  return name === "AuthSessionMissingError" || message === "Auth session missing!";
+  return (
+    name === "AuthSessionMissingError" ||
+    message === "Auth session missing!" ||
+    code === "refresh_token_already_used" ||
+    code === "refresh_token_not_found" ||
+    message?.includes("Invalid Refresh Token") === true
+  );
 }
 
 async function hasSupabaseAuthCookie() {
@@ -29,6 +35,10 @@ export async function getCurrentUser() {
     data: { user },
     error
   } = await supabase.auth.getUser();
+
+  if (isMissingSessionError(error)) {
+    redirect("/auth/reset" as Route);
+  }
 
   if (error || !user) {
     return null;
@@ -53,7 +63,23 @@ export async function requireUser() {
   }
 
   if (isMissingSessionError(error) || !user) {
-    redirect("/login" as Route);
+    redirect("/auth/reset" as Route);
+  }
+
+  return user;
+}
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle<{ is_admin: boolean }>();
+
+  if (!profile?.is_admin) {
+    redirect("/?message=관리자 권한이 필요해요." as Route);
   }
 
   return user;

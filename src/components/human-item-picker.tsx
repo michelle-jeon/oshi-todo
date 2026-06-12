@@ -4,7 +4,10 @@
 
 import {
   getHumanCategory,
+  getHumanItemCardLabel,
+  getHumanItemThumbnail,
   getHumanItemStyleKey,
+  shouldGroupHumanItemColors,
   type HumanLayerCategory,
   type HumanLayerItem
 } from "@/lib/character-assets";
@@ -14,20 +17,19 @@ type HumanItemPickerProps = {
   items: HumanLayerItem[];
   selectedItemId: string;
   onSelect: (item: HumanLayerItem) => void;
-  sourceLabel?: string;
 };
 
 export function HumanItemPicker({
   category,
   items,
   selectedItemId,
-  onSelect,
-  sourceLabel
+  onSelect
 }: HumanItemPickerProps) {
   const categoryDefinition = getHumanCategory(category);
+  const groupsColors = shouldGroupHumanItemColors(category);
   const groups = Array.from(
     items.reduce((map, item) => {
-      const key = getHumanItemStyleKey(item);
+      const key = groupsColors ? getHumanItemStyleKey(item) : item.id;
       const group = map.get(key) ?? [];
       group.push(item);
       map.set(key, group);
@@ -35,9 +37,13 @@ export function HumanItemPicker({
     }, new Map<string, HumanLayerItem[]>())
   );
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? items[0];
-  const selectedStyleKey = selectedItem ? getHumanItemStyleKey(selectedItem) : "";
+  const selectedStyleKey = selectedItem
+    ? groupsColors
+      ? getHumanItemStyleKey(selectedItem)
+      : selectedItem.id
+    : "";
   const selectedStyleColors =
-    category === "hair" || category === "eyes"
+    groupsColors
       ? groups.find(([styleKey]) => styleKey === selectedStyleKey)?.[1] ?? []
       : [];
 
@@ -74,10 +80,13 @@ export function HumanItemPicker({
               onClick={() => onSelect(displayItem)}
             >
               <span className="character-item-image">
-                {displayItem.src ? <img src={displayItem.src} alt="" /> : null}
+                {getHumanItemThumbnail(displayItem) ? (
+                  <img src={getHumanItemThumbnail(displayItem)} alt="" />
+                ) : (
+                  <span className="character-item-placeholder">상품 이미지 준비 중</span>
+                )}
               </span>
-              <span>{displayItem.label}</span>
-              {sourceLabel ? <small>{sourceLabel}</small> : null}
+              <span>{getHumanItemCardLabel(displayItem)}</span>
             </button>
           );
         })}

@@ -18,12 +18,9 @@ import {
 } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getShopItemForSpecies, type CatalogShopItem } from "@/lib/shop-catalog";
 
-type InventoryShopItem = {
-  slot: string;
-  species: CharacterSpecies | null;
-  payload: Record<string, string>;
-};
+type InventoryShopItem = CatalogShopItem;
 
 type InventoryRow = {
   shop_items: InventoryShopItem | InventoryShopItem[] | null;
@@ -81,9 +78,12 @@ function readWardrobeSelection(formData: FormData): WardrobeSelection {
   return {
     variantId: String(formData.get("variantId") ?? "blue"),
     ...Object.fromEntries(
-      HUMAN_LAYER_CATEGORIES.map((category) => [
-        category.customizationKey,
-        String(formData.get(category.customizationKey) ?? defaults[category.customizationKey])
+      HUMAN_LAYER_CATEGORIES.flatMap((category) => [
+        [
+          category.customizationKey,
+          String(formData.get(category.customizationKey) ?? defaults[category.customizationKey])
+        ],
+        [category.assetKey, String(formData.get(category.assetKey) ?? "")]
       ])
     )
   } as WardrobeSelection;
@@ -294,7 +294,7 @@ export async function updateWardrobe(formData: FormData) {
 
   const { data: inventory, error: inventoryError } = await supabase
     .from("character_inventory")
-    .select("shop_items(slot, species, payload)")
+    .select("shop_items(id, code, name, cost, slot, species, payload, shop_item_variants(species, slot, payload, layer_asset_url))")
     .eq("character_id", activeCharacter.id)
     .returns<InventoryRow[]>();
 
@@ -302,7 +302,13 @@ export async function updateWardrobe(formData: FormData) {
     redirect(`/characters/wardrobe?message=${encodeURIComponent(inventoryError.message)}` as Route);
   }
 
-  const inventoryItems = (inventory ?? []).flatMap((row) => row.shop_items ?? []);
+  const inventoryItems = (inventory ?? [])
+    .flatMap((row) => row.shop_items ?? [])
+    .flatMap((item) => {
+      const normalized = getShopItemForSpecies(item, activeCharacter.species);
+
+      return normalized ? [normalized] : [];
+    });
 
   if (!isWardrobeSelectionAllowed(activeCharacter.species, selection, inventoryItems)) {
     redirect("/characters/wardrobe?message=보유하지 않은 아이템은 장착할 수 없어요." as Route);

@@ -39,6 +39,7 @@ type WardrobeInventoryItem = {
   slot: string;
   species: CharacterSpecies | null;
   payload: Record<string, string>;
+  thumbnailUrl?: string | null;
 };
 
 type WardrobeDraft = Record<string, string> & {
@@ -125,8 +126,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: item.colorLabel,
         payload: getHumanItemPayload(item),
         swatch: item.color,
-        imageSrc: item.src,
-        source: "기본"
+        thumbnailUrl: item.thumbnailSrc
       }));
     }
 
@@ -137,8 +137,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { variantId: variant.id },
         swatch: variant.color,
-        imageSrc: variant.cat,
-        source: "기본"
+        thumbnailUrl: undefined
       }));
     }
 
@@ -150,8 +149,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           colorLabel: undefined,
           payload: { eyeId: "basic" },
           swatch: undefined,
-          imageSrc: asset.src,
-          source: "기본"
+          thumbnailUrl: undefined
         }
       ];
     }
@@ -163,8 +161,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { accessoryId: "none" },
         swatch: undefined,
-        imageSrc: asset.src,
-        source: "기본"
+        thumbnailUrl: undefined
       }
     ];
   }
@@ -177,8 +174,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       colorLabel: undefined,
       payload: item.payload,
       swatch: item.payload.color,
-      imageSrc: getHumanItemFromPayload(item.payload)?.src ?? asset.src,
-      source: "보유"
+      thumbnailUrl: item.thumbnailUrl
     }))
   ];
 
@@ -247,7 +243,29 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
             ),
             ...ownedItems.flatMap((item) => {
               const catalogItem = getHumanItemFromPayload(item.payload);
-              return catalogItem ? [catalogItem] : [];
+              if (catalogItem) {
+                return [{
+                  ...catalogItem,
+                  thumbnailSrc: item.thumbnailUrl ?? catalogItem.thumbnailSrc,
+                  selectionPayload: item.payload
+                }];
+              }
+
+              const category = getHumanDisplayCategories().find(
+                (candidate) => candidate.slot === item.slot
+              );
+              const itemId = category ? item.payload[category.customizationKey] : undefined;
+
+              return category && itemId
+                ? [{
+                    id: itemId,
+                    category: category.id,
+                    label: item.name,
+                    thumbnailSrc: item.thumbnailUrl ?? undefined,
+                    isBasic: false,
+                    selectionPayload: item.payload
+                  }]
+                : [];
             })
           ].filter(
             (item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index
@@ -256,7 +274,6 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           onSelect={(item) =>
             setDraft((current) => applyPayloadToDraft(current, getHumanItemPayload(item)))
           }
-          sourceLabel="기본/보유"
         />
       ) : (
         <div className="wardrobe-grid character-item-grid">
@@ -268,10 +285,13 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
               onClick={() => setDraft((current) => applyPayloadToDraft(current, item.payload))}
             >
               <span className="character-item-image">
-                <img src={item.imageSrc} alt="" />
+                {item.thumbnailUrl ? (
+                  <img src={item.thumbnailUrl} alt="" />
+                ) : (
+                  <span className="character-item-placeholder">상품 이미지 준비 중</span>
+                )}
               </span>
-              <span>{item.label}</span>
-              <small>{item.source}</small>
+              <span>{item.label}{item.colorLabel ? ` · ${item.colorLabel}` : ""}</span>
             </button>
           ))}
         </div>

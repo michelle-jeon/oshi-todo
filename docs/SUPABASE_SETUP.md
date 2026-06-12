@@ -132,6 +132,31 @@ supabase/sql_editor/09_shop_items_seed.sql
 
 이 파일도 같은 `on conflict (code) do update` 방식을 쓰므로 여러 번 실행해도 기존 상점 아이템을 최신 값으로 맞춘다.
 
+코스튬 카탈로그와 관리자 페이지를 사용하려면 아래 migration 또는 SQL Editor 파일을 적용한다.
+
+```text
+supabase/migrations/20260612110000_add_catalog_admin.sql
+supabase/sql_editor/13_catalog_admin.sql
+supabase/migrations/20260612140000_add_admin_catalog_order.sql
+supabase/sql_editor/14_admin_catalog_order.sql
+supabase/migrations/20260612160000_sync_basic_catalog_items.sql
+supabase/sql_editor/15_sync_basic_catalog_items.sql
+supabase/migrations/20260612180000_add_attendance_and_system_catalog.sql
+supabase/sql_editor/16_attendance_and_system_catalog.sql
+```
+
+첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
+
+```sql
+update public.profiles
+set is_admin = true
+where email = '관리자 이메일';
+```
+
+관리자 계정은 `/admin`에서 기본 제공 아이템을 포함한 전체 카탈로그, 상품 썸네일, 젬 가격, 판매 기간, 획득 조건과 인간·고양이별 착용 정보를 관리한다. `15_sync_basic_catalog_items.sql`을 적용하면 코드에 포함된 인간 기본 레이어와 고양이 기본 패턴이 관리자 목록에 등록되며 실제 상점 구매 대상에서는 제외된다.
+
+`16_attendance_and_system_catalog.sql`은 코드 내장 기본 아이템 보호 여부를 별도 관리하고, 사용자별 하루 한 번 출석 날짜를 저장한다. 작업시간 보상의 획득 조건 수치는 누적 작업 **분**, 출석 보상은 누적 출석 **일수** 기준이다.
+
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 
 ```text
