@@ -162,6 +162,8 @@ supabase/migrations/20260613211000_seed_basic_backgrounds.sql
 supabase/sql_editor/21_seed_basic_backgrounds.sql
 supabase/migrations/20260613220000_add_none_items_and_background_colors.sql
 supabase/sql_editor/22_add_none_items_and_background_colors.sql
+supabase/migrations/20260613223000_remove_none_catalog_items.sql
+supabase/sql_editor/23_remove_none_catalog_items.sql
 ```
 
 첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
@@ -185,6 +187,8 @@ where email = '관리자 이메일';
 `20_add_background_slot.sql`은 코스튬 카탈로그 슬롯에 배경을 추가한다. `21_seed_basic_backgrounds.sql`은 기본 배경색을 카탈로그에 등록하고 인간·고양이 모두 같은 상품을 사용하되 캐릭터의 1024×1024 최하단 레이어로 렌더링되게 한다.
 
 `22_add_none_items_and_background_colors.sql`은 몸·눈·입을 제외한 선택형 코스튬과 배경의 `없음` 항목을 카테고리별 첫 순서로 등록하고 블랙·화이트 기본 배경색을 추가한다.
+
+`23_remove_none_catalog_items.sql`은 `없음`을 구매·관리 상품에서 제거한다. `없음` 상태는 캐릭터 생성과 옷장 UI에서만 로컬 해제 선택지로 제공한다.
 
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 
