@@ -18,6 +18,7 @@ SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 한
 12. `12_human_character_slots.sql`
 13. `13_catalog_admin.sql`
 14. `14_admin_catalog_order.sql`
+15. `15_sync_basic_catalog_items.sql`
 
 각 단계가 성공하면 `완료` 상태 메시지가 나온다.
 
@@ -28,3 +29,4 @@ SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 한
 `12_human_character_slots.sql`은 인간 캐릭터의 바디, 신발, 하의, 상의, 입 상점 슬롯을 추가한다.
 `13_catalog_admin.sql`은 코스튬 썸네일, 종족별 착용 변형, 판매 기간, 획득 조건, 관리자 권한과 RLS를 추가하고 기존 더미 상품을 제거한다.
 `14_admin_catalog_order.sql`은 상품 노출 순서와 관리자용 사용자 캐릭터·인벤토리 조회 권한을 추가한다.
+`15_sync_basic_catalog_items.sql`은 코드에 포함된 기본 코스튬을 관리자 카탈로그에 등록하고 실제 상점 구매 대상에서는 제외한다.

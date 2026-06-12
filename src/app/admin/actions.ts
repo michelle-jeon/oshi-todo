@@ -53,12 +53,26 @@ export async function saveCatalogItem(formData: FormData) {
   await requireAdmin();
   const supabase = await createClient();
   const itemId = optionalText(formData, "itemId");
-  const code = String(formData.get("code") ?? "").trim();
+  const { data: existingItem, error: existingItemError } = itemId
+    ? await supabase
+        .from("shop_items")
+        .select("is_basic, code")
+        .eq("id", itemId)
+        .single<{ is_basic: boolean; code: string }>()
+    : { data: null, error: null };
+  const isBasic = existingItem?.is_basic ?? false;
+  const code = existingItem?.is_basic
+    ? existingItem.code
+    : String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
   const unlockMethod = String(formData.get("unlockMethod") ?? "gem");
   const enabledSpecies = ["human", "cat"].filter(
     (species) => formData.get(`${species}Enabled`) === "on"
   );
+
+  if (existingItemError) {
+    redirect(`/admin?message=${encodeURIComponent(existingItemError.message)}` as Route);
+  }
 
   if (!code || !name || !VALID_UNLOCK_METHODS.has(unlockMethod)) {
     redirect("/admin?message=상품 코드, 이름, 획득 방식을 확인해 주세요." as Route);
@@ -89,9 +103,9 @@ export async function saveCatalogItem(formData: FormData) {
       name,
       description: optionalText(formData, "description"),
       thumbnail_url: optionalText(formData, "thumbnailUrl"),
-      unlock_method: unlockMethod,
+      unlock_method: isBasic ? "gem" : unlockMethod,
       unlock_requirement: readNumber(formData, "unlockRequirement"),
-      cost: unlockMethod === "gem" ? readNumber(formData, "cost") : 0,
+      cost: isBasic ? 0 : unlockMethod === "gem" ? readNumber(formData, "cost") : 0,
       available_from: toIso(optionalText(formData, "availableFrom")),
       available_until: toIso(optionalText(formData, "availableUntil")),
       is_active: formData.get("isActive") === "on",
@@ -160,6 +174,20 @@ export async function deleteCatalogItem(formData: FormData) {
   await requireAdmin();
   const supabase = await createClient();
   const itemId = String(formData.get("itemId") ?? "");
+  const { data: item, error: itemError } = await supabase
+    .from("shop_items")
+    .select("is_basic")
+    .eq("id", itemId)
+    .single<{ is_basic: boolean }>();
+
+  if (itemError) {
+    redirect(`/admin?message=${encodeURIComponent(itemError.message)}` as Route);
+  }
+
+  if (item.is_basic) {
+    redirect("/admin?message=코드에 포함된 기본 제공 아이템은 삭제할 수 없어요." as Route);
+  }
+
   const { count, error: countError } = await supabase
     .from("character_inventory")
     .select("shop_item_id", { count: "exact", head: true })

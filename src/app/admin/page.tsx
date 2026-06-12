@@ -24,7 +24,13 @@ import type { ShopItemVariant } from "@/lib/shop-catalog";
 import { AdminDeleteButton } from "@/components/admin-delete-button";
 
 type AdminPageProps = {
-  searchParams: Promise<{ message?: string; view?: string; edit?: string; new?: string }>;
+  searchParams: Promise<{
+    message?: string;
+    view?: string;
+    edit?: string;
+    new?: string;
+    status?: string;
+  }>;
 };
 
 type AdminShopItem = {
@@ -39,9 +45,12 @@ type AdminShopItem = {
   available_from: string | null;
   available_until: string | null;
   is_active: boolean;
+  is_basic: boolean;
   sort_order: number;
   shop_item_variants: ShopItemVariant | ShopItemVariant[] | null;
 };
+
+type CatalogStatus = "all" | "basic" | "sale" | "reward" | "upcoming" | "expired" | "hidden";
 
 type AdminInventoryRow = {
   shop_item_id: string;
@@ -107,10 +116,29 @@ function formatDate(value: string) {
 }
 
 function unlockLabel(item: AdminShopItem) {
+  if (item.is_basic) return "기본 제공";
   if (item.unlock_method === "gem") return `${item.cost.toLocaleString()} 젬`;
   if (item.unlock_method === "attendance") return `${item.unlock_requirement.toLocaleString()}일 출석`;
   return `${item.unlock_requirement.toLocaleString()}분 작업`;
 }
+
+function catalogStatus(item: AdminShopItem, now: Date): Exclude<CatalogStatus, "all"> {
+  if (!item.is_active) return "hidden";
+  if (item.available_from && new Date(item.available_from) > now) return "upcoming";
+  if (item.available_until && new Date(item.available_until) <= now) return "expired";
+  if (item.is_basic) return "basic";
+  if (item.unlock_method === "gem") return "sale";
+  return "reward";
+}
+
+const catalogStatusLabels: Record<Exclude<CatalogStatus, "all">, string> = {
+  basic: "기본 제공",
+  sale: "판매 중",
+  reward: "보상 아이템",
+  upcoming: "공개 예정",
+  expired: "기한 만료",
+  hidden: "숨김"
+};
 
 function VariantFields({
   species,
@@ -160,23 +188,28 @@ function CatalogItemForm({ item }: { item?: AdminShopItem }) {
         </div>
         <label className="admin-check-row">
           <input name="isActive" type="checkbox" defaultChecked={item?.is_active ?? true} />
-          상점 노출
+          카탈로그 활성
         </label>
       </div>
       <div className="admin-form-grid">
-        <label>상품 코드<input name="code" required defaultValue={item?.code ?? ""} /></label>
+        <label>
+          상품 코드
+          <input name="code" required defaultValue={item?.code ?? ""} disabled={item?.is_basic} />
+          {item?.is_basic ? <input type="hidden" name="code" value={item.code} /> : null}
+        </label>
         <label>상품 이름<input name="name" required defaultValue={item?.name ?? ""} /></label>
         <label>코스튬 썸네일 URL<input name="thumbnailUrl" defaultValue={item?.thumbnail_url ?? ""} placeholder="/assets/shop/..." /></label>
         <label>설명<input name="description" defaultValue={item?.description ?? ""} /></label>
         <label>
           획득 방식
-          <select name="unlockMethod" defaultValue={item?.unlock_method ?? "gem"}>
+          <select name="unlockMethod" defaultValue={item?.unlock_method ?? "gem"} disabled={item?.is_basic}>
             <option value="gem">젬 구매</option>
             <option value="attendance">출석 보상</option>
             <option value="focus">작업시간 보상</option>
           </select>
+          {item?.is_basic ? <input type="hidden" name="unlockMethod" value="gem" /> : null}
         </label>
-        <label>젬 가격<input name="cost" type="number" min="0" defaultValue={item?.cost ?? 0} /></label>
+        <label>젬 가격<input name="cost" type="number" min="0" defaultValue={item?.cost ?? 0} disabled={item?.is_basic} /></label>
         <label>획득 조건 수치<input name="unlockRequirement" type="number" min="0" defaultValue={item?.unlock_requirement ?? 0} /></label>
         <label>판매 시작<input name="availableFrom" type="datetime-local" defaultValue={dateTimeValue(item?.available_from ?? null)} /></label>
         <label>판매 종료<input name="availableUntil" type="datetime-local" defaultValue={dateTimeValue(item?.available_until ?? null)} /></label>
@@ -193,11 +226,17 @@ function CatalogItemForm({ item }: { item?: AdminShopItem }) {
   );
 }
 
-function CatalogList({ items }: { items: AdminShopItem[] }) {
+function CatalogList({ items, status }: { items: AdminShopItem[]; status: CatalogStatus }) {
+  const now = new Date();
+  const visibleItems = status === "all"
+    ? items
+    : items.filter((item) => catalogStatus(item, now) === status);
+
   return (
     <section className="admin-catalog-list">
-      {items.map((item, index) => {
+      {visibleItems.map((item, index) => {
         const variants = variantsOf(item);
+        const itemStatus = catalogStatus(item, now);
 
         return (
           <article className="panel admin-catalog-row" key={item.id}>
@@ -207,7 +246,7 @@ function CatalogList({ items }: { items: AdminShopItem[] }) {
             <div className="admin-catalog-main">
               <div className="admin-catalog-title">
                 <strong>{item.name}</strong>
-                <span className={item.is_active ? "admin-status active" : "admin-status"}>{item.is_active ? "노출 중" : "숨김"}</span>
+                <span className={`admin-status ${itemStatus}`}>{catalogStatusLabels[itemStatus]}</span>
               </div>
               <code>{item.code}</code>
               <div className="admin-chip-list">
@@ -219,12 +258,12 @@ function CatalogList({ items }: { items: AdminShopItem[] }) {
               <form action={moveCatalogItem}>
                 <input type="hidden" name="itemId" value={item.id} />
                 <input type="hidden" name="direction" value="up" />
-                <button className="icon-button" type="submit" disabled={index === 0} aria-label="위로 이동"><ArrowUp size={16} /></button>
+                <button className="icon-button" type="submit" disabled={status !== "all" || index === 0} aria-label="위로 이동"><ArrowUp size={16} /></button>
               </form>
               <form action={moveCatalogItem}>
                 <input type="hidden" name="itemId" value={item.id} />
                 <input type="hidden" name="direction" value="down" />
-                <button className="icon-button" type="submit" disabled={index === items.length - 1} aria-label="아래로 이동"><ArrowDown size={16} /></button>
+                <button className="icon-button" type="submit" disabled={status !== "all" || index === visibleItems.length - 1} aria-label="아래로 이동"><ArrowDown size={16} /></button>
               </form>
               <Link className="icon-button" href={`/admin?edit=${item.id}` as Route} aria-label={`${item.name} 수정`}><Edit3 size={16} /></Link>
               <form action={toggleCatalogItem}>
@@ -232,12 +271,12 @@ function CatalogList({ items }: { items: AdminShopItem[] }) {
                 <input type="hidden" name="isActive" value={String(item.is_active)} />
                 <button className="ghost-button" type="submit">{item.is_active ? "내리기" : "올리기"}</button>
               </form>
-              <AdminDeleteButton itemId={item.id} itemName={item.name} />
+              {!item.is_basic ? <AdminDeleteButton itemId={item.id} itemName={item.name} /> : null}
             </div>
           </article>
         );
       })}
-      {items.length === 0 ? <div className="empty-state">등록된 상품이 없어요.</div> : null}
+      {visibleItems.length === 0 ? <div className="empty-state">이 상태에 해당하는 아이템이 없어요.</div> : null}
     </section>
   );
 }
@@ -286,11 +325,14 @@ function UserList({ profiles }: { profiles: AdminProfileRow[] }) {
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   await requireAdmin();
   const supabase = await createClient();
-  const { message, view, edit, new: createNew } = await searchParams;
+  const { message, view, edit, new: createNew, status: requestedStatus } = await searchParams;
   const activeView = view === "users" ? "users" : "catalog";
+  const status: CatalogStatus = ["basic", "sale", "reward", "upcoming", "expired", "hidden"].includes(requestedStatus ?? "")
+    ? requestedStatus as CatalogStatus
+    : "all";
   const { data: items, error: itemError } = await supabase
     .from("shop_items")
-    .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
+    .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, is_basic, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
     .returns<AdminShopItem[]>();
@@ -324,13 +366,32 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             <PackagePlus size={20} />
             <div>
               <strong>코스튬 카탈로그</strong>
-              <p className="subtle">전체 상품을 확인하고 수정, 노출 변경, 정렬, 삭제할 수 있습니다.</p>
+              <p className="subtle">기본 제공, 판매, 보상, 예정, 만료 아이템을 모두 확인하고 관리합니다.</p>
             </div>
             <Link className="primary-button" href={"/admin?new=1" as Route}>새 상품 추가</Link>
           </section>
           {createNew === "1" ? <CatalogItemForm /> : null}
           {selectedItem ? <CatalogItemForm item={selectedItem} /> : null}
-          <CatalogList items={items ?? []} />
+          <nav className="admin-catalog-filters" aria-label="아이템 상태 필터">
+            {([
+              ["all", "전체"],
+              ["basic", "기본 제공"],
+              ["sale", "판매 중"],
+              ["reward", "보상"],
+              ["upcoming", "공개 예정"],
+              ["expired", "기한 만료"],
+              ["hidden", "숨김"]
+            ] as Array<[CatalogStatus, string]>).map(([value, label]) => (
+              <Link
+                className={status === value ? "selected" : ""}
+                href={(value === "all" ? "/admin" : `/admin?status=${value}`) as Route}
+                key={value}
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+          <CatalogList items={items ?? []} status={status} />
         </>
       ) : (
         <UserList profiles={profiles ?? []} />
