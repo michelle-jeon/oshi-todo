@@ -155,3 +155,69 @@ export async function toggleCatalogItem(formData: FormData) {
   revalidatePath("/admin");
   revalidatePath("/shop");
 }
+
+export async function deleteCatalogItem(formData: FormData) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const itemId = String(formData.get("itemId") ?? "");
+  const { count, error: countError } = await supabase
+    .from("character_inventory")
+    .select("shop_item_id", { count: "exact", head: true })
+    .eq("shop_item_id", itemId);
+
+  if (countError) {
+    redirect(`/admin?message=${encodeURIComponent(countError.message)}` as Route);
+  }
+
+  if ((count ?? 0) > 0) {
+    redirect("/admin?message=보유 중인 사용자가 있는 상품은 삭제할 수 없어요. 상점에서 내려 주세요." as Route);
+  }
+
+  const { error } = await supabase.from("shop_items").delete().eq("id", itemId);
+
+  if (error) {
+    redirect(`/admin?message=${encodeURIComponent(error.message)}` as Route);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/shop");
+  redirect("/admin?message=상품을 삭제했어요." as Route);
+}
+
+export async function moveCatalogItem(formData: FormData) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const itemId = String(formData.get("itemId") ?? "");
+  const direction = String(formData.get("direction") ?? "");
+  const { data: items, error } = await supabase
+    .from("shop_items")
+    .select("id, sort_order")
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: true })
+    .returns<Array<{ id: string; sort_order: number }>>();
+
+  if (error) {
+    redirect(`/admin?message=${encodeURIComponent(error.message)}` as Route);
+  }
+
+  const currentIndex = (items ?? []).findIndex((item) => item.id === itemId);
+  const nextIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+
+  if (currentIndex < 0 || nextIndex < 0 || nextIndex >= (items ?? []).length) {
+    return;
+  }
+
+  const current = items![currentIndex];
+  const next = items![nextIndex];
+  const [{ error: currentError }, { error: nextError }] = await Promise.all([
+    supabase.from("shop_items").update({ sort_order: next.sort_order }).eq("id", current.id),
+    supabase.from("shop_items").update({ sort_order: current.sort_order }).eq("id", next.id)
+  ]);
+
+  if (currentError || nextError) {
+    redirect(`/admin?message=${encodeURIComponent(currentError?.message ?? nextError?.message ?? "정렬을 변경하지 못했어요.")}` as Route);
+  }
+
+  revalidatePath("/admin");
+  revalidatePath("/shop");
+}

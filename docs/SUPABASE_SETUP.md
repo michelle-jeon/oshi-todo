@@ -137,6 +137,8 @@ supabase/sql_editor/09_shop_items_seed.sql
 ```text
 supabase/migrations/20260612110000_add_catalog_admin.sql
 supabase/sql_editor/13_catalog_admin.sql
+supabase/migrations/20260612140000_add_admin_catalog_order.sql
+supabase/sql_editor/14_admin_catalog_order.sql
 ```
 
 첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.

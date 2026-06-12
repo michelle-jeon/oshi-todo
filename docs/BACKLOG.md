@@ -252,9 +252,11 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
   - ✅ 이미 사용됐거나 만료된 Supabase refresh token을 정리하고 로그인 화면으로 복귀하는 경로 추가.
 - ✅ 상점 아이템 seed 스크립트 추가.
   - `npm run seed:shop-items`와 SQL Editor용 `supabase/sql_editor/09_shop_items_seed.sql`로 상점 아이템 upsert 흐름을 정리.
-- ✅ 같은 저장소의 `/admin`에서 코스튬 상품, 종족별 착용 설정, 판매 기간, 획득 조건을 관리하는 기본 관리자 페이지 추가.
+- ✅ 같은 저장소의 `/admin`에서 코스튬 상품, 종족별 착용 설정, 판매 기간, 획득 조건을 관리하는 관리자 페이지 추가.
+  - ✅ 전체 상품 목록, 선택 수정, 노출 전환, 삭제, 노출 순서 변경 추가.
+  - ✅ 가입 정보, 캐릭터, 젬, 누적 XP, 보유 아이템 수를 확인하는 사용자 데이터 탭 추가.
 - 출석 일수와 누적 작업시간 조건을 달성하면 설정된 코스튬 아이템을 자동 지급하는 보상 처리 추가.
-- 관리자 페이지에서 사용자/캐릭터/구매·보상 내역을 조회하는 운영 기능 추가.
+- 관리자 페이지에 상품·사용자 검색, 페이지네이션, 구매·보상 내역과 관리자 변경 감사 로그 추가.
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
 - ✅ staging/production Supabase 프로젝트 분리 기준 문서화.
   - `docs/ENVIRONMENTS.md`에 staging/production Supabase 프로젝트, 환경변수 매핑, migration 적용 순서를 정리.

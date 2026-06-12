@@ -51,6 +51,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       .select("id, code, name, slot, species, cost, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url)")
       .eq("is_active", true)
       .eq("unlock_method", "gem")
+      .order("sort_order", { ascending: true })
       .order("cost", { ascending: true })
       .returns<ShopItem[]>(),
     character
