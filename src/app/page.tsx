@@ -30,6 +30,7 @@ type CharacterRow = {
   level: number;
   xp_current: number;
   xp_total: number;
+  stell_balance: number;
   customization: Record<string, string>;
 };
 
@@ -427,6 +428,28 @@ export default async function Home({
       isDifficultySchemaMissing: false
     };
   };
+  const fetchActiveCharacter = async () => {
+    const result = await supabase
+      .from("characters")
+      .select("id, display_name, species, level, xp_current, xp_total, stell_balance, customization")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<CharacterRow>();
+
+    if (!result.error?.message.includes("stell_balance")) return result;
+
+    const fallback = await supabase
+      .from("characters")
+      .select("id, display_name, species, level, xp_current, xp_total, customization")
+      .eq("user_id", user.id)
+      .eq("is_active", true)
+      .maybeSingle<Omit<CharacterRow, "stell_balance">>();
+
+    return {
+      data: fallback.data ? { ...fallback.data, stell_balance: fallback.data.xp_current } : null,
+      error: fallback.error
+    };
+  };
 
   const [
     { data: activeCharacter, error: characterError },
@@ -446,12 +469,7 @@ export default async function Home({
     { data: todayXpEvents },
     { error: dailyXpCapError }
   ] = await Promise.all([
-    supabase
-      .from("characters")
-      .select("id, display_name, species, level, xp_current, xp_total, customization")
-      .eq("user_id", user.id)
-      .eq("is_active", true)
-      .maybeSingle<CharacterRow>(),
+    fetchActiveCharacter(),
     fetchTodos(),
     fetchRoutines(),
     supabase
@@ -498,12 +516,13 @@ export default async function Home({
         level: activeCharacter.level,
         xpCurrent: activeCharacter.xp_current,
         xpTotal: activeCharacter.xp_total,
+        stellBalance: activeCharacter.stell_balance,
         customization: activeCharacter.customization
       }
     : null;
 
   const progress = getLevelProgress(character?.xpTotal ?? 0);
-  const spendableXp = character?.xpCurrent ?? 0;
+  const stellBalance = character?.stellBalance ?? 0;
   const dbError = characterError ?? todosError ?? routinesError ?? dailyXpCapError;
   const dbSchemaMessage =
     isTodoBaseXpSchemaMissing || isRoutineBaseXpSchemaMissing
@@ -546,11 +565,11 @@ export default async function Home({
         <header className="topbar">
           <div />
           <div className="topbar-actions">
-            <div className="currency-pill" aria-label="사용 가능 XP와 오늘 획득 XP">
+            <div className="currency-pill" aria-label="보유 스텔과 오늘 획득 경험치">
               <Coins size={18} />
               <span>
-                <small>사용 가능</small>
-                {spendableXp.toLocaleString()} XP
+                <small>보유 스텔</small>
+                {stellBalance.toLocaleString()} 스텔
               </span>
               <span>
                 <small>오늘</small>

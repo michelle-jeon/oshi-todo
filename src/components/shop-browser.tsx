@@ -6,7 +6,7 @@ import { Eye, Gem, Palette } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { purchaseShopItems } from "@/app/shop-actions";
+import { claimShopItem, purchaseShopItems } from "@/app/shop-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
 import {
   getCharacterAsset,
@@ -26,6 +26,9 @@ export type ShopBrowserItem = {
   slot: string;
   species: CharacterSpecies | null;
   cost: number;
+  unlock_method: "gem" | "attendance" | "focus";
+  unlock_requirement: number;
+  required_level: number;
   payload: Record<string, string>;
   thumbnailUrl?: string | null;
 };
@@ -37,7 +40,10 @@ type ShopBrowserProps = {
     customization: Record<string, string>;
   };
   activeSpecies: CharacterSpecies;
-  currentXp: number;
+  characterLevel: number;
+  stellBalance: number;
+  attendanceDays: number;
+  focusMinutes: number;
   items: ShopBrowserItem[];
   ownedIds: string[];
 };
@@ -72,7 +78,10 @@ function applyPayloadToPreview<T extends Record<string, string>>(
 export function ShopBrowser({
   character,
   activeSpecies,
-  currentXp,
+  characterLevel,
+  stellBalance,
+  attendanceDays,
+  focusMinutes,
   items,
   ownedIds
 }: ShopBrowserProps) {
@@ -132,8 +141,20 @@ export function ShopBrowser({
   const asset = getCharacterAsset(character.species, preview);
   const cartItems = Object.values(cartBySlot);
   const cartTotal = cartItems.reduce((sum, item) => sum + item.cost, 0);
-  const canCheckout = cartItems.length > 0 && cartTotal <= currentXp;
-  const remainingXp = Math.max(currentXp - cartTotal, 0);
+  const canCheckout = cartItems.length > 0 && cartTotal <= stellBalance;
+  const remainingStell = Math.max(stellBalance - cartTotal, 0);
+
+  function isUnlocked(item: ShopBrowserItem) {
+    if (item.unlock_method === "gem") return characterLevel >= item.required_level;
+    if (item.unlock_method === "attendance") return attendanceDays >= item.unlock_requirement;
+    return focusMinutes >= item.unlock_requirement;
+  }
+
+  function unlockLabel(item: ShopBrowserItem) {
+    if (item.unlock_method === "gem") return `Lv.${item.required_level}에 해금`;
+    if (item.unlock_method === "attendance") return `출석 ${item.unlock_requirement}일에 해금`;
+    return `작업 ${item.unlock_requirement}분에 해금`;
+  }
 
   function switchSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
@@ -163,7 +184,7 @@ export function ShopBrowser({
 
     previewItem(item);
 
-    if (ownedSet.has(item.id)) {
+    if (ownedSet.has(item.id) || !isUnlocked(item) || item.unlock_method !== "gem") {
       return;
     }
 
@@ -186,6 +207,13 @@ export function ShopBrowser({
     event.stopPropagation();
     startTransition(async () => {
       await purchaseShopItems(cartItems.map((item) => item.id));
+    });
+  }
+
+  function claim(event: MouseEvent<HTMLButtonElement>, itemId: string) {
+    event.stopPropagation();
+    startTransition(async () => {
+      await claimShopItem(itemId);
     });
   }
 
@@ -287,14 +315,16 @@ export function ShopBrowser({
           const owned = ownedSet.has(item.id);
           const selected = cartBySlot[item.slot]?.id === item.id;
           const wrongSpecies = item.species !== activeSpecies;
-          const tooExpensive = !selected && cartTotal + item.cost > currentXp;
+          const unlocked = isUnlocked(item);
+          const claimable = unlocked && item.unlock_method !== "gem" && !owned;
+          const tooExpensive = item.unlock_method === "gem" && !selected && cartTotal + item.cost > stellBalance;
           const catalogItem = getHumanItemFromPayload(item.payload);
 
           return (
             <article
               className={`wardrobe-item shop-item-card ${selected ? "selected" : ""} ${
                 tooExpensive ? "too-expensive" : ""
-              } ${wrongSpecies ? "disabled" : ""} ${
+              } ${wrongSpecies ? "disabled" : ""} ${!unlocked ? "locked" : ""} ${
                 !owned && selected ? "in-cart" : ""
               }`}
               key={item.id}
@@ -318,9 +348,17 @@ export function ShopBrowser({
                 )}
               </span>
               <span>{catalogItem ? getHumanItemCardLabel(catalogItem) : item.name}</span>
-              <strong className="price-label">{item.cost} 젬</strong>
+              <strong className="price-label">
+                {!unlocked ? unlockLabel(item) : item.unlock_method === "gem" ? `${item.cost} 스텔` : "무료 획득"}
+              </strong>
               {owned ? (
                 <span className="owned-label">보유중</span>
+              ) : claimable ? (
+                <button className="cart-label" type="button" disabled={isPending} onClick={(event) => claim(event, item.id)}>
+                  {isPending ? "처리 중" : "받기"}
+                </button>
+              ) : !unlocked ? (
+                <span className="cart-label">잠김</span>
               ) : (
                 <span className="cart-label">{selected ? "선택됨" : "입어보기"}</span>
               )}
@@ -332,14 +370,14 @@ export function ShopBrowser({
 
       <div className="shop-cart-panel">
         <div>
-          <p className="subtle">사용 가능 젬</p>
-          <strong>{currentXp.toLocaleString()} 젬</strong>
+          <p className="subtle">보유 스텔</p>
+          <strong>{stellBalance.toLocaleString()} 스텔</strong>
         </div>
         <div className="shop-cart-total">
           <p className="subtle">사용 예정</p>
-          <strong>{cartItems.length > 0 ? `${cartTotal.toLocaleString()} 젬` : "0 젬"}</strong>
-          {cartItems.length > 0 && cartTotal <= currentXp ? (
-            <span className="subtle">구매 후 {remainingXp.toLocaleString()} 젬</span>
+          <strong>{cartItems.length > 0 ? `${cartTotal.toLocaleString()} 스텔` : "0 스텔"}</strong>
+          {cartItems.length > 0 && cartTotal <= stellBalance ? (
+            <span className="subtle">구매 후 {remainingStell.toLocaleString()} 스텔</span>
           ) : null}
         </div>
         {cartItems.length > 0 ? (
@@ -360,7 +398,7 @@ export function ShopBrowser({
         <button className="primary-button" type="button" onClick={checkout} disabled={!canCheckout || isPending}>
           {isPending ? "구매 중" : "한 번에 구매"}
         </button>
-        {cartTotal > currentXp ? <p className="subtle">젬이 부족해요.</p> : null}
+        {cartTotal > stellBalance ? <p className="subtle">스텔이 부족해요.</p> : null}
       </div>
 
       <div className="form-actions">

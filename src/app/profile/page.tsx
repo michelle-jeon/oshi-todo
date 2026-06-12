@@ -139,7 +139,7 @@ export default async function ProfilePage() {
             </Link>
           ) : null}
           <Link className="ghost-button" href={"/profile/xp" as Route}>
-            <Coins size={16} /> XP/재화 기록
+            <Coins size={16} /> 경험치·스텔 기록
           </Link>
           <Link className="ghost-button" href={"/profile/focus" as Route}>
             <Clock3 size={16} /> 작업시간 기록

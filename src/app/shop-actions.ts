@@ -7,8 +7,24 @@ import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 
 function getPurchaseErrorMessage(message: string) {
-  if (message.includes("Not enough XP")) {
-    return "사용 가능 젬이 부족해요.";
+  if (message.includes("Not enough Stell")) {
+    return "사용 가능한 스텔이 부족해요.";
+  }
+
+  if (message.includes("Required level not reached")) {
+    return "아직 필요한 레벨에 도달하지 못했어요.";
+  }
+
+  if (message.includes("Attendance requirement not reached")) {
+    return "아직 필요한 출석 일수를 달성하지 못했어요.";
+  }
+
+  if (message.includes("Focus requirement not reached")) {
+    return "아직 필요한 작업시간을 달성하지 못했어요.";
+  }
+
+  if (message.includes("Claimable item not found")) {
+    return "지금 받을 수 없는 아이템이에요.";
   }
 
   if (message.includes("Item already purchased")) {
@@ -28,6 +44,22 @@ function getPurchaseErrorMessage(message: string) {
   }
 
   return message;
+}
+
+export async function claimShopItem(shopItemId: string) {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("claim_unlocked_shop_item", {
+    shop_item_id_input: shopItemId
+  });
+
+  if (error) {
+    redirect(`/shop?message=${encodeURIComponent(getPurchaseErrorMessage(error.message))}` as Route);
+  }
+
+  revalidatePath("/shop");
+  revalidatePath("/characters/wardrobe");
+  redirect("/shop?message=아이템을 받았어요." as Route);
 }
 
 export async function purchaseShopItem(shopItemId: string) {

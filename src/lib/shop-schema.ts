@@ -12,3 +12,15 @@ export function isMissingBasicCatalogSchema(error: unknown) {
     || message.includes("shop_items.is_system")
     || message.includes("is_system");
 }
+
+export const STELL_SCHEMA_MESSAGE =
+  "스텔과 아이템 해금 DB 스키마가 아직 반영되지 않았어요. Supabase SQL Editor에서 17_stell_and_unlocks.sql을 실행한 뒤 새로고침해 주세요.";
+
+export function isMissingStellSchema(error: unknown) {
+  const message =
+    error && typeof error === "object" && "message" in error
+      ? String(error.message)
+      : String(error ?? "");
+
+  return message.includes("stell_balance") || message.includes("required_level");
+}

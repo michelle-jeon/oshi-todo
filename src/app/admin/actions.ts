@@ -112,6 +112,7 @@ export async function saveCatalogItem(formData: FormData) {
       thumbnail_url: optionalText(formData, "thumbnailUrl"),
       unlock_method: isBasic ? "gem" : unlockMethod,
       unlock_requirement: readNumber(formData, "unlockRequirement"),
+      required_level: Math.max(readNumber(formData, "requiredLevel"), 1),
       cost: isBasic ? 0 : unlockMethod === "gem" ? readNumber(formData, "cost") : 0,
       available_from: toIso(optionalText(formData, "availableFrom")),
       available_until: toIso(optionalText(formData, "availableUntil")),

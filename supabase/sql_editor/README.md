@@ -20,6 +20,7 @@ SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 한
 14. `14_admin_catalog_order.sql`
 15. `15_sync_basic_catalog_items.sql`
 16. `16_attendance_and_system_catalog.sql`
+17. `17_stell_and_unlocks.sql`
 
 각 단계가 성공하면 `완료` 상태 메시지가 나온다.
 
@@ -32,3 +33,4 @@ SQL Editor에는 파일 경로가 아니라 파일 내용을 붙여넣어야 한
 `14_admin_catalog_order.sql`은 상품 노출 순서와 관리자용 사용자 캐릭터·인벤토리 조회 권한을 추가한다.
 `15_sync_basic_catalog_items.sql`은 코드에 포함된 기본 코스튬을 관리자 카탈로그에 등록하고 실제 상점 구매 대상에서는 제외한다.
 `16_attendance_and_system_catalog.sql`은 코드 내장 기본 아이템 보호 여부와 사용자별 일일 출석 기록 테이블을 추가한다.
+`17_stell_and_unlocks.sql`은 스텔 잔액과 레벨 해금 구매, 출석·작업시간 달성 후 무료 받기 기능을 추가한다.

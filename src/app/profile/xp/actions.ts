@@ -42,6 +42,7 @@ export type XpLedgerItem = {
   amount: number;
   createdAt: string;
   type: "gain" | "spend";
+  unit: "XP · 스텔" | "스텔";
 };
 
 export type XpLedgerPage = {
@@ -155,6 +156,7 @@ export async function loadXpLedgerPage(cursor?: Partial<XpLedgerCursor> | null) 
       amount: event.amount,
       createdAt: event.created_at,
       type: "gain",
+      unit: "XP · 스텔",
       cursorCreatedAt: event.created_at,
       cursorId: event.id
     };
@@ -166,6 +168,7 @@ export async function loadXpLedgerPage(cursor?: Partial<XpLedgerCursor> | null) 
     amount: purchase.shop_items?.cost ?? 0,
     createdAt: purchase.purchased_at,
     type: "spend",
+    unit: "스텔",
     cursorCreatedAt: purchase.purchased_at,
     cursorId: purchase.shop_item_id
   }));
@@ -182,6 +185,8 @@ export async function loadXpLedgerPage(cursor?: Partial<XpLedgerCursor> | null) 
     amount: item.amount,
     createdAt: item.createdAt,
     type: item.type
+    ,
+    unit: item.unit
   }));
 
   return {

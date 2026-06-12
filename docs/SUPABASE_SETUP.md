@@ -143,6 +143,8 @@ supabase/migrations/20260612160000_sync_basic_catalog_items.sql
 supabase/sql_editor/15_sync_basic_catalog_items.sql
 supabase/migrations/20260612180000_add_attendance_and_system_catalog.sql
 supabase/sql_editor/16_attendance_and_system_catalog.sql
+supabase/migrations/20260612200000_add_stell_and_unlocks.sql
+supabase/sql_editor/17_stell_and_unlocks.sql
 ```
 
 첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
@@ -153,9 +155,11 @@ set is_admin = true
 where email = '관리자 이메일';
 ```
 
-관리자 계정은 `/admin`에서 기본 제공 아이템을 포함한 전체 카탈로그, 상품 썸네일, 젬 가격, 판매 기간, 획득 조건과 인간·고양이별 착용 정보를 관리한다. `15_sync_basic_catalog_items.sql`을 적용하면 코드에 포함된 인간 기본 레이어와 고양이 기본 패턴이 관리자 목록에 등록되며 실제 상점 구매 대상에서는 제외된다.
+관리자 계정은 `/admin`에서 기본 제공 아이템을 포함한 전체 카탈로그, 상품 썸네일, 스텔 가격, 판매 기간, 해금 조건과 인간·고양이별 착용 정보를 관리한다. `15_sync_basic_catalog_items.sql`을 적용하면 코드에 포함된 인간 기본 레이어와 고양이 기본 패턴이 관리자 목록에 등록되며 실제 상점 구매 대상에서는 제외된다.
 
 `16_attendance_and_system_catalog.sql`은 코드 내장 기본 아이템 보호 여부를 별도 관리하고, 사용자별 하루 한 번 출석 날짜를 저장한다. 작업시간 보상의 획득 조건 수치는 누적 작업 **분**, 출석 보상은 누적 출석 **일수** 기준이다.
+
+`17_stell_and_unlocks.sql`은 경험치와 분리된 스텔 잔액, 스텔 구매 상품의 레벨 해금 조건, 출석·작업시간 달성 후 무료로 받는 함수를 추가한다. 기존 `xp_current` 값은 최초 스텔 잔액으로 이전되며 이후 경험치 보상과 같은 수량의 스텔이 별도로 적립된다.
 
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 
@@ -191,7 +195,7 @@ supabase/migrations/20260603090000_add_query_indexes.sql
 supabase/migrations/20260605110000_add_xp_ledger_cursor_indexes.sql
 ```
 
-`20260603090000_add_query_indexes.sql`은 기본 조회 경로용 인덱스이고, `20260605110000_add_xp_ledger_cursor_indexes.sql`은 XP/재화 기록의 커서 페이지네이션 정렬 기준에 맞춘 인덱스다. 두 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 직접 실행하려면 아래 파일도 함께 실행한다.
+`20260603090000_add_query_indexes.sql`은 기본 조회 경로용 인덱스이고, `20260605110000_add_xp_ledger_cursor_indexes.sql`은 경험치·스텔 기록의 커서 페이지네이션 정렬 기준에 맞춘 인덱스다. 두 migration은 필요한 테이블이 있을 때만 인덱스를 만들도록 방어되어 있다. Supabase SQL Editor에서 직접 실행하려면 아래 파일도 함께 실행한다.
 
 ```text
 supabase/sql_editor/10_xp_ledger_cursor_indexes.sql

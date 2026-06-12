@@ -23,7 +23,9 @@ import type { CharacterSpecies } from "@/lib/character-assets";
 import type { ShopItemVariant } from "@/lib/shop-catalog";
 import {
   BASIC_CATALOG_SCHEMA_MESSAGE,
-  isMissingBasicCatalogSchema
+  isMissingBasicCatalogSchema,
+  isMissingStellSchema,
+  STELL_SCHEMA_MESSAGE
 } from "@/lib/shop-schema";
 import { AdminDeleteButton } from "@/components/admin-delete-button";
 
@@ -47,6 +49,7 @@ type AdminShopItem = {
   cost: number;
   unlock_method: "gem" | "attendance" | "focus";
   unlock_requirement: number;
+  required_level: number;
   available_from: string | null;
   available_until: string | null;
   is_active: boolean;
@@ -69,6 +72,7 @@ type AdminCharacterRow = {
   species: CharacterSpecies;
   level: number;
   xp_current: number;
+  stell_balance: number;
   xp_total: number;
   is_active: boolean;
   character_inventory: AdminInventoryRow | AdminInventoryRow[] | null;
@@ -142,9 +146,9 @@ function formatDate(value: string) {
 
 function unlockLabel(item: AdminShopItem) {
   if (item.is_basic) return "기본 제공";
-  if (item.unlock_method === "gem") return `${item.cost.toLocaleString()} 젬`;
-  if (item.unlock_method === "attendance") return `${item.unlock_requirement.toLocaleString()}일 출석`;
-  return `${item.unlock_requirement.toLocaleString()}분 작업`;
+  if (item.unlock_method === "gem") return `Lv.${item.required_level} · ${item.cost.toLocaleString()} 스텔`;
+  if (item.unlock_method === "attendance") return `${item.unlock_requirement.toLocaleString()}일 출석 후 받기`;
+  return `${item.unlock_requirement.toLocaleString()}분 작업 후 받기`;
 }
 
 function itemSlot(item: AdminShopItem) {
@@ -245,18 +249,23 @@ function CatalogItemForm({ item }: { item?: AdminShopItem }) {
           획득 방식
           <select name="unlockMethod" defaultValue={item?.is_basic ? "basic" : item?.unlock_method ?? "gem"} disabled={item?.is_system}>
             <option value="basic">기본 제공</option>
-            <option value="gem">젬 구매</option>
-            <option value="attendance">출석 보상</option>
-            <option value="focus">작업시간 보상</option>
+            <option value="gem">레벨 해금 후 스텔 구매</option>
+            <option value="attendance">출석 달성 후 받기</option>
+            <option value="focus">작업시간 달성 후 받기</option>
           </select>
           {item?.is_system ? <input type="hidden" name="unlockMethod" value="basic" /> : null}
           {item?.is_system ? <span className="admin-field-help">코드 내장 기본 코스튬은 캐릭터 생성과 연결되어 있어 획득 방식을 바꿀 수 없습니다.</span> : null}
         </label>
-        <label>젬 가격<input name="cost" type="number" min="0" defaultValue={item?.cost ?? 0} /></label>
+        <label>스텔 가격<input name="cost" type="number" min="0" defaultValue={item?.cost ?? 0} /></label>
+        <label>
+          구매 해금 레벨
+          <input name="requiredLevel" type="number" min="1" defaultValue={item?.required_level ?? 1} />
+          <span className="admin-field-help">스텔 구매 아이템만 사용합니다. 레벨 달성 후에도 가격은 그대로 지불합니다.</span>
+        </label>
         <label>
           획득 조건 수치
           <input name="unlockRequirement" type="number" min="0" defaultValue={item?.unlock_requirement ?? 0} />
-          <span className="admin-field-help">출석 보상은 일수, 작업시간 보상은 누적 작업 분을 입력합니다.</span>
+          <span className="admin-field-help">출석·작업시간 아이템은 조건 달성 후 가격 없이 받습니다.</span>
         </label>
         <label>판매 시작<input name="availableFrom" type="datetime-local" defaultValue={dateTimeValue(item?.available_from ?? null)} /></label>
         <label>판매 종료<input name="availableUntil" type="datetime-local" defaultValue={dateTimeValue(item?.available_until ?? null)} /></label>
@@ -355,7 +364,7 @@ function UserList({ profiles, page }: { profiles: AdminProfileRow[]; page: numbe
       {visibleProfiles.map((profile) => {
         const characters = charactersOf(profile);
         const totalXp = characters.reduce((sum, character) => sum + character.xp_total, 0);
-        const gems = characters.reduce((sum, character) => sum + character.xp_current, 0);
+        const stell = characters.reduce((sum, character) => sum + character.stell_balance, 0);
         const ownedItems = characters.reduce((sum, character) => sum + inventoryCount(character), 0);
         const attendanceCount = Array.isArray(profile.user_attendance)
           ? profile.user_attendance.length
@@ -373,7 +382,7 @@ function UserList({ profiles, page }: { profiles: AdminProfileRow[]; page: numbe
             <div className="admin-user-stats">
               <span>가입 {formatDate(profile.created_at)}</span>
               <span>캐릭터 {characters.length}</span>
-              <span>젬 {gems.toLocaleString()}</span>
+              <span>스텔 {stell.toLocaleString()}</span>
               <span>누적 XP {totalXp.toLocaleString()}</span>
               <span>보유 아이템 {ownedItems}</span>
               <span>출석 {attendanceCount}일</span>
@@ -435,53 +444,67 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     : "all";
   const itemResult = await supabase
     .from("shop_items")
-    .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, is_basic, is_system, slot, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
+    .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, required_level, available_from, available_until, is_active, is_basic, is_system, slot, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
     .returns<AdminShopItem[]>();
   const missingBasicCatalogSchema = isMissingBasicCatalogSchema(itemResult.error);
+  const missingStellSchema = isMissingStellSchema(itemResult.error);
   const missingSystemColumn = itemResult.error?.message.includes("is_system") ?? false;
-  const basicFallbackItemResult = missingSystemColumn
+  const basicFallbackItemResult = missingSystemColumn || missingStellSchema
     ? await supabase
         .from("shop_items")
         .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, is_basic, slot, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
     : null;
-  const fallbackItemResult = missingBasicCatalogSchema && !missingSystemColumn
+  const fallbackItemResult = missingBasicCatalogSchema && !missingSystemColumn && !missingStellSchema
     ? await supabase
         .from("shop_items")
         .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, slot, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true })
     : null;
-  const items = missingSystemColumn
-    ? (basicFallbackItemResult?.data ?? []).map((item) => ({ ...item, is_system: item.code.startsWith("basic_") })) as AdminShopItem[]
+  const items = missingSystemColumn || missingStellSchema
+    ? (basicFallbackItemResult?.data ?? []).map((item) => ({
+        ...item,
+        is_system: "is_system" in item ? Boolean(item.is_system) : item.code.startsWith("basic_"),
+        required_level: 1
+      })) as AdminShopItem[]
     : missingBasicCatalogSchema
     ? (fallbackItemResult?.data ?? []).map((item) => ({ ...item, is_basic: false, is_system: false })) as AdminShopItem[]
     : itemResult.data ?? [];
-  const itemError = missingSystemColumn
+  const itemError = missingSystemColumn || missingStellSchema
     ? basicFallbackItemResult?.error
     : missingBasicCatalogSchema ? fallbackItemResult?.error : itemResult.error;
   const selectedItem = edit ? (items ?? []).find((item) => item.id === edit) : undefined;
   const profileResult = activeView === "users"
     ? await supabase
         .from("profiles")
-        .select("id, email, display_name, is_admin, created_at, user_attendance(attended_on), characters(id, display_name, species, level, xp_current, xp_total, is_active, character_inventory(shop_item_id))")
+        .select("id, email, display_name, is_admin, created_at, user_attendance(attended_on), characters(id, display_name, species, level, xp_current, xp_total, stell_balance, is_active, character_inventory(shop_item_id))")
         .order("created_at", { ascending: false })
         .returns<AdminProfileRow[]>()
     : { data: [], error: null };
   const missingAttendanceSchema = profileResult.error?.message.includes("user_attendance") ?? false;
-  const fallbackProfileResult = missingAttendanceSchema
+  const missingProfileStellSchema = profileResult.error?.message.includes("stell_balance") ?? false;
+  const fallbackProfileResult = missingAttendanceSchema || missingProfileStellSchema
     ? await supabase
         .from("profiles")
         .select("id, email, display_name, is_admin, created_at, characters(id, display_name, species, level, xp_current, xp_total, is_active, character_inventory(shop_item_id))")
         .order("created_at", { ascending: false })
     : null;
   const profiles = missingAttendanceSchema
-    ? (fallbackProfileResult?.data ?? []).map((profile) => ({ ...profile, user_attendance: null })) as AdminProfileRow[]
+    || missingProfileStellSchema
+    ? (fallbackProfileResult?.data ?? []).map((profile) => ({
+        ...profile,
+        user_attendance: null,
+        characters: (profile.characters ?? []).map((character) => ({
+          ...character,
+          stell_balance: character.xp_current
+        }))
+      })) as AdminProfileRow[]
     : profileResult.data ?? [];
-  const profileError = missingAttendanceSchema ? fallbackProfileResult?.error : profileResult.error;
+  const profileError = missingAttendanceSchema || missingProfileStellSchema ? fallbackProfileResult?.error : profileResult.error;
 
   return (
     <main className="simple-shell admin-shell">
@@ -495,6 +518,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       </nav>
       {message ? <p className="notice">{message}</p> : null}
       {missingBasicCatalogSchema ? <p className="notice">{BASIC_CATALOG_SCHEMA_MESSAGE}</p> : null}
+      {missingStellSchema ? <p className="notice">{STELL_SCHEMA_MESSAGE}</p> : null}
       {missingAttendanceSchema ? <p className="notice">출석 기록 DB가 아직 반영되지 않았어요. SQL Editor에서 16_attendance_and_system_catalog.sql을 실행해 주세요.</p> : null}
       {itemError ? <p className="notice">{itemError.message}</p> : null}
       {profileError ? <p className="notice">{profileError.message}</p> : null}

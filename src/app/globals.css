@@ -1806,6 +1806,14 @@ button {
   background: #fff1ef;
 }
 
+.shop-item-card.locked {
+  border-style: dashed;
+}
+
+.shop-item-card.locked .price-label {
+  color: var(--muted);
+}
+
 .price-label {
   color: var(--primary);
 }

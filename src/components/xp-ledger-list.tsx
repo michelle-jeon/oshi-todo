@@ -88,8 +88,8 @@ export function XpLedgerList({ initialPage }: XpLedgerListProps) {
     <div className="xp-ledger-list">
       <div className="xp-ledger-status" aria-live="polite">
         <p className="subtle">
-          최근 {items.length.toLocaleString()}개 표시 · 획득 {shownGainedTotal.toLocaleString()} XP · 사용{" "}
-          {shownSpentTotal.toLocaleString()} XP
+          최근 {items.length.toLocaleString()}개 표시 · 경험치·스텔 획득 {shownGainedTotal.toLocaleString()} · 스텔 사용{" "}
+          {shownSpentTotal.toLocaleString()}
         </p>
       </div>
 
@@ -105,12 +105,12 @@ export function XpLedgerList({ initialPage }: XpLedgerListProps) {
           </div>
           <strong className={item.type === "gain" ? "xp-gain" : "xp-spend"}>
             {item.type === "gain" ? "+" : "-"}
-            {item.amount.toLocaleString()} XP
+            {item.amount.toLocaleString()} {item.unit}
           </strong>
         </article>
       ))}
 
-      {items.length === 0 ? <div className="empty-state">XP 기록이 아직 없어요.</div> : null}
+      {items.length === 0 ? <div className="empty-state">경험치·스텔 기록이 아직 없어요.</div> : null}
       {errorMessage ? <p className="notice compact-notice">{errorMessage}</p> : null}
       <div className="xp-ledger-sentinel" ref={sentinelRef} aria-hidden="true" />
       {isLoading || isPending ? (
