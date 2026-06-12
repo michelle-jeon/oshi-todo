@@ -26,6 +26,7 @@ export type ShopBrowserItem = {
   species: CharacterSpecies | null;
   cost: number;
   payload: Record<string, string>;
+  thumbnailUrl?: string | null;
 };
 
 type ShopBrowserProps = {
@@ -286,7 +287,6 @@ export function ShopBrowser({
           const selected = cartBySlot[item.slot]?.id === item.id;
           const wrongSpecies = item.species !== activeSpecies;
           const tooExpensive = !selected && cartTotal + item.cost > currentXp;
-          const catalogItem = getHumanItemFromPayload(item.payload);
 
           return (
             <article
@@ -309,10 +309,14 @@ export function ShopBrowser({
               tabIndex={wrongSpecies ? -1 : 0}
             >
               <span className="character-item-image">
-                <img src={catalogItem?.src ?? asset.src} alt="" />
+                {item.thumbnailUrl ? (
+                  <img src={item.thumbnailUrl} alt="" />
+                ) : (
+                  <span className="character-item-placeholder">상품 이미지 준비 중</span>
+                )}
               </span>
               <span>{item.name}</span>
-              <strong className="price-label">{item.cost} XP</strong>
+              <strong className="price-label">{item.cost} 젬</strong>
               {owned ? (
                 <span className="owned-label">보유중</span>
               ) : (
@@ -326,14 +330,14 @@ export function ShopBrowser({
 
       <div className="shop-cart-panel">
         <div>
-          <p className="subtle">사용 가능 XP</p>
-          <strong>{currentXp.toLocaleString()} XP</strong>
+          <p className="subtle">사용 가능 젬</p>
+          <strong>{currentXp.toLocaleString()} 젬</strong>
         </div>
         <div className="shop-cart-total">
           <p className="subtle">사용 예정</p>
-          <strong>{cartItems.length > 0 ? `${cartTotal.toLocaleString()} XP` : "0 XP"}</strong>
+          <strong>{cartItems.length > 0 ? `${cartTotal.toLocaleString()} 젬` : "0 젬"}</strong>
           {cartItems.length > 0 && cartTotal <= currentXp ? (
-            <span className="subtle">구매 후 {remainingXp.toLocaleString()} XP</span>
+            <span className="subtle">구매 후 {remainingXp.toLocaleString()} 젬</span>
           ) : null}
         </div>
         {cartItems.length > 0 ? (
@@ -354,7 +358,7 @@ export function ShopBrowser({
         <button className="primary-button" type="button" onClick={checkout} disabled={!canCheckout || isPending}>
           {isPending ? "구매 중" : "한 번에 구매"}
         </button>
-        {cartTotal > currentXp ? <p className="subtle">XP가 부족해요.</p> : null}
+        {cartTotal > currentXp ? <p className="subtle">젬이 부족해요.</p> : null}
       </div>
 
       <div className="form-actions">

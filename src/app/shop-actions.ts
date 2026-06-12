@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/server";
 
 function getPurchaseErrorMessage(message: string) {
   if (message.includes("Not enough XP")) {
-    return "사용 가능 XP가 부족해요.";
+    return "사용 가능 젬이 부족해요.";
   }
 
   if (message.includes("Item already purchased")) {

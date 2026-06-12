@@ -58,3 +58,19 @@ export async function requireUser() {
 
   return user;
 }
+
+export async function requireAdmin() {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("is_admin")
+    .eq("id", user.id)
+    .maybeSingle<{ is_admin: boolean }>();
+
+  if (!profile?.is_admin) {
+    redirect("/?message=관리자 권한이 필요해요." as Route);
+  }
+
+  return user;
+}

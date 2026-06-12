@@ -22,11 +22,22 @@ export type HumanCustomizationKey =
   | "eyeId"
   | "accessoryId";
 
+export type HumanLayerAssetKey =
+  | "bodyAssetUrl"
+  | "shoesAssetUrl"
+  | "bottomAssetUrl"
+  | "topAssetUrl"
+  | "hairAssetUrl"
+  | "mouthAssetUrl"
+  | "eyeAssetUrl"
+  | "accessoryAssetUrl";
+
 export type HumanLayerCategoryDefinition = {
   id: HumanLayerCategory;
   label: string;
   slot: string;
   customizationKey: HumanCustomizationKey;
+  assetKey: HumanLayerAssetKey;
   defaultItemId: string;
   layerOrder: number;
 };
@@ -36,10 +47,12 @@ export type HumanLayerItem = {
   category: HumanLayerCategory;
   label: string;
   src?: string;
+  thumbnailSrc?: string;
   layerOrder?: number;
   color?: string;
   colorLabel?: string;
   isBasic: boolean;
+  selectionPayload?: Record<string, string>;
 };
 
 export type CharacterLayer = {
@@ -103,6 +116,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "바디",
     slot: "human_body",
     customizationKey: "bodyId",
+    assetKey: "bodyAssetUrl",
     defaultItemId: "basic-17",
     layerOrder: 10
   },
@@ -111,6 +125,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "신발",
     slot: "human_shoes",
     customizationKey: "shoesId",
+    assetKey: "shoesAssetUrl",
     defaultItemId: "sneakers-black",
     layerOrder: 20
   },
@@ -119,6 +134,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "하의",
     slot: "human_bottom",
     customizationKey: "bottomId",
+    assetKey: "bottomAssetUrl",
     defaultItemId: "straight-pants-ivory",
     layerOrder: 30
   },
@@ -127,6 +143,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "상의",
     slot: "human_top",
     customizationKey: "topId",
+    assetKey: "topAssetUrl",
     defaultItemId: "short-sleeve-shirt-blue",
     layerOrder: 40
   },
@@ -135,6 +152,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "헤어",
     slot: "human_hair",
     customizationKey: "hairId",
+    assetKey: "hairAssetUrl",
     defaultItemId: "tousled-brown",
     layerOrder: 50
   },
@@ -143,6 +161,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "입",
     slot: "human_mouth",
     customizationKey: "mouthId",
+    assetKey: "mouthAssetUrl",
     defaultItemId: "smile",
     layerOrder: 60
   },
@@ -151,6 +170,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "눈",
     slot: "human_eyes",
     customizationKey: "eyeId",
+    assetKey: "eyeAssetUrl",
     defaultItemId: "long-black",
     layerOrder: 70
   },
@@ -159,6 +179,7 @@ export const HUMAN_LAYER_CATEGORIES: HumanLayerCategoryDefinition[] = [
     label: "악세서리",
     slot: "accessory",
     customizationKey: "accessoryId",
+    assetKey: "accessoryAssetUrl",
     defaultItemId: "none",
     layerOrder: 80
   }
@@ -408,9 +429,19 @@ export function getHumanCustomization(customization?: Record<string, string> | s
 }
 
 export function getHumanItemPayload(item: HumanLayerItem) {
+  if (item.selectionPayload) {
+    return item.selectionPayload;
+  }
+
   const category = getHumanCategory(item.category);
 
-  return category ? { [category.customizationKey]: item.id } : {};
+  return category
+    ? { [category.customizationKey]: item.id, [category.assetKey]: "" }
+    : {};
+}
+
+export function getHumanItemThumbnail(item: HumanLayerItem) {
+  return item.thumbnailSrc;
 }
 
 export function getCharacterAsset(
@@ -434,20 +465,21 @@ export function getCharacterAsset(
   const selection = getHumanCustomization(customization);
   const humanLayers = HUMAN_LAYER_CATEGORIES.flatMap((category) => {
     const selectedId = selection[category.customizationKey];
+    const customLayerSrc = selection[category.assetKey];
     const item = HUMAN_LAYER_ITEMS.find(
       (candidate) => candidate.category === category.id && candidate.id === selectedId
     );
 
-    if (!item?.src) {
+    if (!customLayerSrc && !item?.src) {
       return [];
     }
 
     return [
       {
-        id: `${category.id}:${item.id}`,
-        src: item.src,
-        alt: `인간 ${item.label}${item.colorLabel ? ` ${item.colorLabel}` : ""}`,
-        layerOrder: item.layerOrder ?? category.layerOrder
+        id: `${category.id}:${selectedId}`,
+        src: customLayerSrc ?? item?.src ?? "",
+        alt: `인간 ${item?.label ?? category.label}${item?.colorLabel ? ` ${item.colorLabel}` : ""}`,
+        layerOrder: item?.layerOrder ?? category.layerOrder
       }
     ];
   }).sort((a, b) => a.layerOrder - b.layerOrder);

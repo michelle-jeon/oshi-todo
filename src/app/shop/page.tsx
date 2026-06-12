@@ -3,6 +3,11 @@ import { ShopBrowser } from "@/components/shop-browser";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { CharacterSpecies } from "@/lib/character-assets";
+import {
+  getShopItemForSpecies,
+  getShopItemVariants,
+  type ShopItemVariant
+} from "@/lib/shop-catalog";
 
 type ShopPageProps = {
   searchParams: Promise<{
@@ -26,6 +31,8 @@ type ShopItem = {
   species: CharacterSpecies | null;
   cost: number;
   payload: Record<string, string>;
+  thumbnail_url?: string | null;
+  shop_item_variants?: ShopItemVariant | ShopItemVariant[] | null;
 };
 
 export default async function ShopPage({ searchParams }: ShopPageProps) {
@@ -41,8 +48,9 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   const [{ data: shopItems }, { data: inventory }] = await Promise.all([
     supabase
       .from("shop_items")
-      .select("id, code, name, slot, species, cost, payload")
+      .select("id, code, name, slot, species, cost, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url)")
       .eq("is_active", true)
+      .eq("unlock_method", "gem")
       .order("cost", { ascending: true })
       .returns<ShopItem[]>(),
     character
@@ -75,7 +83,21 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
         }}
         activeSpecies={character?.species ?? "human"}
         currentXp={character?.xp_current ?? 0}
-        items={shopItems ?? []}
+        items={(shopItems ?? []).flatMap((item) => {
+          const variantSpecies = getShopItemVariants(item).map((variant) => variant.species);
+          const speciesList =
+            variantSpecies.length > 0
+              ? variantSpecies
+              : item.species
+                ? [item.species]
+                : (["human", "cat"] as const);
+
+          return speciesList.flatMap((species) => {
+            const normalized = getShopItemForSpecies(item, species);
+
+            return normalized ? [{ ...normalized, thumbnailUrl: item.thumbnail_url }] : [];
+          });
+        })}
         ownedIds={ownedIds}
       />
     </main>

@@ -28,6 +28,9 @@ const values = items
   )
   .join(",\n");
 
-const sql = `insert into public.shop_items (code, name, slot, species, cost, payload)\nvalues\n${values}\non conflict (code) do update set\n  name = excluded.name,\n  slot = excluded.slot,\n  species = excluded.species,\n  cost = excluded.cost,\n  payload = excluded.payload,\n  is_active = true;\n`;
+const sql =
+  items.length > 0
+    ? `insert into public.shop_items (code, name, slot, species, cost, payload)\nvalues\n${values}\non conflict (code) do update set\n  name = excluded.name,\n  slot = excluded.slot,\n  species = excluded.species,\n  cost = excluded.cost,\n  payload = excluded.payload,\n  is_active = true;\n`
+    : "-- data/shop-items.json에 등록된 seed 상품이 없습니다.\n";
 
 process.stdout.write(sql);

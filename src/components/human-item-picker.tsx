@@ -4,6 +4,7 @@
 
 import {
   getHumanCategory,
+  getHumanItemThumbnail,
   getHumanItemStyleKey,
   shouldGroupHumanItemColors,
   type HumanLayerCategory,
@@ -80,7 +81,11 @@ export function HumanItemPicker({
               onClick={() => onSelect(displayItem)}
             >
               <span className="character-item-image">
-                {displayItem.src ? <img src={displayItem.src} alt="" /> : null}
+                {getHumanItemThumbnail(displayItem) ? (
+                  <img src={getHumanItemThumbnail(displayItem)} alt="" />
+                ) : (
+                  <span className="character-item-placeholder">상품 이미지 준비 중</span>
+                )}
               </span>
               <span>{displayItem.label}</span>
               {sourceLabel ? <small>{sourceLabel}</small> : null}

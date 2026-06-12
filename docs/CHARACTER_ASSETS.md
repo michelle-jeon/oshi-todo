@@ -48,11 +48,19 @@ public/assets/characters/human/layers/accessory
 
 모든 레이어는 같은 캔버스 크기와 캐릭터 위치를 유지한 투명 PNG로 만든다.
 
+## 코스튬 썸네일과 착용 레이어
+
+- 코스튬 화면의 아이템 카드에는 상품 자체를 알아보기 쉬운 작은 `thumbnail_url` 이미지를 사용한다.
+- 아바타에 직접 합성하는 큰 투명 PNG는 종족별 `shop_item_variants.layer_asset_url`에 저장한다.
+- 같은 상품도 인간과 고양이에서 착용 위치가 다르면 종족별 변형에 서로 다른 레이어 이미지를 연결한다.
+- 썸네일이 아직 없으면 코스튬 카드에는 레이어 이미지 대신 `상품 이미지 준비 중`을 표시한다.
+
 ## 기본 제공과 상점 아이템
 
 - `HUMAN_LAYER_ITEMS`에서 `isBasic: true`인 아이템은 캐릭터 생성부터 사용할 수 있다.
 - 기본 제공 아이템은 옷장에는 표시하지만 상점에는 표시하지 않는다.
 - 상점 아이템은 DB의 카테고리 슬롯과 payload 선택 키를 맞춘다.
+- 관리자 페이지에서 등록하는 상품은 공통 정보는 `shop_items`, 종족별 착용 정보는 `shop_item_variants`에 저장한다.
 - 새 상점 슬롯을 추가한 뒤에는 `supabase/sql_editor/12_human_character_slots.sql`을 적용한다.
 
 카테고리별 슬롯과 선택 키는 아래와 같다.

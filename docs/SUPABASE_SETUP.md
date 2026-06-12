@@ -132,6 +132,23 @@ supabase/sql_editor/09_shop_items_seed.sql
 
 이 파일도 같은 `on conflict (code) do update` 방식을 쓰므로 여러 번 실행해도 기존 상점 아이템을 최신 값으로 맞춘다.
 
+코스튬 카탈로그와 관리자 페이지를 사용하려면 아래 migration 또는 SQL Editor 파일을 적용한다.
+
+```text
+supabase/migrations/20260612110000_add_catalog_admin.sql
+supabase/sql_editor/13_catalog_admin.sql
+```
+
+첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
+
+```sql
+update public.profiles
+set is_admin = true
+where email = '관리자 이메일';
+```
+
+관리자 계정은 `/admin`에서 상품 썸네일, 젬 가격, 판매 기간, 획득 조건과 인간·고양이별 착용 정보를 관리한다.
+
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 
 ```text

@@ -1308,24 +1308,25 @@ button {
 }
 
 .character-item-grid {
-  grid-template-columns: repeat(3, minmax(108px, 1fr));
+  grid-template-columns: repeat(4, minmax(92px, 1fr));
 }
 
 .character-item-card {
-  min-height: 154px;
+  min-height: 132px;
   flex-direction: column;
-  padding: 8px;
+  padding: 10px;
   font-size: 12px;
 }
 
 .character-item-image {
-  width: 100%;
+  width: min(100%, 104px);
   aspect-ratio: 1;
   display: grid;
   place-items: center;
   overflow: hidden;
   border-radius: 6px;
   background: #faf7f1;
+  padding: 12px;
 }
 
 .character-item-image img {
@@ -1333,6 +1334,59 @@ button {
   height: 100%;
   object-fit: contain;
   image-rendering: pixelated;
+}
+
+.character-item-placeholder {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.admin-shell {
+  max-width: 1180px;
+}
+
+.admin-intro,
+.admin-form-heading,
+.admin-check-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-form-heading {
+  justify-content: space-between;
+}
+
+.admin-item-list,
+.admin-item-form {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-form-grid,
+.admin-variant-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-item-form label,
+.admin-variant-fieldset {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-item-form textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.admin-variant-fieldset {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
 }
 
 .character-slot-grid {
@@ -2974,7 +3028,12 @@ button {
   }
 
   .character-item-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-form-grid,
+  .admin-variant-grid {
+    grid-template-columns: 1fr;
   }
 
   .work-summary-grid {

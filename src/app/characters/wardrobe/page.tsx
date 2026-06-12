@@ -4,6 +4,7 @@ import { WardrobeEditor } from "@/components/wardrobe-editor";
 import type { CharacterSpecies } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getShopItemForSpecies, type ShopItemVariant } from "@/lib/shop-catalog";
 
 type CharacterRow = {
   id: string;
@@ -16,9 +17,12 @@ type InventoryShopItem = {
   id: string;
   code: string;
   name: string;
+  cost: number;
   slot: string;
   species: CharacterSpecies | null;
   payload: Record<string, string>;
+  thumbnail_url?: string | null;
+  shop_item_variants?: ShopItemVariant | ShopItemVariant[] | null;
 };
 
 type InventoryRow = {
@@ -48,12 +52,16 @@ export default async function WardrobePage({ searchParams }: WardrobePageProps) 
 
   const { data: inventory } = await supabase
     .from("character_inventory")
-    .select("shop_items(id, code, name, slot, species, payload)")
+    .select("shop_items(id, code, name, cost, slot, species, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url))")
     .eq("character_id", character.id)
     .returns<InventoryRow[]>();
   const inventoryItems = (inventory ?? [])
     .flatMap((row) => row.shop_items ?? [])
-    .filter((item) => item.species === null || item.species === character.species);
+    .flatMap((item) => {
+      const normalized = getShopItemForSpecies(item, character.species);
+
+      return normalized ? [{ ...normalized, thumbnailUrl: item.thumbnail_url }] : [];
+    });
 
   return (
     <main className="auth-shell">

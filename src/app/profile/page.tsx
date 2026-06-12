@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 type ProfileRow = {
   display_name: string | null;
   email: string | null;
+  is_admin?: boolean;
 };
 
 function formatDate(value?: string) {
@@ -60,7 +61,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data: profile } = await supabase
     .from("profiles")
-    .select("display_name, email")
+    .select("display_name, email, is_admin")
     .eq("id", user.id)
     .maybeSingle<ProfileRow>();
   const providers = getProviders(user);
@@ -132,6 +133,11 @@ export default async function ProfilePage() {
 
         <section className="panel profile-panel">
           <h2>계정 작업</h2>
+          {profile?.is_admin ? (
+            <Link className="ghost-button" href={"/admin" as Route}>
+              관리자 페이지
+            </Link>
+          ) : null}
           <Link className="ghost-button" href={"/profile/xp" as Route}>
             <Coins size={16} /> XP/재화 기록
           </Link>
