@@ -59,7 +59,7 @@ export async function claimShopItem(shopItemId: string) {
 
   revalidatePath("/shop");
   revalidatePath("/characters/wardrobe");
-  redirect("/shop?message=아이템을 받았어요." as Route);
+  redirect(`/shop?message=${encodeURIComponent("아이템을 받았어요.")}` as Route);
 }
 
 export async function purchaseShopItem(shopItemId: string) {
@@ -84,7 +84,7 @@ export async function purchaseShopItems(shopItemIds: string[]) {
   const uniqueItemIds = Array.from(new Set(shopItemIds.filter(Boolean)));
 
   if (uniqueItemIds.length === 0) {
-    redirect("/shop?message=구매할 아이템을 선택해 주세요." as Route);
+    redirect(`/shop?message=${encodeURIComponent("구매할 아이템을 선택해 주세요.")}` as Route);
   }
 
   for (const shopItemId of uniqueItemIds) {
@@ -99,5 +99,5 @@ export async function purchaseShopItems(shopItemIds: string[]) {
 
   revalidatePath("/");
   revalidatePath("/shop");
-  redirect("/shop?message=선택한 아이템을 구매했어요." as Route);
+  redirect(`/shop?message=${encodeURIComponent("선택한 아이템을 구매했어요.")}` as Route);
 }

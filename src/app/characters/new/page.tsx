@@ -35,7 +35,7 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
     .maybeSingle<{ display_name: string; customization: Record<string, string> }>();
 
   if ((count ?? 0) >= MAX_CHARACTER_SLOTS && !isLegacyStarterCharacter(activeCharacter)) {
-    redirect("/characters?message=캐릭터 슬롯이 모두 찼어요." as Route);
+    redirect(`/characters?message=${encodeURIComponent("캐릭터 슬롯이 모두 찼어요.")}` as Route);
   }
 
   const isFirstCharacter = (count ?? 0) === 0 || isLegacyStarterCharacter(activeCharacter);

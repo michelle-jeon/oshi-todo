@@ -12,7 +12,7 @@ export async function createPlazaRoom(formData: FormData) {
   const visibility = String(formData.get("visibility") ?? "private") === "public" ? "public" : "private";
 
   if (name.length < 2) {
-    redirect("/plaza?message=광장 이름은 두 글자 이상이어야 해요." as Route);
+    redirect(`/plaza?message=${encodeURIComponent("광장 이름은 두 글자 이상이어야 해요.")}` as Route);
   }
 
   const { data, error } = await supabase

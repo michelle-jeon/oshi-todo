@@ -7,6 +7,10 @@ type CharacterBackgroundLayerProps = {
 export function CharacterBackgroundLayer({ customization }: CharacterBackgroundLayerProps) {
   const background = getCharacterBackground(customization);
 
+  if (background.id === "none") {
+    return null;
+  }
+
   return (
     <span
       aria-hidden="true"

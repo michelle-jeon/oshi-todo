@@ -35,7 +35,7 @@ export function HumanItemPicker({
       map.set(key, group);
       return map;
     }, new Map<string, HumanLayerItem[]>())
-  );
+  ).sort(([, a], [, b]) => Number(b[0]?.id === "none") - Number(a[0]?.id === "none"));
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? items[0];
   const selectedStyleKey = selectedItem
     ? groupsColors

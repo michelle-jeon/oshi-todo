@@ -209,7 +209,7 @@ export async function createCharacter(formData: FormData) {
   ]);
 
   if ((count ?? 0) >= MAX_CHARACTER_SLOTS && !isLegacyStarterCharacter(activeCharacter)) {
-    redirect("/characters?message=캐릭터 슬롯이 모두 찼어요." as Route);
+    redirect(`/characters?message=${encodeURIComponent("캐릭터 슬롯이 모두 찼어요.")}` as Route);
   }
 
   const customization =
@@ -283,7 +283,7 @@ export async function selectCharacter(formData: FormData) {
   const characterId = String(formData.get("characterId") ?? "");
 
   if (!characterId) {
-    redirect("/characters?message=캐릭터를 선택해 주세요." as Route);
+    redirect(`/characters?message=${encodeURIComponent("캐릭터를 선택해 주세요.")}` as Route);
   }
 
   await supabase
@@ -321,7 +321,7 @@ export async function updateWardrobe(formData: FormData) {
     .single<{ id: string; species: CharacterSpecies }>();
 
   if (characterError || !activeCharacter) {
-    redirect("/characters/new?message=먼저 캐릭터를 생성해 주세요." as Route);
+    redirect(`/characters/new?message=${encodeURIComponent("먼저 캐릭터를 생성해 주세요.")}` as Route);
   }
 
   const { data: inventory, error: inventoryError } = await supabase
@@ -343,7 +343,7 @@ export async function updateWardrobe(formData: FormData) {
     });
 
   if (!isWardrobeSelectionAllowed(activeCharacter.species, selection, inventoryItems)) {
-    redirect("/characters/wardrobe?message=보유하지 않은 아이템은 장착할 수 없어요." as Route);
+    redirect(`/characters/wardrobe?message=${encodeURIComponent("보유하지 않은 아이템은 장착할 수 없어요.")}` as Route);
   }
 
   const customization =
@@ -386,5 +386,5 @@ export async function updateWardrobe(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/characters/wardrobe");
-  redirect("/?message=옷장이 저장됐어요." as Route);
+  redirect(`/?message=${encodeURIComponent("옷장이 저장됐어요.")}` as Route);
 }

@@ -11,6 +11,8 @@ import { CharacterCategoryIcon } from "@/components/character-category-icon";
 import { CharacterBackgroundLayer } from "@/components/character-background-layer";
 import {
   getCharacterAsset,
+  COSTUME_NONE_THUMBNAIL,
+  getHumanCategory,
   getHumanDisplayCategories,
   getHumanCustomization,
   getHumanItemCardLabel,
@@ -113,6 +115,19 @@ export function ShopBrowser({
     ? [...getHumanDisplayCategories(), { id: "background", label: "배경", slot: "background" } as const]
     : catTabs;
   const selectedTab = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
+  const humanCategory = species === "human"
+    ? getHumanCategory(activeTab as HumanLayerCategory)
+    : undefined;
+  const nonePayload: Record<string, string> | null =
+    activeTab === "background"
+      ? { backgroundId: "none", backgroundColor: "transparent", backgroundImageUrl: "" }
+      : species === "human" &&
+          humanCategory &&
+          !["body", "eyes", "mouth"].includes(humanCategory.id)
+        ? { [humanCategory.customizationKey]: "none", [humanCategory.assetKey]: "" }
+        : activeTab === "cat-accessory"
+          ? { accessoryId: "none" }
+          : null;
   const visibleItems = items.filter(
     (item) => item.species === species && item.slot === selectedTab.slot
   );
@@ -325,6 +340,27 @@ export function ShopBrowser({
       ) : null}
 
       <div className="wardrobe-grid">
+        {nonePayload ? (
+          <button
+            className={`wardrobe-item shop-item-card ${species !== activeSpecies ? "disabled" : ""} ${
+              Object.entries(nonePayload).every(
+                ([key, value]) => (preview as Record<string, string>)[key] === value
+              )
+                ? "selected"
+                : ""
+            }`}
+            type="button"
+            disabled={species !== activeSpecies}
+            onClick={() => setPreview((current) => applyPayloadToPreview(current, nonePayload))}
+          >
+            <span className="character-item-image">
+              <img src={COSTUME_NONE_THUMBNAIL} alt="" />
+            </span>
+            <span>없음</span>
+            <strong className="price-label">기본 제공</strong>
+            <span className="owned-label">항상 사용 가능</span>
+          </button>
+        ) : null}
         {displayItems.map((item) => {
           const owned = ownedSet.has(item.id);
           const selected = cartBySlot[item.slot]?.id === item.id;
@@ -389,7 +425,7 @@ export function ShopBrowser({
             </article>
           );
         })}
-        {displayItems.length === 0 ? <div className="empty-state">아직 아이템이 없어요.</div> : null}
+        {displayItems.length === 0 && !nonePayload ? <div className="empty-state">아직 아이템이 없어요.</div> : null}
       </div>
 
       <div className="shop-cart-panel">

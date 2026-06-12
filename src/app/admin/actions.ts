@@ -83,11 +83,11 @@ export async function saveCatalogItem(formData: FormData) {
   }
 
   if (!code || !name || !VALID_UNLOCK_METHODS.has(unlockMethod)) {
-    redirect("/admin?message=상품 코드, 이름, 획득 방식을 확인해 주세요." as Route);
+    redirect(`/admin?message=${encodeURIComponent("상품 코드, 이름, 획득 방식을 확인해 주세요.")}` as Route);
   }
 
   if (enabledSpecies.length === 0) {
-    redirect("/admin?message=착용 가능한 종족을 하나 이상 선택해 주세요." as Route);
+    redirect(`/admin?message=${encodeURIComponent("착용 가능한 종족을 하나 이상 선택해 주세요.")}` as Route);
   }
 
   try {
@@ -158,7 +158,7 @@ export async function saveCatalogItem(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/shop");
-  redirect("/admin?message=상품을 저장했어요." as Route);
+  redirect(`/admin?message=${encodeURIComponent("상품을 저장했어요.")}` as Route);
 }
 
 export async function toggleCatalogItem(formData: FormData) {
@@ -198,7 +198,7 @@ export async function deleteCatalogItem(formData: FormData) {
   }
 
   if (item.is_system) {
-    redirect("/admin?message=코드에 포함된 기본 제공 아이템은 삭제할 수 없어요." as Route);
+    redirect(`/admin?message=${encodeURIComponent("코드에 포함된 기본 제공 아이템은 삭제할 수 없어요.")}` as Route);
   }
 
   const { count, error: countError } = await supabase
@@ -211,7 +211,7 @@ export async function deleteCatalogItem(formData: FormData) {
   }
 
   if ((count ?? 0) > 0) {
-    redirect("/admin?message=보유 중인 사용자가 있는 상품은 삭제할 수 없어요. 상점에서 내려 주세요." as Route);
+    redirect(`/admin?message=${encodeURIComponent("보유 중인 사용자가 있는 상품은 삭제할 수 없어요. 상점에서 내려 주세요.")}` as Route);
   }
 
   const { error } = await supabase.from("shop_items").delete().eq("id", itemId);
@@ -222,7 +222,7 @@ export async function deleteCatalogItem(formData: FormData) {
 
   revalidatePath("/admin");
   revalidatePath("/shop");
-  redirect("/admin?message=상품을 삭제했어요." as Route);
+  redirect(`/admin?message=${encodeURIComponent("상품을 삭제했어요.")}` as Route);
 }
 
 export async function moveCatalogItem(formData: FormData) {

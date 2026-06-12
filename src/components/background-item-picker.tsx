@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
+
 import {
   getBackgroundPayload,
   type CharacterBackgroundItem
@@ -12,9 +14,13 @@ type BackgroundItemPickerProps = {
 };
 
 export function BackgroundItemPicker({ items, selectedId, onSelect }: BackgroundItemPickerProps) {
+  const sortedItems = [...items].sort(
+    (a, b) => Number(b.id === "none") - Number(a.id === "none")
+  );
+
   return (
     <div className="wardrobe-grid character-item-grid">
-      {items.map((item) => (
+      {sortedItems.map((item) => (
         <button
           className={`wardrobe-item character-item-card ${selectedId === item.id ? "selected" : ""}`}
           key={item.id}
@@ -22,15 +28,19 @@ export function BackgroundItemPicker({ items, selectedId, onSelect }: Background
           onClick={() => onSelect(getBackgroundPayload(item))}
         >
           <span className="character-item-image">
-            <span
-              className="background-item-thumbnail"
-              style={{
-                backgroundColor: item.color,
-                backgroundImage: item.imageUrl ? `url("${item.imageUrl}")` : undefined
-              }}
-            />
+            {item.thumbnailUrl ? (
+              <img src={item.thumbnailUrl} alt="" />
+            ) : (
+              <span
+                className="background-item-thumbnail"
+                style={{
+                  backgroundColor: item.color,
+                  backgroundImage: item.imageUrl ? `url("${item.imageUrl}")` : undefined
+                }}
+              />
+            )}
           </span>
-          <span>{item.label} 배경</span>
+          <span>{item.id === "none" ? item.label : `${item.label} 배경`}</span>
         </button>
       ))}
     </div>

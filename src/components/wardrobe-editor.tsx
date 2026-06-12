@@ -12,6 +12,7 @@ import { BackgroundItemPicker } from "@/components/background-item-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
+  COSTUME_NONE_THUMBNAIL,
   HUMAN_LAYER_ITEMS,
   getCharacterAsset,
   getHumanCategory,
@@ -174,7 +175,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         colorLabel: undefined,
         payload: { accessoryId: "none" },
         swatch: undefined,
-        thumbnailUrl: undefined
+        thumbnailUrl: COSTUME_NONE_THUMBNAIL
       }
     ];
   }
@@ -189,7 +190,11 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       swatch: item.payload.color,
       thumbnailUrl: item.thumbnailUrl
     }))
-  ];
+  ].sort(
+    (a, b) =>
+      Number((b.payload as Record<string, string>).accessoryId === "none") -
+      Number((a.payload as Record<string, string>).accessoryId === "none")
+  );
   const backgroundItems: CharacterBackgroundItem[] = [
     ...BASIC_CHARACTER_BACKGROUNDS,
     ...ownedItems.map((item) => ({
@@ -197,6 +202,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       label: item.name,
       color: item.payload.backgroundColor ?? "#fff8eb",
       imageUrl: item.payload.backgroundImageUrl || undefined,
+      thumbnailUrl: item.payload.backgroundId === "none" ? COSTUME_NONE_THUMBNAIL : undefined,
       isBasic: false,
       payload: item.payload
     }))

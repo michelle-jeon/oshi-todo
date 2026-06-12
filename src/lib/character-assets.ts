@@ -71,6 +71,15 @@ export type CharacterAsset = {
 };
 
 const HUMAN_LAYER_BASE_PATH = "/assets/characters/human/layers";
+export const COSTUME_NONE_THUMBNAIL = "/assets/ui/costume-none.png";
+
+const HUMAN_OPTIONAL_CATEGORIES: HumanLayerCategory[] = [
+  "shoes",
+  "bottom",
+  "top",
+  "hair",
+  "accessory"
+];
 
 export const CHARACTER_VARIANTS = [
   {
@@ -359,16 +368,29 @@ export const HUMAN_LAYER_ITEMS: HumanLayerItem[] = [
     id: "none",
     category: "accessory",
     label: "없음",
+    thumbnailSrc: COSTUME_NONE_THUMBNAIL,
     isBasic: true
   }
 ];
+
+HUMAN_OPTIONAL_CATEGORIES.filter((category) => category !== "accessory").forEach((category) => {
+  HUMAN_LAYER_ITEMS.push({
+    id: "none",
+    category,
+    label: "없음",
+    thumbnailSrc: COSTUME_NONE_THUMBNAIL,
+    isBasic: true
+  });
+});
 
 export function getHumanCategory(category: HumanLayerCategory) {
   return HUMAN_LAYER_CATEGORIES.find((candidate) => candidate.id === category);
 }
 
 export function getHumanCategoryItems(category: HumanLayerCategory) {
-  return HUMAN_LAYER_ITEMS.filter((item) => item.category === category);
+  return HUMAN_LAYER_ITEMS
+    .filter((item) => item.category === category)
+    .sort((a, b) => Number(b.id === "none") - Number(a.id === "none"));
 }
 
 export function getHumanDisplayCategories() {

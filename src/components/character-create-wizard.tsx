@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Cat, Image as ImageIcon, Palette, UserRound } from "lucide-react";
+import { Cat, Gem, Image as ImageIcon, Palette, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
@@ -11,6 +11,7 @@ import { BackgroundItemPicker } from "@/components/background-item-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
+  COSTUME_NONE_THUMBNAIL,
   getDefaultHumanCustomization,
   getCharacterAsset,
   getHumanCategory,
@@ -26,7 +27,7 @@ import {
 } from "@/lib/character-backgrounds";
 
 type WizardStep = "species" | "customize" | "name";
-type CustomizeTab = HumanLayerCategory | "pattern" | "background";
+type CustomizeTab = HumanLayerCategory | "pattern" | "cat-accessory" | "background";
 
 const speciesOptions = [
   { id: "human", label: "인간", icon: UserRound },
@@ -57,7 +58,11 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
   );
   const tabs = species === "human"
     ? [...getHumanDisplayCategories(), { id: "background", label: "배경" } as const]
-    : [{ id: "pattern", label: "무늬" } as const, { id: "background", label: "배경" } as const];
+    : [
+        { id: "pattern", label: "무늬" } as const,
+        { id: "cat-accessory", label: "악세서리" } as const,
+        { id: "background", label: "배경" } as const
+      ];
 
   function chooseSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
@@ -154,6 +159,8 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
                     <ImageIcon size={20} />
                   ) : tab.id === "pattern" ? (
                     <Palette size={20} />
+                  ) : tab.id === "cat-accessory" ? (
+                    <Gem size={20} />
                   ) : (
                     <CharacterCategoryIcon category={tab.id} />
                   )}
@@ -168,6 +175,15 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
               selectedId={background.backgroundId}
               onSelect={(payload) => setBackground((current) => ({ ...current, ...payload }))}
             />
+          ) : activeTab === "cat-accessory" ? (
+            <div className="wardrobe-grid character-item-grid">
+              <button className="wardrobe-item character-item-card selected" type="button">
+                <span className="character-item-image">
+                  <img src={COSTUME_NONE_THUMBNAIL} alt="" />
+                </span>
+                <span>없음</span>
+              </button>
+            </div>
           ) : species === "cat" ? (
             <div className="wardrobe-grid">
               {CHARACTER_VARIANTS.map((variant) => (
