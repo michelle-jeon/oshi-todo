@@ -1,0 +1,41 @@
+name: Supabase migrations
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "마이그레이션을 적용할 Supabase 환경"
+        required: true
+        type: choice
+        options:
+          - development
+          - production
+      dry_run:
+        description: "실제 적용 없이 변경 내용만 확인"
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  migrate:
+    name: "${{ inputs.target }} migration"
+    runs-on: ubuntu-latest
+    environment: "${{ inputs.target }}"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: 적용 예정 migration 확인
+        if: ${{ inputs.dry_run }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --dry-run
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+
+      - name: migration 적용
+        if: ${{ !inputs.dry_run }}
+        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}

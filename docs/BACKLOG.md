@@ -267,9 +267,10 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
   - 출석·작업시간 조건은 달성 후 상점의 `받기` 버튼으로 무료 획득.
 - 관리자 페이지에 상품·사용자 검색, 페이지네이션, 구매·보상 내역과 관리자 변경 감사 로그 추가.
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
-- ✅ staging/production Supabase 프로젝트 분리 기준 문서화.
-  - `docs/ENVIRONMENTS.md`에 staging/production Supabase 프로젝트, 환경변수 매핑, migration 적용 순서를 정리.
-  - 실제 Supabase 프로젝트 생성과 배포 플랫폼 환경변수 입력은 수동 작업으로 남김.
+- ✅ development/production Supabase 프로젝트 분리 기준 문서화.
+  - `docs/ENVIRONMENTS.md`에 development/production Supabase 프로젝트, 환경변수 매핑, migration 적용 순서를 정리.
+  - ✅ 개발·운영 환경변수 템플릿, 같은 프로젝트 연결 검사, GitHub Actions 환경별 migration 워크플로 추가.
+  - 실제 개발용 Supabase 프로젝트 생성과 배포 플랫폼·GitHub Environment secret 입력은 수동 작업으로 남김.
 - ✅ 개발 브랜치와 운영 브랜치 분리 기준 문서화.
   - `docs/ENVIRONMENTS.md`에 `main`, `develop`, `codex/*`, `codex/hotfix-*` 운영 흐름을 정리.
   - ✅ 로컬 `main` 운영 브랜치와 `develop` 개발 브랜치를 실제로 분리.

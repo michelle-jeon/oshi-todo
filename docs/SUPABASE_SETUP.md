@@ -2,7 +2,7 @@
 
 ## 환경 변수
 
-프로젝트 루트에 `.env.local` 파일을 만들고 아래 값을 넣는다.
+로컬 개발은 `.env.development.local`, 로컬 운영 빌드 확인은 `.env.production.local`에 아래 값을 넣는다.
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
@@ -17,15 +17,22 @@ Supabase 대시보드에서는 보통 다음 위치에서 찾는다.
 
 `.env.local`은 절대 Git에 올리지 않는다. 현재 저장소는 이미 `.gitignore`에서 이 파일을 제외한다.
 
+기존 `.env.local`은 환경별 파일보다 우선 적용되므로, 개발/운영 DB 분리를 마친 뒤에는 제거한다. 두 환경의 Supabase project ref가 다른지 아래 명령으로 확인한다.
+
+```bash
+npm run env:check
+```
+
 ## 비밀값 관리
 
-- 로컬 개발: `.env.local`
+- 로컬 개발: `.env.development.local`
+- 로컬 운영 확인: `.env.production.local`
 - Vercel 배포: Vercel Project Settings > Environment Variables
 - 팀원이 생긴 뒤: 1Password, Bitwarden, Doppler 같은 비밀값 관리 도구 사용
 
 브라우저에서 쓰는 `NEXT_PUBLIC_` 값은 완전한 비밀키가 아니다. 그래도 저장소에 올리지 않는 습관을 유지한다. 서비스 롤 키처럼 강한 권한의 키는 클라이언트 코드에 절대 넣지 않는다.
 
-staging/production Supabase 프로젝트 분리와 브랜치 운영 기준은 `docs/ENVIRONMENTS.md`를 따른다.
+development/production Supabase 프로젝트 분리와 브랜치 운영 기준은 `docs/ENVIRONMENTS.md`를 따른다.
 
 ## 배포 환경변수 체크리스트
 

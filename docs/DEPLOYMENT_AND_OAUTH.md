@@ -63,7 +63,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
-운영용 값은 Production 환경에 넣는다. Preview에서 운영 데이터가 섞이지 않게 하려면 별도 staging Supabase 값을 Preview 환경에 넣는다.
+운영용 값은 Production 환경에 넣는다. Preview에서 운영 데이터가 섞이지 않게 하려면 별도 development Supabase 값을 Preview 환경에 넣는다.
 
 환경변수를 바꾼 뒤에는 기존 배포가 자동으로 바뀌지 않으므로 Vercel Deployments 화면에서 Redeploy하거나 새 커밋을 푸시한다.
 
