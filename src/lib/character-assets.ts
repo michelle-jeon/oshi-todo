@@ -469,15 +469,16 @@ export function getCharacterAsset(
     const item = HUMAN_LAYER_ITEMS.find(
       (candidate) => candidate.category === category.id && candidate.id === selectedId
     );
+    const layerSrc = customLayerSrc || item?.src;
 
-    if (!customLayerSrc && !item?.src) {
+    if (!layerSrc) {
       return [];
     }
 
     return [
       {
         id: `${category.id}:${selectedId}`,
-        src: customLayerSrc ?? item?.src ?? "",
+        src: layerSrc,
         alt: `인간 ${item?.label ?? category.label}${item?.colorLabel ? ` ${item.colorLabel}` : ""}`,
         layerOrder: item?.layerOrder ?? category.layerOrder
       }
