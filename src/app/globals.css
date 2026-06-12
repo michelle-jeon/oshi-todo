@@ -1420,6 +1420,51 @@ button {
   gap: 14px;
 }
 
+.admin-catalog-group {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-catalog-group-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 2px 2px;
+}
+
+.admin-catalog-group-heading h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.admin-catalog-group-heading span,
+.admin-field-help {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.admin-pagination a,
+.admin-pagination span {
+  padding: 7px 11px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-pagination a.disabled {
+  pointer-events: none;
+  opacity: 0.42;
+}
+
 .admin-catalog-list,
 .admin-user-list {
   display: grid;

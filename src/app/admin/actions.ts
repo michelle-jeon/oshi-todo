@@ -26,7 +26,7 @@ const VALID_SLOTS = new Set([
   "mount"
 ]);
 
-const VALID_UNLOCK_METHODS = new Set(["gem", "attendance", "focus"]);
+const VALID_UNLOCK_METHODS = new Set(["basic", "gem", "attendance", "focus"]);
 
 function optionalText(formData: FormData, key: string) {
   const value = String(formData.get(key) ?? "").trim();
@@ -60,16 +60,16 @@ export async function saveCatalogItem(formData: FormData) {
   const { data: existingItem, error: existingItemError } = itemId
     ? await supabase
         .from("shop_items")
-        .select("is_basic, code")
+        .select("is_basic, is_system, code")
         .eq("id", itemId)
-        .single<{ is_basic: boolean; code: string }>()
+        .single<{ is_basic: boolean; is_system: boolean; code: string }>()
     : { data: null, error: null };
-  const isBasic = existingItem?.is_basic ?? false;
-  const code = existingItem?.is_basic
+  const unlockMethod = String(formData.get("unlockMethod") ?? "gem");
+  const isBasic = existingItem?.is_system || unlockMethod === "basic";
+  const code = existingItem?.is_system
     ? existingItem.code
     : String(formData.get("code") ?? "").trim();
   const name = String(formData.get("name") ?? "").trim();
-  const unlockMethod = String(formData.get("unlockMethod") ?? "gem");
   const enabledSpecies = ["human", "cat"].filter(
     (species) => formData.get(`${species}Enabled`) === "on"
   );
@@ -116,6 +116,7 @@ export async function saveCatalogItem(formData: FormData) {
       available_from: toIso(optionalText(formData, "availableFrom")),
       available_until: toIso(optionalText(formData, "availableUntil")),
       is_active: formData.get("isActive") === "on",
+      is_basic: isBasic,
       species: variants.length === 1 ? primaryVariant.species : null,
       slot: primaryVariant.slot,
       payload: primaryVariant.payload
@@ -183,9 +184,9 @@ export async function deleteCatalogItem(formData: FormData) {
   const itemId = String(formData.get("itemId") ?? "");
   const { data: item, error: itemError } = await supabase
     .from("shop_items")
-    .select("is_basic")
+    .select("is_system")
     .eq("id", itemId)
-    .single<{ is_basic: boolean }>();
+    .single<{ is_system: boolean }>();
 
   if (itemError) {
     if (isMissingBasicCatalogSchema(itemError)) {
@@ -194,7 +195,7 @@ export async function deleteCatalogItem(formData: FormData) {
     redirect(`/admin?message=${encodeURIComponent(itemError.message)}` as Route);
   }
 
-  if (item.is_basic) {
+  if (item.is_system) {
     redirect("/admin?message=코드에 포함된 기본 제공 아이템은 삭제할 수 없어요." as Route);
   }
 
@@ -227,12 +228,23 @@ export async function moveCatalogItem(formData: FormData) {
   const supabase = await createClient();
   const itemId = String(formData.get("itemId") ?? "");
   const direction = String(formData.get("direction") ?? "");
+  const { data: currentItem, error: currentItemError } = await supabase
+    .from("shop_items")
+    .select("slot")
+    .eq("id", itemId)
+    .single<{ slot: string }>();
+
+  if (currentItemError || !currentItem) {
+    redirect(`/admin?message=${encodeURIComponent(currentItemError?.message ?? "상품을 찾지 못했어요.")}` as Route);
+  }
+
   const { data: items, error } = await supabase
     .from("shop_items")
-    .select("id, sort_order")
+    .select("id, slot, sort_order")
+    .eq("slot", currentItem.slot)
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
-    .returns<Array<{ id: string; sort_order: number }>>();
+    .returns<Array<{ id: string; slot: string; sort_order: number }>>();
 
   if (error) {
     redirect(`/admin?message=${encodeURIComponent(error.message)}` as Route);
