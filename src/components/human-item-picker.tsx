@@ -5,6 +5,7 @@
 import {
   getHumanCategory,
   getHumanItemStyleKey,
+  shouldGroupHumanItemColors,
   type HumanLayerCategory,
   type HumanLayerItem
 } from "@/lib/character-assets";
@@ -25,9 +26,10 @@ export function HumanItemPicker({
   sourceLabel
 }: HumanItemPickerProps) {
   const categoryDefinition = getHumanCategory(category);
+  const groupsColors = shouldGroupHumanItemColors(category);
   const groups = Array.from(
     items.reduce((map, item) => {
-      const key = getHumanItemStyleKey(item);
+      const key = groupsColors ? getHumanItemStyleKey(item) : item.id;
       const group = map.get(key) ?? [];
       group.push(item);
       map.set(key, group);
@@ -35,9 +37,13 @@ export function HumanItemPicker({
     }, new Map<string, HumanLayerItem[]>())
   );
   const selectedItem = items.find((item) => item.id === selectedItemId) ?? items[0];
-  const selectedStyleKey = selectedItem ? getHumanItemStyleKey(selectedItem) : "";
+  const selectedStyleKey = selectedItem
+    ? groupsColors
+      ? getHumanItemStyleKey(selectedItem)
+      : selectedItem.id
+    : "";
   const selectedStyleColors =
-    category === "hair" || category === "eyes"
+    groupsColors
       ? groups.find(([styleKey]) => styleKey === selectedStyleKey)?.[1] ?? []
       : [];
 

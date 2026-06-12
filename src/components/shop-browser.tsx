@@ -13,6 +13,7 @@ import {
   getHumanDisplayCategories,
   getHumanCustomization,
   getHumanItemFromPayload,
+  shouldGroupHumanItemColors,
   type HumanLayerCategory,
   type CharacterSpecies
 } from "@/lib/character-assets";
@@ -100,7 +101,8 @@ export function ShopBrowser({
     visibleItems.reduce((groups, item) => {
       const catalogItem = getHumanItemFromPayload(item.payload);
       const shouldGroupColors =
-        species === "human" && (selectedTab.id === "hair" || selectedTab.id === "eyes");
+        species === "human" &&
+        shouldGroupHumanItemColors(selectedTab.id as HumanLayerCategory);
       const key = shouldGroupColors && catalogItem ? catalogItem.label : item.id;
       const group = groups.get(key) ?? [];
       group.push(item);
@@ -121,7 +123,8 @@ export function ShopBrowser({
     return selectedInGroup ?? group[0];
   });
   const shopColorItems =
-    species === "human" && (selectedTab.id === "hair" || selectedTab.id === "eyes")
+    species === "human" &&
+    shouldGroupHumanItemColors(selectedTab.id as HumanLayerCategory)
       ? groupedVisibleItems.flatMap(([, group]) => (group.length > 1 ? group : []))
       : [];
   const asset = getCharacterAsset(character.species, preview);

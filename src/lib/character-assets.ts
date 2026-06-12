@@ -376,6 +376,10 @@ export function getHumanItemStyleKey(item: HumanLayerItem) {
   return item.label;
 }
 
+export function shouldGroupHumanItemColors(category: HumanLayerCategory) {
+  return category === "hair" || category === "eyes";
+}
+
 export function getDefaultHumanCustomization() {
   return Object.fromEntries(
     HUMAN_LAYER_CATEGORIES.map((category) => [category.customizationKey, category.defaultItemId])

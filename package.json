@@ -1,6 +1,6 @@
 {
   "name": "oshi-todo",
-  "version": "0.4.2",
+  "version": "0.4.3",
   "description": "투두와 캐릭터 성장을 결합한 집중 관리 앱",
   "author": "OshiTodo",
   "private": true,
