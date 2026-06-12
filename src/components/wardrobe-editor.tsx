@@ -7,6 +7,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateWardrobe } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
+import { CharacterBackgroundPicker } from "@/components/character-background-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
@@ -20,6 +21,7 @@ import {
   type CharacterSpecies,
   type HumanLayerCategory
 } from "@/lib/character-assets";
+import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
 
 type WardrobeTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory";
 
@@ -73,6 +75,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
   const initialState = useMemo<WardrobeDraft>(
     () => ({
       displayName: character.displayName,
+      backgroundColor: normalizeCharacterBackground(character.customization.backgroundColor),
       variantId: character.customization.variantId ?? "blue",
       accessoryId: character.customization.accessoryId ?? "none",
       hairId: character.customization.hairId ?? "basic",
@@ -180,7 +183,7 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
 
   return (
     <section className="character-create-form">
-      <div className="wardrobe-preview">
+      <div className="wardrobe-preview" style={{ backgroundColor: draft.backgroundColor }}>
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${draft.displayName} 미리보기`}>
             {asset.layers.map((layer) => (
@@ -205,6 +208,11 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
           <p className="subtle">{character.species === "human" ? "인간" : "고양이"}</p>
         </div>
       </div>
+
+      <CharacterBackgroundPicker
+        value={draft.backgroundColor}
+        onChange={(backgroundColor) => setDraft((current) => ({ ...current, backgroundColor }))}
+      />
 
       <div className="wardrobe-tabs" aria-label="옷장 탭">
         {character.species === "human"

@@ -6,6 +6,7 @@ import { Cat, Palette, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
+import { CharacterBackgroundPicker } from "@/components/character-background-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
@@ -18,6 +19,7 @@ import {
   type CharacterVariantId,
   type CharacterSpecies
 } from "@/lib/character-assets";
+import { DEFAULT_CHARACTER_BACKGROUND } from "@/lib/character-backgrounds";
 
 type WizardStep = "species" | "customize" | "name";
 type CustomizeTab = HumanLayerCategory | "pattern";
@@ -39,6 +41,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
   const [humanCustomization, setHumanCustomization] = useState(getDefaultHumanCustomization);
   const [activeTab, setActiveTab] = useState<CustomizeTab>("body");
   const [displayName, setDisplayName] = useState("");
+  const [backgroundColor, setBackgroundColor] = useState<string>(DEFAULT_CHARACTER_BACKGROUND);
   const [isSaving, setIsSaving] = useState(false);
   const asset = useMemo(
     () => (species ? getCharacterAsset(species, species === "human" ? humanCustomization : variantId) : null),
@@ -62,6 +65,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
     formData.set("variantId", variantId);
     Object.entries(humanCustomization).forEach(([key, value]) => formData.set(key, value));
     formData.set("displayName", displayName.trim());
+    formData.set("backgroundColor", backgroundColor);
     formData.set("source", source);
     setIsSaving(true);
 
@@ -95,7 +99,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
 
   return (
     <section className={`character-wizard ${step === "name" ? "naming-open" : ""}`}>
-      <div className="wizard-preview-pane">
+      <div className="wizard-preview-pane" style={{ backgroundColor }}>
         {asset?.layers ? (
           <div
             className="avatar-layer-stack wizard-avatar-stack"
@@ -141,6 +145,8 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
               );
             })}
           </div>
+
+          <CharacterBackgroundPicker value={backgroundColor} onChange={setBackgroundColor} />
 
           {species === "cat" ? (
             <div className="wardrobe-grid">

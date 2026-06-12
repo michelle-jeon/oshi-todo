@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { WardrobeEditor } from "@/components/wardrobe-editor";
+import { EnvironmentBrand } from "@/components/environment-brand";
 import type { CharacterSpecies } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
@@ -67,7 +68,7 @@ export default async function WardrobePage({ searchParams }: WardrobePageProps) 
     <main className="auth-shell">
       <section className="auth-panel character-create-panel">
         <div>
-          <p className="subtle">OshiTodo</p>
+          <p className="subtle"><EnvironmentBrand /></p>
           <h1 className="brand">캐릭터 옷장</h1>
           <p className="subtle">아이템을 눌러 아바타에 바로 적용해보고 저장할 수 있어요.</p>
         </div>

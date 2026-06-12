@@ -126,6 +126,23 @@ button {
   line-height: 1.1;
 }
 
+.environment-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.environment-brand small {
+  border-radius: 999px;
+  background: #fff0c2;
+  color: #79530b;
+  padding: 3px 6px;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+
 .subtle {
   color: var(--muted);
 }
@@ -135,6 +152,12 @@ button {
   place-items: center;
   min-height: 260px;
   margin: 24px 0;
+}
+
+.avatar-stage.with-character-background {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .avatar-image {
@@ -1372,6 +1395,17 @@ button {
   box-shadow: 0 1px 3px rgb(40 32 22 / 12%);
 }
 
+.admin-search-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-search-form .search-field {
+  min-width: min(520px, 100%);
+  flex: 1;
+}
+
 .admin-catalog-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1742,6 +1776,9 @@ button {
   min-height: 118px;
   display: grid;
   place-items: center;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
 .slot-avatar .avatar-image,
@@ -2370,6 +2407,139 @@ button {
   color: var(--foreground);
   box-shadow: 0 1px 3px rgb(40 32 22 / 12%);
   transform: translateY(-1px);
+}
+
+.friend-profile-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 10px 12px 10px 0;
+}
+
+.friend-avatar-crop {
+  position: relative;
+  width: 96px;
+  height: 92px;
+  align-self: stretch;
+  overflow: hidden;
+  background: #fff8eb;
+}
+
+.friend-avatar-crop .avatar-stage {
+  position: absolute;
+  inset: -5px -24px auto;
+  min-height: 0;
+  margin: 0;
+}
+
+.friend-avatar-crop .avatar-layer-stack,
+.friend-avatar-crop .avatar-image {
+  width: 142px;
+}
+
+.friend-avatar-empty {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.friend-profile-main {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.friend-profile-main p {
+  margin: 3px 0 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.friend-profile-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.friend-profile-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 999px;
+  background: #f3ecdf;
+  color: var(--muted);
+  padding: 4px 7px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.friend-profile-meta .online {
+  background: #e9f5f1;
+  color: var(--primary);
+}
+
+.friend-profile-meta i {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.character-background-picker {
+  display: grid;
+  gap: 8px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+.character-background-picker legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.character-background-picker > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.character-background-picker button {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--muted);
+  padding: 4px 9px 4px 5px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.character-background-picker button.selected {
+  border-color: var(--primary);
+  color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+
+.character-background-picker button span {
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgb(40 32 22 / 12%);
+  border-radius: 999px;
 }
 
 .profile-panel {
@@ -3268,8 +3438,25 @@ button {
     justify-content: flex-start;
   }
 
+  .friend-profile-card {
+    grid-template-columns: 82px minmax(0, 1fr);
+  }
+
+  .friend-profile-card > button {
+    grid-column: 1 / -1;
+  }
+
+  .friend-avatar-crop {
+    width: 82px;
+  }
+
   .admin-intro {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-search-form {
+    align-items: stretch;
     flex-direction: column;
   }
 

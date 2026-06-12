@@ -4,6 +4,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { CharacterMenu } from "@/components/character-menu";
 import { CharacterShowcase } from "@/components/character-showcase";
 import { FocusTracker } from "@/components/focus-tracker";
+import { EnvironmentBrand } from "@/components/environment-brand";
 import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import { isCharacterOnboardingComplete } from "@/lib/character-onboarding";
@@ -20,6 +21,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
+import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 
@@ -539,13 +541,14 @@ export default async function Home({
     <main className="app-shell">
       <aside className="character-panel">
         <div className="character-panel-top">
-          <h1 className="brand">OshiTodo</h1>
+          <h1 className="brand"><EnvironmentBrand /></h1>
           <CharacterMenu />
         </div>
 
         <CharacterShowcase
           species={character?.species ?? "human"}
           customization={character?.customization}
+          backgroundColor={normalizeCharacterBackground(character?.customization.backgroundColor)}
         />
 
         <h2>{character?.displayName}</h2>

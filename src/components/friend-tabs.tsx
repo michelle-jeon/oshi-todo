@@ -1,14 +1,8 @@
 "use client";
 
-import { UserPlus, X } from "lucide-react";
 import { useState, useTransition } from "react";
 import { followUser, unfollowUser } from "@/app/friend-actions";
-
-type FriendProfile = {
-  id: string;
-  display_name: string | null;
-  email: string | null;
-};
+import { FriendProfileCard, type FriendProfile } from "@/components/friend-profile-card";
 
 type FriendTabsProps = {
   followingProfiles: FriendProfile[];
@@ -63,20 +57,13 @@ export function FriendTabs({
           const isFollowing = optimisticFollowingIds.includes(profile.id);
 
           return (
-            <article className="friend-row" key={profile.id}>
-              <div>
-                <strong>{profile.display_name ?? "이름 없음"}</strong>
-                <p className="subtle">{profile.email}</p>
-              </div>
-              <button
-                className={isFollowing ? "ghost-button" : "primary-button"}
-                type="button"
-                onClick={() => (isFollowing ? handleUnfollow(profile.id) : handleFollow(profile.id))}
-              >
-                {isFollowing ? <X size={16} /> : <UserPlus size={16} />}
-                {isFollowing ? "팔로잉" : "팔로우"}
-              </button>
-            </article>
+            <FriendProfileCard
+              profile={profile}
+              isFollowing={isFollowing}
+              key={profile.id}
+              onFollow={() => handleFollow(profile.id)}
+              onUnfollow={() => handleUnfollow(profile.id)}
+            />
           );
         })}
         {profiles.length === 0 ? <div className="empty-state">목록이 비어 있어요.</div> : null}

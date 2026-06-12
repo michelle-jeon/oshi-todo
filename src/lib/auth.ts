@@ -66,6 +66,8 @@ export async function requireUser() {
     redirect("/auth/reset" as Route);
   }
 
+  await supabase.rpc("touch_user_presence");
+
   return user;
 }
 

@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "@/app/auth-actions";
 import { CharacterCreateWizard } from "@/components/character-create-wizard";
+import { EnvironmentBrand } from "@/components/environment-brand";
 import {
   isLegacyStarterCharacter,
   MAX_CHARACTER_SLOTS
@@ -45,7 +46,7 @@ export default async function NewCharacterPage({ searchParams }: NewCharacterPag
       <section className="auth-panel character-create-panel">
         <div className="auth-heading-row">
           <div>
-            <p className="subtle">OshiTodo</p>
+            <p className="subtle"><EnvironmentBrand /></p>
             <h1 className="brand">{isFirstCharacter ? "첫 캐릭터 생성" : "새 캐릭터 생성"}</h1>
             <p className="subtle">종족을 고르고, 코스튬을 입혀본 다음 이름을 정해 주세요.</p>
           </div>

@@ -1,5 +1,6 @@
 import { ShoppingBag } from "lucide-react";
 import { ShopBrowser } from "@/components/shop-browser";
+import { EnvironmentBrand } from "@/components/environment-brand";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { CharacterSpecies } from "@/lib/character-assets";
@@ -115,7 +116,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     <main className="shop-shell">
       <header className="shop-header">
         <div>
-          <p className="subtle">OshiTodo</p>
+          <p className="subtle"><EnvironmentBrand /></p>
           <h1>
             <ShoppingBag size={24} /> 상점
           </h1>

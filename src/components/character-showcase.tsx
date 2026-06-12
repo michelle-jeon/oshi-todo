@@ -6,13 +6,23 @@ type CharacterShowcaseProps = {
   species: CharacterSpecies;
   variantId?: string;
   customization?: Record<string, string>;
+  backgroundColor?: string;
 };
 
-export function CharacterShowcase({ species, variantId, customization }: CharacterShowcaseProps) {
+export function CharacterShowcase({
+  species,
+  variantId,
+  customization,
+  backgroundColor
+}: CharacterShowcaseProps) {
   const asset = getCharacterAsset(species, customization ?? variantId);
 
   return (
-    <div className="avatar-stage" aria-label="캐릭터 미리보기">
+    <div
+      className={`avatar-stage ${backgroundColor ? "with-character-background" : ""}`}
+      aria-label="캐릭터 미리보기"
+      style={backgroundColor ? { backgroundColor } : undefined}
+    >
       {asset.layers ? (
         <div
           className="avatar-layer-stack"

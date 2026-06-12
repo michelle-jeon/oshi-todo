@@ -19,6 +19,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getShopItemForSpecies, type CatalogShopItem } from "@/lib/shop-catalog";
+import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
 
 type InventoryShopItem = CatalogShopItem;
 
@@ -187,6 +188,7 @@ export async function createCharacter(formData: FormData) {
     species === "human"
       ? {
           species,
+          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
           ...selection,
@@ -194,6 +196,7 @@ export async function createCharacter(formData: FormData) {
         }
       : {
           species,
+          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
           variantId: variant.id,
           furColor: "#f4d0a1",
           patternColor: variant.color,
@@ -318,6 +321,7 @@ export async function updateWardrobe(formData: FormData) {
     activeCharacter.species === "human"
       ? {
           species: activeCharacter.species,
+          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
           variantId: variant.id,
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
@@ -325,6 +329,7 @@ export async function updateWardrobe(formData: FormData) {
         }
       : {
           species: activeCharacter.species,
+          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
           variantId: variant.id,
           furColor: "#f4d0a1",
           patternColor: variant.color,

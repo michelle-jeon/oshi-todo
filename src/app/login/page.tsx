@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { GoogleAuthButton } from "@/components/google-auth-button";
+import { EnvironmentBrand } from "@/components/environment-brand";
 import { getCurrentUser } from "@/lib/auth";
 
 type LoginPageProps = {
@@ -21,7 +22,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
     <main className="auth-shell">
       <section className="auth-panel">
         <div>
-          <p className="subtle">OshiTodo</p>
+          <p className="subtle"><EnvironmentBrand /></p>
           <h1 className="brand">가입 또는 로그인</h1>
           <p className="subtle">Google 계정으로 바로 시작하고, 투두 완료 경험치를 쌓아주세요.</p>
         </div>

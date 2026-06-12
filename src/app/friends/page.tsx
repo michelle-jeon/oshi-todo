@@ -15,6 +15,15 @@ type ProfileRow = {
   id: string;
   display_name: string | null;
   email: string | null;
+  last_seen_at: string | null;
+};
+
+type CharacterRow = {
+  user_id: string;
+  display_name: string;
+  species: "human" | "cat";
+  level: number;
+  customization: Record<string, string>;
 };
 
 async function loadProfiles(ids: string[]) {
@@ -23,13 +32,31 @@ async function loadProfiles(ids: string[]) {
   }
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const profileResult = await supabase
     .from("profiles")
-    .select("id, display_name, email")
+    .select("id, display_name, email, last_seen_at")
     .in("id", ids)
     .returns<ProfileRow[]>();
+  const fallbackProfileResult = profileResult.error
+    ? await supabase
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", ids)
+        .returns<Array<Omit<ProfileRow, "last_seen_at">>>()
+    : null;
+  const profiles = profileResult.data ??
+    fallbackProfileResult?.data?.map((profile) => ({ ...profile, last_seen_at: null })) ??
+    [];
+  const characterResult = await supabase.rpc("get_friend_active_characters", {
+    user_ids_input: ids
+  });
+  const characters = (characterResult.data ?? []) as CharacterRow[];
+  const charactersByUserId = new Map(characters.map((character) => [character.user_id, character]));
 
-  return data ?? [];
+  return profiles.map((profile) => ({
+    ...profile,
+    character: charactersByUserId.get(profile.id) ?? null
+  }));
 }
 
 export default async function FriendsPage() {

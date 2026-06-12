@@ -9,6 +9,7 @@ import {
   Edit3,
   List,
   PackagePlus,
+  Search,
   ShieldCheck,
   Users
 } from "lucide-react";
@@ -37,6 +38,7 @@ type AdminPageProps = {
     new?: string;
     status?: string;
     page?: string;
+    q?: string;
   }>;
 };
 
@@ -282,11 +284,28 @@ function CatalogItemForm({ item }: { item?: AdminShopItem }) {
   );
 }
 
-function CatalogList({ items, status, page }: { items: AdminShopItem[]; status: CatalogStatus; page: number }) {
+function CatalogList({
+  items,
+  status,
+  page,
+  query
+}: {
+  items: AdminShopItem[];
+  status: CatalogStatus;
+  page: number;
+  query: string;
+}) {
   const now = new Date();
-  const filteredItems = status === "all"
+  const statusItems = status === "all"
     ? items
     : items.filter((item) => catalogStatus(item, now) === status);
+  const keyword = query.toLocaleLowerCase("ko-KR");
+  const filteredItems = keyword
+    ? statusItems.filter((item) =>
+        [item.name, item.code, item.description ?? "", slotLabel(itemSlot(item))]
+          .some((value) => value.toLocaleLowerCase("ko-KR").includes(keyword))
+      )
+    : statusItems;
   const orderedItems = [...filteredItems].sort((a, b) => {
     const slotDifference = slotOrder(itemSlot(a)) - slotOrder(itemSlot(b));
     return slotDifference || a.sort_order - b.sort_order;
@@ -333,12 +352,12 @@ function CatalogList({ items, status, page }: { items: AdminShopItem[]; status: 
               <form action={moveCatalogItem}>
                 <input type="hidden" name="itemId" value={item.id} />
                 <input type="hidden" name="direction" value="up" />
-                <button className="icon-button" type="submit" disabled={status !== "all" || page !== 1 || index === 0} aria-label="위로 이동"><ArrowUp size={16} /></button>
+                <button className="icon-button" type="submit" disabled={status !== "all" || Boolean(query) || page !== 1 || index === 0} aria-label="위로 이동"><ArrowUp size={16} /></button>
               </form>
               <form action={moveCatalogItem}>
                 <input type="hidden" name="itemId" value={item.id} />
                 <input type="hidden" name="direction" value="down" />
-                <button className="icon-button" type="submit" disabled={status !== "all" || page !== 1 || index === group.length - 1} aria-label="아래로 이동"><ArrowDown size={16} /></button>
+                <button className="icon-button" type="submit" disabled={status !== "all" || Boolean(query) || page !== 1 || index === group.length - 1} aria-label="아래로 이동"><ArrowDown size={16} /></button>
               </form>
               <Link className="icon-button" href={`/admin?edit=${item.id}` as Route} aria-label={`${item.name} 수정`}><Edit3 size={16} /></Link>
               <form action={toggleCatalogItem}>
@@ -436,8 +455,9 @@ function Pagination({
 export default async function AdminPage({ searchParams }: AdminPageProps) {
   await requireAdmin();
   const supabase = await createClient();
-  const { message, view, edit, new: createNew, status: requestedStatus, page: requestedPage } = await searchParams;
+  const { message, view, edit, new: createNew, status: requestedStatus, page: requestedPage, q } = await searchParams;
   const activeView = view === "users" ? "users" : "catalog";
+  const query = q?.trim().slice(0, 80) ?? "";
   const page = Math.max(Number.parseInt(requestedPage ?? "1", 10) || 1, 1);
   const status: CatalogStatus = ["basic", "sale", "reward", "upcoming", "expired", "hidden"].includes(requestedStatus ?? "")
     ? requestedStatus as CatalogStatus
@@ -504,6 +524,23 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         }))
       })) as AdminProfileRow[]
     : profileResult.data ?? [];
+  const normalizedQuery = query.toLocaleLowerCase("ko-KR");
+  const filteredProfiles = normalizedQuery
+    ? profiles.filter((profile) =>
+        [
+          profile.display_name ?? "",
+          profile.email ?? "",
+          ...charactersOf(profile).map((character) => character.display_name)
+        ].some((value) => value.toLocaleLowerCase("ko-KR").includes(normalizedQuery))
+      )
+    : profiles;
+  const filteredCatalogItems = (items ?? []).filter((item) => {
+    const matchesStatus = status === "all" || catalogStatus(item, new Date()) === status;
+    const matchesQuery = !normalizedQuery ||
+      [item.name, item.code, item.description ?? "", slotLabel(itemSlot(item))]
+        .some((value) => value.toLocaleLowerCase("ko-KR").includes(normalizedQuery));
+    return matchesStatus && matchesQuery;
+  });
   const profileError = missingAttendanceSchema || missingProfileStellSchema ? fallbackProfileResult?.error : profileResult.error;
 
   return (
@@ -522,6 +559,22 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
       {missingAttendanceSchema ? <p className="notice">출석 기록 DB가 아직 반영되지 않았어요. SQL Editor에서 16_attendance_and_system_catalog.sql을 실행해 주세요.</p> : null}
       {itemError ? <p className="notice">{itemError.message}</p> : null}
       {profileError ? <p className="notice">{profileError.message}</p> : null}
+
+      <form className="admin-search-form" method="get">
+        {activeView === "users" ? <input type="hidden" name="view" value="users" /> : null}
+        {activeView === "catalog" && status !== "all" ? <input type="hidden" name="status" value={status} /> : null}
+        <label className="search-field">
+          <Search size={18} />
+          <input
+            aria-label={activeView === "catalog" ? "상품 검색" : "사용자 검색"}
+            defaultValue={query}
+            name="q"
+            placeholder={activeView === "catalog" ? "상품명, 코드, 설명, 카테고리 검색" : "이름, 이메일, 캐릭터 이름 검색"}
+          />
+        </label>
+        <button className="ghost-button" type="submit">검색</button>
+        {query ? <Link className="subtle-link-button" href={(activeView === "users" ? "/admin?view=users" : "/admin") as Route}>검색 초기화</Link> : null}
+      </form>
 
       {activeView === "catalog" ? (
         <>
@@ -547,20 +600,20 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
             ] as Array<[CatalogStatus, string]>).map(([value, label]) => (
               <Link
                 className={status === value ? "selected" : ""}
-                href={(value === "all" ? "/admin" : `/admin?status=${value}`) as Route}
+                href={`${value === "all" ? "/admin" : `/admin?status=${value}`}${query ? `${value === "all" ? "?" : "&"}q=${encodeURIComponent(query)}` : ""}` as Route}
                 key={value}
               >
                 {label}
               </Link>
             ))}
           </nav>
-          <CatalogList items={items ?? []} status={status} page={page} />
-          <Pagination page={page} total={(items ?? []).filter((item) => status === "all" || catalogStatus(item, new Date()) === status).length} params={{ status: status === "all" ? undefined : status }} />
+          <CatalogList items={items ?? []} status={status} page={page} query={query} />
+          <Pagination page={page} total={filteredCatalogItems.length} params={{ status: status === "all" ? undefined : status, q: query || undefined }} />
         </>
       ) : (
         <>
-          <UserList profiles={profiles ?? []} page={page} />
-          <Pagination page={page} total={(profiles ?? []).length} params={{ view: "users" }} />
+          <UserList profiles={filteredProfiles} page={page} />
+          <Pagination page={page} total={filteredProfiles.length} params={{ view: "users", q: query || undefined }} />
         </>
       )}
     </main>

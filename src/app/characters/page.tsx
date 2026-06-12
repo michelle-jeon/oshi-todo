@@ -11,6 +11,8 @@ import {
 import { getCharacterAsset, type CharacterSpecies } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
+import { EnvironmentBrand } from "@/components/environment-brand";
 
 type CharacterRow = {
   id: string;
@@ -44,7 +46,7 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
     <main className="auth-shell">
       <section className="auth-panel character-create-panel">
         <div>
-          <p className="subtle">OshiTodo</p>
+          <p className="subtle"><EnvironmentBrand /></p>
           <h1 className="brand">캐릭터 선택</h1>
           <p className="subtle">최대 {MAX_CHARACTER_SLOTS}개의 캐릭터를 만들고 사용할 캐릭터를 선택하세요.</p>
         </div>
@@ -72,7 +74,10 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
             return (
               <form className="character-slot" action={selectCharacter} key={character.id}>
                 <input name="characterId" type="hidden" value={character.id} />
-                <div className="slot-avatar">
+                <div
+                  className="slot-avatar"
+                  style={{ backgroundColor: normalizeCharacterBackground(character.customization.backgroundColor) }}
+                >
                   {asset.layers ? (
                     <div className="avatar-layer-stack slot-layer-stack">
                       {asset.layers.map((layer) => (
