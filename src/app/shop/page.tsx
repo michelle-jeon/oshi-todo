@@ -8,6 +8,7 @@ import {
   getShopItemVariants,
   type ShopItemVariant
 } from "@/lib/shop-catalog";
+import { isMissingBasicCatalogSchema } from "@/lib/shop-schema";
 
 type ShopPageProps = {
   searchParams: Promise<{
@@ -45,23 +46,32 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
     .eq("user_id", user.id)
     .eq("is_active", true)
     .single<CharacterRow>();
-  const [{ data: shopItems }, { data: inventory }] = await Promise.all([
-    supabase
-      .from("shop_items")
-      .select("id, code, name, slot, species, cost, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url)")
-      .eq("is_active", true)
-      .eq("is_basic", false)
-      .eq("unlock_method", "gem")
-      .order("sort_order", { ascending: true })
-      .order("cost", { ascending: true })
-      .returns<ShopItem[]>(),
-    character
-      ? supabase
-          .from("character_inventory")
-          .select("shop_item_id")
-          .eq("character_id", character.id)
-      : Promise.resolve({ data: [] })
-  ]);
+  const shopItemResult = await supabase
+    .from("shop_items")
+    .select("id, code, name, slot, species, cost, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url)")
+    .eq("is_active", true)
+    .eq("is_basic", false)
+    .eq("unlock_method", "gem")
+    .order("sort_order", { ascending: true })
+    .order("cost", { ascending: true })
+    .returns<ShopItem[]>();
+  const fallbackShopItemResult = isMissingBasicCatalogSchema(shopItemResult.error)
+    ? await supabase
+        .from("shop_items")
+        .select("id, code, name, slot, species, cost, payload, thumbnail_url, shop_item_variants(species, slot, payload, layer_asset_url)")
+        .eq("is_active", true)
+        .eq("unlock_method", "gem")
+        .order("sort_order", { ascending: true })
+        .order("cost", { ascending: true })
+        .returns<ShopItem[]>()
+    : null;
+  const shopItems = fallbackShopItemResult?.data ?? shopItemResult.data;
+  const { data: inventory } = character
+    ? await supabase
+        .from("character_inventory")
+        .select("shop_item_id")
+        .eq("character_id", character.id)
+    : { data: [] };
   const ownedIds = (inventory ?? []).map((item) => item.shop_item_id as string);
 
   return (

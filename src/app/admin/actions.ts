@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 import { requireAdmin } from "@/lib/auth";
+import {
+  BASIC_CATALOG_SCHEMA_MESSAGE,
+  isMissingBasicCatalogSchema
+} from "@/lib/shop-schema";
 import { createClient } from "@/lib/supabase/server";
 
 const VALID_SLOTS = new Set([
@@ -71,6 +75,9 @@ export async function saveCatalogItem(formData: FormData) {
   );
 
   if (existingItemError) {
+    if (isMissingBasicCatalogSchema(existingItemError)) {
+      redirect(`/admin?message=${encodeURIComponent(BASIC_CATALOG_SCHEMA_MESSAGE)}` as Route);
+    }
     redirect(`/admin?message=${encodeURIComponent(existingItemError.message)}` as Route);
   }
 
@@ -181,6 +188,9 @@ export async function deleteCatalogItem(formData: FormData) {
     .single<{ is_basic: boolean }>();
 
   if (itemError) {
+    if (isMissingBasicCatalogSchema(itemError)) {
+      redirect(`/admin?message=${encodeURIComponent(BASIC_CATALOG_SCHEMA_MESSAGE)}` as Route);
+    }
     redirect(`/admin?message=${encodeURIComponent(itemError.message)}` as Route);
   }
 

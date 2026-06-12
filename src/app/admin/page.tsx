@@ -21,6 +21,10 @@ import { requireAdmin } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import type { CharacterSpecies } from "@/lib/character-assets";
 import type { ShopItemVariant } from "@/lib/shop-catalog";
+import {
+  BASIC_CATALOG_SCHEMA_MESSAGE,
+  isMissingBasicCatalogSchema
+} from "@/lib/shop-schema";
 import { AdminDeleteButton } from "@/components/admin-delete-button";
 
 type AdminPageProps = {
@@ -330,12 +334,24 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   const status: CatalogStatus = ["basic", "sale", "reward", "upcoming", "expired", "hidden"].includes(requestedStatus ?? "")
     ? requestedStatus as CatalogStatus
     : "all";
-  const { data: items, error: itemError } = await supabase
+  const itemResult = await supabase
     .from("shop_items")
     .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, is_basic, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
     .returns<AdminShopItem[]>();
+  const missingBasicCatalogSchema = isMissingBasicCatalogSchema(itemResult.error);
+  const fallbackItemResult = missingBasicCatalogSchema
+    ? await supabase
+        .from("shop_items")
+        .select("id, code, name, description, thumbnail_url, cost, unlock_method, unlock_requirement, available_from, available_until, is_active, sort_order, shop_item_variants(species, slot, payload, layer_asset_url)")
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: true })
+    : null;
+  const items = missingBasicCatalogSchema
+    ? (fallbackItemResult?.data ?? []).map((item) => ({ ...item, is_basic: false })) as AdminShopItem[]
+    : itemResult.data ?? [];
+  const itemError = missingBasicCatalogSchema ? fallbackItemResult?.error : itemResult.error;
   const selectedItem = edit ? (items ?? []).find((item) => item.id === edit) : undefined;
   const { data: profiles, error: profileError } =
     activeView === "users"
@@ -357,6 +373,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
         <Link className={activeView === "users" ? "selected" : ""} href={"/admin?view=users" as Route}><Users size={17} /> 사용자 데이터</Link>
       </nav>
       {message ? <p className="notice">{message}</p> : null}
+      {missingBasicCatalogSchema ? <p className="notice">{BASIC_CATALOG_SCHEMA_MESSAGE}</p> : null}
       {itemError ? <p className="notice">{itemError.message}</p> : null}
       {profileError ? <p className="notice">{profileError.message}</p> : null}
 
