@@ -241,6 +241,7 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
 - ✅ FocusTracker의 Fast Refresh/useEffect dependency 경고 재현 여부 확인 후 정리.
   - 현재 개발 로그에서 경고는 재현되지 않았고, 이벤트 리스너에 들어가는 콜백 의존성을 명시적으로 정리.
 - 나이트 모드
+- 홈화면 캐릭터 배경 색깔 선택 가능(광장이나 캐릭터 방에서는 적용되지 않음)
 
 ## 운영과 개발환경
 
@@ -267,6 +268,7 @@ MVP가 끝난 뒤 고칠 것과 고도화할 기능을 모아두는 문서입니
   - 출석·작업시간 조건은 달성 후 상점의 `받기` 버튼으로 무료 획득.
 - 관리자 페이지에 상품·사용자 검색, 페이지네이션, 구매·보상 내역과 관리자 변경 감사 로그 추가.
 - Supabase CLI 기반 migration workflow 더 정리. (기본 문서화 완료)
+- ✅ OshiTodo 별·체크 이미지를 브라우저 파비콘으로 적용.
 - ✅ Supabase publishable key 명칭과 개발·운영 Google OAuth Client 분리 기준 반영.
   - 새 설정은 `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`를 사용하고 기존 `NEXT_PUBLIC_SUPABASE_ANON_KEY`는 호환용으로 유지.
 - ✅ development/production Supabase 프로젝트 분리 기준 문서화.
