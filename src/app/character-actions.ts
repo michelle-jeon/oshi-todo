@@ -386,5 +386,5 @@ export async function updateWardrobe(formData: FormData) {
 
   revalidatePath("/");
   revalidatePath("/characters/wardrobe");
-  redirect(`/?message=${encodeURIComponent("옷장이 저장됐어요.")}` as Route);
+  redirect("/" as Route);
 }

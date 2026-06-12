@@ -5,6 +5,7 @@ import { CharacterMenu } from "@/components/character-menu";
 import { CharacterShowcase } from "@/components/character-showcase";
 import { FocusTracker } from "@/components/focus-tracker";
 import { EnvironmentBrand } from "@/components/environment-brand";
+import { ReleaseNotesModal } from "@/components/release-notes-modal";
 import { TodoList } from "@/components/todo-list";
 import { ensureUserBootstrap } from "@/lib/bootstrap-user";
 import { isCharacterOnboardingComplete } from "@/lib/character-onboarding";
@@ -20,6 +21,7 @@ import {
 } from "@/lib/game-config";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { LATEST_RELEASE_NOTE } from "@/lib/release-notes";
 import { getLevelProgress } from "@/lib/xp";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
@@ -454,6 +456,7 @@ export default async function Home({
 
   const [
     { data: activeCharacter, error: characterError },
+    { data: profileRelease },
     {
       data: todos,
       error: todosError,
@@ -471,6 +474,11 @@ export default async function Home({
     { error: dailyXpCapError }
   ] = await Promise.all([
     fetchActiveCharacter(),
+    supabase
+      .from("profiles")
+      .select("last_seen_release_version")
+      .eq("id", user.id)
+      .maybeSingle<{ last_seen_release_version: string | null }>(),
     fetchTodos(),
     fetchRoutines(),
     supabase
@@ -531,11 +539,17 @@ export default async function Home({
       : isTodoDifficultySchemaMissing || isRoutineDifficultySchemaMissing
         ? "투두/루틴 난이도 DB 스키마가 아직 반영되지 않았어요. SQL Editor에서 supabase/sql_editor/08_xp_difficulty.sql 내용을 실행한 뒤 새로고침해 주세요."
       : getDbSchemaMessage(dbError);
-  const displayMessage = message?.includes("temp-") ? undefined : message;
+  const displayMessage =
+    message?.includes("temp-") || message === "옷장이 저장됐어요."
+      ? undefined
+      : message;
   const todayFocusXp = (focusLogs ?? [])
     .filter((log) => log.work_date === todayString)
     .reduce((sum, log) => sum + log.xp, 0);
   const todayEarnedXp = (todayXpEvents ?? []).reduce((sum, event) => sum + event.amount, 0);
+  const showReleaseNotes =
+    profileRelease?.last_seen_release_version !== LATEST_RELEASE_NOTE.version;
+
   return (
     <main className="app-shell">
       <aside className="character-panel">
@@ -604,6 +618,7 @@ export default async function Home({
           />
         </div>
       </section>
+      {showReleaseNotes ? <ReleaseNotesModal release={LATEST_RELEASE_NOTE} /> : null}
     </main>
   );
 }

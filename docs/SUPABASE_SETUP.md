@@ -164,6 +164,8 @@ supabase/migrations/20260613220000_add_none_items_and_background_colors.sql
 supabase/sql_editor/22_add_none_items_and_background_colors.sql
 supabase/migrations/20260613223000_remove_none_catalog_items.sql
 supabase/sql_editor/23_remove_none_catalog_items.sql
+supabase/migrations/20260613230000_add_release_note_acknowledgement.sql
+supabase/sql_editor/24_add_release_note_acknowledgement.sql
 ```
 
 첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
@@ -189,6 +191,8 @@ where email = '관리자 이메일';
 `22_add_none_items_and_background_colors.sql`은 몸·눈·입을 제외한 선택형 코스튬과 배경의 `없음` 항목을 카테고리별 첫 순서로 등록하고 블랙·화이트 기본 배경색을 추가한다.
 
 `23_remove_none_catalog_items.sql`은 `없음`을 구매·관리 상품에서 제거한다. `없음` 상태는 캐릭터 생성과 옷장 UI에서만 로컬 해제 선택지로 제공한다.
+
+`24_add_release_note_acknowledgement.sql`은 사용자가 마지막으로 확인한 운영 릴리스 노트 버전을 profile에 저장한다. 현재 운영 릴리스 내용은 `src/lib/release-notes.ts`에서 관리한다.
 
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 

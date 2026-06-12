@@ -18,6 +18,14 @@ npm run verify
 
 하나라도 실패하면 배포하지 않고 먼저 원인을 수정한다.
 
+운영 버전을 배포할 때는 아래 세 버전을 같은 값으로 맞춘다.
+
+- `package.json`의 `version`
+- `CHANGELOG.md`와 `docs/VERSIONING.md`의 현재 버전
+- `src/lib/release-notes.ts`의 사용자용 최신 릴리스 버전과 변경사항
+
+사용자용 릴리스 노트는 내부 구현 설명보다 사용자가 직접 체감하는 변경사항을 짧게 작성한다.
+
 ## Supabase 확인
 
 - 개발/운영 환경 분리 기준은 `docs/ENVIRONMENTS.md`를 기준으로 확인한다.
