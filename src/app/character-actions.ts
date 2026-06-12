@@ -19,7 +19,10 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getShopItemForSpecies, type CatalogShopItem } from "@/lib/shop-catalog";
-import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
+import {
+  BASIC_CHARACTER_BACKGROUNDS,
+  DEFAULT_CHARACTER_BACKGROUND
+} from "@/lib/character-backgrounds";
 
 type InventoryShopItem = CatalogShopItem;
 
@@ -29,6 +32,9 @@ type InventoryRow = {
 
 type WardrobeSelection = Record<HumanCustomizationKey, string> & {
   variantId: string;
+  backgroundId: string;
+  backgroundColor: string;
+  backgroundImageUrl: string;
 };
 
 function createCharacterPath(formData: FormData, message: string): Route {
@@ -78,6 +84,9 @@ function readWardrobeSelection(formData: FormData): WardrobeSelection {
 
   return {
     variantId: String(formData.get("variantId") ?? "blue"),
+    backgroundId: String(formData.get("backgroundId") ?? DEFAULT_CHARACTER_BACKGROUND.id),
+    backgroundColor: String(formData.get("backgroundColor") ?? DEFAULT_CHARACTER_BACKGROUND.color),
+    backgroundImageUrl: String(formData.get("backgroundImageUrl") ?? ""),
     ...Object.fromEntries(
       HUMAN_LAYER_CATEGORIES.flatMap((category) => [
         [
@@ -121,6 +130,25 @@ function isWardrobeSelectionAllowed(
   const variant = CHARACTER_VARIANTS.some((candidate) => candidate.id === selection.variantId);
 
   if (!variant) {
+    return false;
+  }
+
+  const basicBackgroundAllowed = BASIC_CHARACTER_BACKGROUNDS.some(
+    (item) =>
+      item.id === selection.backgroundId &&
+      item.color === selection.backgroundColor &&
+      !selection.backgroundImageUrl
+  );
+  const ownedBackgroundAllowed = inventoryItems
+    .filter((item) => item.slot === "background")
+    .some(
+      (item) =>
+        item.payload.backgroundId === selection.backgroundId &&
+        item.payload.backgroundColor === selection.backgroundColor &&
+        (item.payload.backgroundImageUrl ?? "") === selection.backgroundImageUrl
+    );
+
+  if (!basicBackgroundAllowed && !ownedBackgroundAllowed) {
     return false;
   }
 
@@ -188,7 +216,6 @@ export async function createCharacter(formData: FormData) {
     species === "human"
       ? {
           species,
-          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
           ...selection,
@@ -196,7 +223,9 @@ export async function createCharacter(formData: FormData) {
         }
       : {
           species,
-          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
+          backgroundId: selection.backgroundId,
+          backgroundColor: selection.backgroundColor,
+          backgroundImageUrl: selection.backgroundImageUrl,
           variantId: variant.id,
           furColor: "#f4d0a1",
           patternColor: variant.color,
@@ -321,7 +350,9 @@ export async function updateWardrobe(formData: FormData) {
     activeCharacter.species === "human"
       ? {
           species: activeCharacter.species,
-          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
+          backgroundId: selection.backgroundId,
+          backgroundColor: selection.backgroundColor,
+          backgroundImageUrl: selection.backgroundImageUrl,
           variantId: variant.id,
           outfitColor: variant.color,
           hairColor: "#5f3d2e",
@@ -329,7 +360,9 @@ export async function updateWardrobe(formData: FormData) {
         }
       : {
           species: activeCharacter.species,
-          backgroundColor: normalizeCharacterBackground(String(formData.get("backgroundColor") ?? "")),
+          backgroundId: selection.backgroundId,
+          backgroundColor: selection.backgroundColor,
+          backgroundImageUrl: selection.backgroundImageUrl,
           variantId: variant.id,
           furColor: "#f4d0a1",
           patternColor: variant.color,

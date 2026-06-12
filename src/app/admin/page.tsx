@@ -102,6 +102,7 @@ const slots = [
   "cat_pattern",
   "cat_eyes",
   "accessory",
+  "background",
   "room_item",
   "mount"
 ];
@@ -119,6 +120,7 @@ const slotLabels = new Map([
   ["cat_pattern", "고양이 · 무늬"],
   ["cat_eyes", "고양이 · 눈"],
   ["accessory", "악세서리"],
+  ["background", "배경"],
   ["room_item", "방 아이템"],
   ["mount", "탈것"]
 ]);

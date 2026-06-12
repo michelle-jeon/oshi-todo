@@ -2,12 +2,13 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Eye, Gem, Palette } from "lucide-react";
+import { Eye, Gem, Image as ImageIcon, Palette } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { updateWardrobe } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
-import { CharacterBackgroundPicker } from "@/components/character-background-picker";
+import { CharacterBackgroundLayer } from "@/components/character-background-layer";
+import { BackgroundItemPicker } from "@/components/background-item-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
@@ -21,9 +22,13 @@ import {
   type CharacterSpecies,
   type HumanLayerCategory
 } from "@/lib/character-assets";
-import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
+import {
+  BASIC_CHARACTER_BACKGROUNDS,
+  getCharacterBackground,
+  type CharacterBackgroundItem
+} from "@/lib/character-backgrounds";
 
-type WardrobeTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory";
+type WardrobeTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory" | "background";
 
 type WardrobeEditorProps = {
   character: {
@@ -51,7 +56,8 @@ type WardrobeDraft = Record<string, string> & {
 const catTabs = [
   { id: "cat-eyes", label: "눈", slot: "cat_eyes" },
   { id: "pattern", label: "무늬", slot: "cat_pattern" },
-  { id: "cat-accessory", label: "악세서리", slot: "accessory" }
+  { id: "cat-accessory", label: "악세서리", slot: "accessory" },
+  { id: "background", label: "배경", slot: "background" }
 ] as const;
 
 function applyPayloadToDraft(draft: WardrobeDraft, payload: Record<string, string>) {
@@ -75,7 +81,9 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
   const initialState = useMemo<WardrobeDraft>(
     () => ({
       displayName: character.displayName,
-      backgroundColor: normalizeCharacterBackground(character.customization.backgroundColor),
+      backgroundId: getCharacterBackground(character.customization).id,
+      backgroundColor: getCharacterBackground(character.customization).color,
+      backgroundImageUrl: getCharacterBackground(character.customization).imageUrl,
       variantId: character.customization.variantId ?? "blue",
       accessoryId: character.customization.accessoryId ?? "none",
       hairId: character.customization.hairId ?? "basic",
@@ -96,7 +104,9 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       ? getHumanCategory(activeTab as HumanLayerCategory)
       : undefined;
   const selectedSlot =
-    humanCategory?.slot ?? catTabs.find((tab) => tab.id === activeTab)?.slot ?? "cat_eyes";
+    activeTab === "background"
+      ? "background"
+      : humanCategory?.slot ?? catTabs.find((tab) => tab.id === activeTab)?.slot ?? "cat_eyes";
   const ownedItems = inventoryItems.filter((item) => item.slot === selectedSlot);
   const isDirty = JSON.stringify(draft) !== JSON.stringify(initialState);
 
@@ -180,18 +190,33 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
       thumbnailUrl: item.thumbnailUrl
     }))
   ];
+  const backgroundItems: CharacterBackgroundItem[] = [
+    ...BASIC_CHARACTER_BACKGROUNDS,
+    ...ownedItems.map((item) => ({
+      id: item.payload.backgroundId ?? item.id,
+      label: item.name,
+      color: item.payload.backgroundColor ?? "#fff8eb",
+      imageUrl: item.payload.backgroundImageUrl || undefined,
+      isBasic: false,
+      payload: item.payload
+    }))
+  ].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index);
 
   return (
     <section className="character-create-form">
-      <div className="wardrobe-preview" style={{ backgroundColor: draft.backgroundColor }}>
+      <div className="wardrobe-preview">
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${draft.displayName} 미리보기`}>
+            <CharacterBackgroundLayer customization={draft} />
             {asset.layers.map((layer) => (
               <img className="avatar-layer" key={layer.id} src={layer.src} alt={layer.alt} />
             ))}
           </div>
         ) : (
-          <img className="avatar-image" src={asset.src} alt={`${draft.displayName} 미리보기`} />
+          <div className="avatar-layer-stack wardrobe-avatar-stack">
+            <CharacterBackgroundLayer customization={draft} />
+            <img className="avatar-layer" src={asset.src} alt={`${draft.displayName} 미리보기`} />
+          </div>
         )}
         <div>
           <p className="subtle">현재 캐릭터</p>
@@ -209,14 +234,9 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
         </div>
       </div>
 
-      <CharacterBackgroundPicker
-        value={draft.backgroundColor}
-        onChange={(backgroundColor) => setDraft((current) => ({ ...current, backgroundColor }))}
-      />
-
       <div className="wardrobe-tabs" aria-label="옷장 탭">
         {character.species === "human"
-          ? getHumanDisplayCategories().map((category) => (
+          ? [...getHumanDisplayCategories(), { id: "background", label: "배경", slot: "background" } as const].map((category) => (
               <button
                 className={activeTab === category.id ? "selected" : ""}
                 key={category.id}
@@ -225,7 +245,9 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
                 aria-label={category.label}
                 title={category.label}
               >
-                <CharacterCategoryIcon category={category.id} />
+                {category.id === "background"
+                  ? <ImageIcon size={20} />
+                  : <CharacterCategoryIcon category={category.id} />}
               </button>
             ))
           : catTabs.map((tab) => (
@@ -237,12 +259,18 @@ export function WardrobeEditor({ character, inventoryItems }: WardrobeEditorProp
                 aria-label={tab.label}
                 title={tab.label}
               >
-                {tab.id === "pattern" ? <Palette size={20} /> : tab.id === "cat-eyes" ? <Eye size={20} /> : <Gem size={20} />}
+                {tab.id === "background" ? <ImageIcon size={20} /> : tab.id === "pattern" ? <Palette size={20} /> : tab.id === "cat-eyes" ? <Eye size={20} /> : <Gem size={20} />}
               </button>
             ))}
       </div>
 
-      {character.species === "human" && humanCategory ? (
+      {activeTab === "background" ? (
+        <BackgroundItemPicker
+          items={backgroundItems}
+          selectedId={draft.backgroundId}
+          onSelect={(payload) => setDraft((current) => applyPayloadToDraft(current, payload))}
+        />
+      ) : character.species === "human" && humanCategory ? (
         <HumanItemPicker
           category={humanCategory.id}
           items={[

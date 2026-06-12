@@ -21,7 +21,6 @@ import {
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { getLevelProgress } from "@/lib/xp";
-import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
 import { redirect } from "next/navigation";
 import type { Route } from "next";
 
@@ -548,7 +547,7 @@ export default async function Home({
         <CharacterShowcase
           species={character?.species ?? "human"}
           customization={character?.customization}
-          backgroundColor={normalizeCharacterBackground(character?.customization.backgroundColor)}
+          showBackground
         />
 
         <h2>{character?.displayName}</h2>

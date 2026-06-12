@@ -2,12 +2,13 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Eye, Gem, Palette } from "lucide-react";
+import { Eye, Gem, Image as ImageIcon, Palette } from "lucide-react";
 import type { MouseEvent } from "react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { claimShopItem, purchaseShopItems } from "@/app/shop-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
+import { CharacterBackgroundLayer } from "@/components/character-background-layer";
 import {
   getCharacterAsset,
   getHumanDisplayCategories,
@@ -18,6 +19,7 @@ import {
   type HumanLayerCategory,
   type CharacterSpecies
 } from "@/lib/character-assets";
+import { getCharacterBackground } from "@/lib/character-backgrounds";
 
 export type ShopBrowserItem = {
   id: string;
@@ -48,7 +50,7 @@ type ShopBrowserProps = {
   ownedIds: string[];
 };
 
-type ShopTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory";
+type ShopTab = HumanLayerCategory | "pattern" | "cat-eyes" | "cat-accessory" | "background";
 
 const speciesTabs = [
   { id: "human", label: "인간" },
@@ -58,7 +60,8 @@ const speciesTabs = [
 const catTabs = [
   { id: "cat-eyes", label: "눈", slot: "cat_eyes" },
   { id: "pattern", label: "무늬", slot: "cat_pattern" },
-  { id: "cat-accessory", label: "악세서리", slot: "accessory" }
+  { id: "cat-accessory", label: "악세서리", slot: "accessory" },
+  { id: "background", label: "배경", slot: "background" }
 ] as const;
 
 function applyPayloadToPreview<T extends Record<string, string>>(
@@ -93,6 +96,9 @@ export function ShopBrowser({
   const initialPreview = useMemo(
     () => ({
       displayName: character.displayName,
+      backgroundId: getCharacterBackground(character.customization).id,
+      backgroundColor: getCharacterBackground(character.customization).color,
+      backgroundImageUrl: getCharacterBackground(character.customization).imageUrl,
       variantId: character.customization.variantId ?? "blue",
       accessoryId: character.customization.accessoryId ?? "none",
       hairId: character.customization.hairId ?? "basic",
@@ -103,7 +109,9 @@ export function ShopBrowser({
   );
   const [preview, setPreview] = useState(initialPreview);
   const ownedSet = useMemo(() => new Set(ownedIds), [ownedIds]);
-  const tabs = species === "human" ? getHumanDisplayCategories() : catTabs;
+  const tabs = species === "human"
+    ? [...getHumanDisplayCategories(), { id: "background", label: "배경", slot: "background" } as const]
+    : catTabs;
   const selectedTab = tabs.find((tab) => tab.id === activeTab) ?? tabs[0];
   const visibleItems = items.filter(
     (item) => item.species === species && item.slot === selectedTab.slot
@@ -222,6 +230,7 @@ export function ShopBrowser({
       <div className="wardrobe-preview shop-character-preview">
         {asset.layers ? (
           <div className="avatar-layer-stack wardrobe-avatar-stack" aria-label={`${preview.displayName} 미리보기`}>
+            <CharacterBackgroundLayer customization={preview} />
             {asset.layers.map((layer) => (
               <img
                 className="avatar-layer"
@@ -232,11 +241,14 @@ export function ShopBrowser({
             ))}
           </div>
         ) : (
-          <img
-            className="avatar-image"
-            src={asset.src}
-            alt={`${preview.displayName} 미리보기`}
-          />
+          <div className="avatar-layer-stack wardrobe-avatar-stack">
+            <CharacterBackgroundLayer customization={preview} />
+            <img
+              className="avatar-layer"
+              src={asset.src}
+              alt={`${preview.displayName} 미리보기`}
+            />
+          </div>
         )}
         <div>
           <p className="subtle">현재 캐릭터</p>
@@ -269,7 +281,9 @@ export function ShopBrowser({
               aria-label={tab.label}
               title={tab.label}
             >
-              {species === "human" ? (
+              {tab.id === "background" ? (
+                <ImageIcon size={20} />
+              ) : species === "human" ? (
                 <CharacterCategoryIcon category={tab.id as HumanLayerCategory} />
               ) : tab.id === "pattern" ? (
                 <Palette size={20} />
@@ -343,6 +357,16 @@ export function ShopBrowser({
               <span className="character-item-image">
                 {item.thumbnailUrl ? (
                   <img src={item.thumbnailUrl} alt="" />
+                ) : item.slot === "background" ? (
+                  <span
+                    className="background-item-thumbnail"
+                    style={{
+                      backgroundColor: item.payload.backgroundColor ?? "#fff8eb",
+                      backgroundImage: item.payload.backgroundImageUrl
+                        ? `url("${item.payload.backgroundImageUrl}")`
+                        : undefined
+                    }}
+                  />
                 ) : (
                   <span className="character-item-placeholder">상품 이미지 준비 중</span>
                 )}

@@ -156,6 +156,10 @@ supabase/migrations/20260612213000_add_friend_presence.sql
 supabase/sql_editor/18_friend_presence.sql
 supabase/migrations/20260612220000_secure_friend_profiles.sql
 supabase/sql_editor/19_secure_friend_profiles.sql
+supabase/migrations/20260613210000_add_background_slot.sql
+supabase/sql_editor/20_add_background_slot.sql
+supabase/migrations/20260613211000_seed_basic_backgrounds.sql
+supabase/sql_editor/21_seed_basic_backgrounds.sql
 ```
 
 첫 관리자 계정은 Supabase SQL Editor에서 이메일을 확인해 직접 지정한다.
@@ -175,6 +179,8 @@ where email = '관리자 이메일';
 `18_friend_presence.sql`은 친구 목록에서 활성 캐릭터와 최근 접속 상태를 표시할 수 있도록 활성 캐릭터 읽기 정책과 `profiles.last_seen_at`을 추가한다. 접속 상태는 로그인 사용자의 보호 페이지 요청을 기준으로 최대 1분 간격으로 갱신한다.
 
 `19_secure_friend_profiles.sql`은 활성 캐릭터 테이블 전체 공개 정책을 제거하고, 친구 관계에 있는 사용자에게 이름·종족·레벨·코스튬 정보만 반환하는 제한 RPC로 교체한다. 스텔과 경험치 같은 비공개 필드는 반환하지 않는다.
+
+`20_add_background_slot.sql`은 코스튬 카탈로그 슬롯에 배경을 추가한다. `21_seed_basic_backgrounds.sql`은 기본 배경색을 카탈로그에 등록하고 인간·고양이 모두 같은 상품을 사용하되 캐릭터의 1024×1024 최하단 레이어로 렌더링되게 한다.
 
 작업시간 과거 기록을 화면에서 확인하려면 아래 폴더의 파일을 번호 순서대로 열고, 파일 경로가 아니라 파일 안의 SQL 내용을 Supabase SQL Editor에 붙여넣어 실행한다.
 

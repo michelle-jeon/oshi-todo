@@ -2,11 +2,12 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { Cat, Palette, UserRound } from "lucide-react";
+import { Cat, Image as ImageIcon, Palette, UserRound } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { createCharacter } from "@/app/character-actions";
 import { CharacterCategoryIcon } from "@/components/character-category-icon";
-import { CharacterBackgroundPicker } from "@/components/character-background-picker";
+import { CharacterBackgroundLayer } from "@/components/character-background-layer";
+import { BackgroundItemPicker } from "@/components/background-item-picker";
 import { HumanItemPicker } from "@/components/human-item-picker";
 import {
   CHARACTER_VARIANTS,
@@ -19,10 +20,13 @@ import {
   type CharacterVariantId,
   type CharacterSpecies
 } from "@/lib/character-assets";
-import { DEFAULT_CHARACTER_BACKGROUND } from "@/lib/character-backgrounds";
+import {
+  BASIC_CHARACTER_BACKGROUNDS,
+  DEFAULT_CHARACTER_BACKGROUND
+} from "@/lib/character-backgrounds";
 
 type WizardStep = "species" | "customize" | "name";
-type CustomizeTab = HumanLayerCategory | "pattern";
+type CustomizeTab = HumanLayerCategory | "pattern" | "background";
 
 const speciesOptions = [
   { id: "human", label: "인간", icon: UserRound },
@@ -41,13 +45,19 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
   const [humanCustomization, setHumanCustomization] = useState(getDefaultHumanCustomization);
   const [activeTab, setActiveTab] = useState<CustomizeTab>("body");
   const [displayName, setDisplayName] = useState("");
-  const [backgroundColor, setBackgroundColor] = useState<string>(DEFAULT_CHARACTER_BACKGROUND);
+  const [background, setBackground] = useState({
+    backgroundId: DEFAULT_CHARACTER_BACKGROUND.id,
+    backgroundColor: DEFAULT_CHARACTER_BACKGROUND.color,
+    backgroundImageUrl: ""
+  });
   const [isSaving, setIsSaving] = useState(false);
   const asset = useMemo(
     () => (species ? getCharacterAsset(species, species === "human" ? humanCustomization : variantId) : null),
     [humanCustomization, species, variantId]
   );
-  const tabs = species === "human" ? getHumanDisplayCategories() : [{ id: "pattern", label: "무늬" } as const];
+  const tabs = species === "human"
+    ? [...getHumanDisplayCategories(), { id: "background", label: "배경" } as const]
+    : [{ id: "pattern", label: "무늬" } as const, { id: "background", label: "배경" } as const];
 
   function chooseSpecies(nextSpecies: CharacterSpecies) {
     setSpecies(nextSpecies);
@@ -65,7 +75,7 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
     formData.set("variantId", variantId);
     Object.entries(humanCustomization).forEach(([key, value]) => formData.set(key, value));
     formData.set("displayName", displayName.trim());
-    formData.set("backgroundColor", backgroundColor);
+    Object.entries(background).forEach(([key, value]) => formData.set(key, value));
     formData.set("source", source);
     setIsSaving(true);
 
@@ -99,12 +109,13 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
 
   return (
     <section className={`character-wizard ${step === "name" ? "naming-open" : ""}`}>
-      <div className="wizard-preview-pane" style={{ backgroundColor }}>
+      <div className="wizard-preview-pane">
         {asset?.layers ? (
           <div
             className="avatar-layer-stack wizard-avatar-stack"
             aria-label={`인간 캐릭터 ${asset.label}`}
           >
+            <CharacterBackgroundLayer customization={background} />
             {asset.layers.map((layer) => (
               <img
                 className="avatar-layer"
@@ -115,11 +126,14 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
             ))}
           </div>
         ) : asset ? (
-          <img
-            className="wizard-character-image"
-            src={asset.src}
-            alt={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label}`}
-          />
+          <div className="avatar-layer-stack wizard-avatar-stack">
+            <CharacterBackgroundLayer customization={background} />
+            <img
+              className="avatar-layer"
+              src={asset.src}
+              alt={`${species === "human" ? "인간" : "고양이"} 캐릭터 ${asset.label}`}
+            />
+          </div>
         ) : null}
       </div>
 
@@ -136,7 +150,9 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
                   title={tab.label}
                   aria-label={tab.label}
                 >
-                  {tab.id === "pattern" ? (
+                  {tab.id === "background" ? (
+                    <ImageIcon size={20} />
+                  ) : tab.id === "pattern" ? (
                     <Palette size={20} />
                   ) : (
                     <CharacterCategoryIcon category={tab.id} />
@@ -146,9 +162,13 @@ export function CharacterCreateWizard({ source = "onboarding" }: CharacterCreate
             })}
           </div>
 
-          <CharacterBackgroundPicker value={backgroundColor} onChange={setBackgroundColor} />
-
-          {species === "cat" ? (
+          {activeTab === "background" ? (
+            <BackgroundItemPicker
+              items={BASIC_CHARACTER_BACKGROUNDS}
+              selectedId={background.backgroundId}
+              onSelect={(payload) => setBackground((current) => ({ ...current, ...payload }))}
+            />
+          ) : species === "cat" ? (
             <div className="wardrobe-grid">
               {CHARACTER_VARIANTS.map((variant) => (
                 <button

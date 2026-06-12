@@ -11,8 +11,8 @@ import {
 import { getCharacterAsset, type CharacterSpecies } from "@/lib/character-assets";
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { normalizeCharacterBackground } from "@/lib/character-backgrounds";
 import { EnvironmentBrand } from "@/components/environment-brand";
+import { CharacterBackgroundLayer } from "@/components/character-background-layer";
 
 type CharacterRow = {
   id: string;
@@ -74,12 +74,10 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
             return (
               <form className="character-slot" action={selectCharacter} key={character.id}>
                 <input name="characterId" type="hidden" value={character.id} />
-                <div
-                  className="slot-avatar"
-                  style={{ backgroundColor: normalizeCharacterBackground(character.customization.backgroundColor) }}
-                >
+                <div className="slot-avatar">
                   {asset.layers ? (
                     <div className="avatar-layer-stack slot-layer-stack">
+                      <CharacterBackgroundLayer customization={character.customization} />
                       {asset.layers.map((layer) => (
                         <img
                           className="avatar-layer"
@@ -90,11 +88,14 @@ export default async function CharactersPage({ searchParams }: CharactersPagePro
                       ))}
                     </div>
                   ) : (
-                    <img
-                      className="avatar-image"
-                      src={asset.src}
-                      alt={character.display_name}
-                    />
+                    <div className="avatar-layer-stack slot-layer-stack">
+                      <CharacterBackgroundLayer customization={character.customization} />
+                      <img
+                        className="avatar-layer"
+                        src={asset.src}
+                        alt={character.display_name}
+                      />
+                    </div>
                   )}
                 </div>
                 <strong>{character.display_name}</strong>

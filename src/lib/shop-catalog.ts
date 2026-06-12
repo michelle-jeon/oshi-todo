@@ -15,7 +15,8 @@ const HUMAN_LAYER_ASSET_KEYS: Record<string, string> = {
   human_hair: "hairAssetUrl",
   human_mouth: "mouthAssetUrl",
   human_eyes: "eyeAssetUrl",
-  accessory: "accessoryAssetUrl"
+  accessory: "accessoryAssetUrl",
+  background: "backgroundImageUrl"
 };
 
 export type CatalogShopItem = {

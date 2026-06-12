@@ -57,6 +57,7 @@ export type ShopItemSlot =
   | "human_outfit"
   | "cat_pattern"
   | "accessory"
+  | "background"
   | "room_item"
   | "mount";
 

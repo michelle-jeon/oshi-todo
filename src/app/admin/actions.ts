@@ -22,6 +22,7 @@ const VALID_SLOTS = new Set([
   "cat_pattern",
   "cat_eyes",
   "accessory",
+  "background",
   "room_item",
   "mount"
 ]);
