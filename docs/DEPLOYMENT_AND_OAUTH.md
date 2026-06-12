@@ -59,7 +59,7 @@ Vercel Dashboard에서 OshiTodo 프로젝트를 열고 `Settings > Environment V
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
@@ -151,7 +151,7 @@ DMG와 ZIP 같은 배포 파일을 다시 만든다.
 npm run desktop:dist
 ```
 
-macOS 결과물은 `dist/desktop` 아래에 생성된다. 빌드할 때 `.env.local`의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`와 Supabase 값이 앱 내부 웹 번들에 반영되므로, 값을 바꿨다면 앱도 다시 빌드해야 한다.
+macOS 결과물은 `dist/desktop` 아래에 생성된다. 빌드할 때 현재 환경 파일의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`와 Supabase 값이 앱 내부 웹 번들에 반영되므로, 값을 바꿨다면 앱도 다시 빌드해야 한다.
 
 PC 앱 설치 파일은 Vercel에 올라가지 않는다. 현재는 로컬에서 직접 빌드하며, 자동 배포와 업데이트는 별도 작업으로 남아 있다.
 

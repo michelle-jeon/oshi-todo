@@ -117,8 +117,8 @@ export function GoogleAuthButton() {
   if (!googleClientId) {
     return (
       <p className="notice">
-        Google Client ID가 설정되지 않았어요. .env.local에 NEXT_PUBLIC_GOOGLE_CLIENT_ID를 추가해
-        주세요.
+        Google Client ID가 설정되지 않았어요. 현재 환경 파일에 NEXT_PUBLIC_GOOGLE_CLIENT_ID를
+        추가해 주세요.
       </p>
     );
   }

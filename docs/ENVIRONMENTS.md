@@ -43,7 +43,7 @@ production  실제 사용자 데이터 프로젝트
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
@@ -68,6 +68,8 @@ Production             production Supabase 값
 ```
 
 Vercel에서 같은 변수 이름을 환경별로 각각 등록한다. Preview/Development에 production 키를 넣거나 Production에 development 키를 넣지 않는다.
+
+Google OAuth Client도 development와 production용 Web Client를 별도로 만들고, `NEXT_PUBLIC_GOOGLE_CLIENT_ID`라는 같은 변수 이름에 환경별로 다른 Client ID를 등록한다.
 
 서비스 롤 키나 Google Client Secret은 `NEXT_PUBLIC_` 환경변수로 넣지 않는다.
 

@@ -6,7 +6,7 @@
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://프로젝트-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=publishable-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=google-oauth-client-id.apps.googleusercontent.com
 ```
 
@@ -40,15 +40,15 @@ Vercel 같은 배포 환경에는 최소한 아래 값이 필요하다.
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
 배포 전 확인할 것:
 
 - `NEXT_PUBLIC_SUPABASE_URL`이 운영 Supabase 프로젝트 URL인지 확인.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`가 같은 프로젝트의 publishable/anon key인지 확인.
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 Google Cloud Console의 Web OAuth Client ID인지 확인.
+- `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`가 같은 프로젝트의 publishable key인지 확인.
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID`가 해당 환경 전용 Google Cloud Web OAuth Client ID인지 확인.
 - Google OAuth Authorized JavaScript origins에 운영 도메인 추가.
 - Google OAuth Authorized redirect URIs에 Supabase Google provider의 callback URL 추가.
 - Supabase Auth URL Configuration에 운영 Site URL과 redirect URL 추가.
@@ -264,13 +264,22 @@ https://oshi-todo-one.vercel.app
 
 현재 Google 로그인 버튼은 JavaScript 콜백으로 ID 토큰을 받아 Supabase에 전달하므로 Google 승인된 리디렉션 URI는 사용하지 않는다. 전체 설정과 배포 절차는 `docs/DEPLOYMENT_AND_OAUTH.md`를 따른다.
 
-`.env.local`의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`에는 Google Cloud Console에서 발급된 Client ID를 넣는다. `OshiTodo` 같은 앱 이름을 넣는 칸이 아니다.
+현재 환경 파일의 `NEXT_PUBLIC_GOOGLE_CLIENT_ID`에는 Google Cloud Console에서 발급된 Client ID를 넣는다. `OshiTodo` 같은 앱 이름을 넣는 칸이 아니다.
 
 ```text
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=1234567890-abcdefg.apps.googleusercontent.com
 ```
 
 Client Secret은 브라우저에 노출되는 `NEXT_PUBLIC_` 환경 변수에 넣지 않는다.
+
+개발과 운영은 Google Cloud에서 Web OAuth Client를 각각 만들고 같은 환경변수 이름에 서로 다른 값을 넣는다.
+
+```text
+.env.development.local -> 개발 OAuth Client ID
+.env.production.local  -> 운영 OAuth Client ID
+```
+
+개발 Client에는 로컬 주소만, 운영 Client에는 운영 도메인만 Authorized JavaScript origins로 등록한다. 이렇게 하면 개발 설정 변경이나 키 폐기가 운영 로그인을 방해하지 않는다.
 
 ## Google 계정 선택 화면의 도메인 문구
 

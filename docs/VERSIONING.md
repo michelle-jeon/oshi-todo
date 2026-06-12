@@ -32,10 +32,11 @@ MAJOR.MINOR.PATCH
 
 ## 현재 버전
 
-- `0.10.0`: 개발·운영 Supabase 환경 분리 검사와 migration 적용 흐름 추가.
+- `0.10.1`: Supabase publishable key 명칭과 개발·운영 Google OAuth Client 분리 기준 반영.
 
 ## 릴리스 기록
 
+- `0.10.1` - 새 Supabase publishable key 명칭을 지원하고 Google OAuth Client 환경 분리 기준을 추가.
 - `0.10.0` - 개발·운영 Supabase 설정 템플릿, 연결 검사, 환경별 migration 워크플로를 추가.
 - `0.9.0` - 스텔 재화와 레벨 구매 해금, 출석·작업시간 달성 후 무료 받기 흐름을 추가.
 - `0.8.0` - 관리자 카테고리 그룹과 페이지네이션, 기본 제공 획득 방식, 사용자 출석 DB를 추가.

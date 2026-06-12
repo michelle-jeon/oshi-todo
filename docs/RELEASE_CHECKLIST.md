@@ -34,12 +34,12 @@ npm run verify
 
 ```text
 NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 NEXT_PUBLIC_GOOGLE_CLIENT_ID
 ```
 
 - 운영 Supabase URL과 anon key가 같은 프로젝트 값인지 확인한다.
-- Google OAuth Client ID가 운영 도메인을 허용하는 Web OAuth Client인지 확인한다.
+- Google OAuth Client ID가 개발용과 분리된 운영 전용 Web OAuth Client인지 확인한다.
 - Client Secret이나 service role key를 `NEXT_PUBLIC_` 환경변수에 넣지 않는다.
 
 ## 인증 설정

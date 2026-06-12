@@ -31,7 +31,7 @@ const results = targets.map((target) => {
   const ref = projectRef(env?.NEXT_PUBLIC_SUPABASE_URL);
   const complete = Boolean(
     ref &&
-    env?.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    (env?.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || env?.NEXT_PUBLIC_SUPABASE_ANON_KEY) &&
     env?.NEXT_PUBLIC_GOOGLE_CLIENT_ID
   );
 
